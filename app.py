@@ -49,6 +49,18 @@ div.stButton > button:hover { background: linear-gradient(135deg, #6d28d9, #4c1d
 
 
 # ════════════════════════════════════════════════════════
+#  SUPABASE CONFIG
+# ════════════════════════════════════════════════════════
+SUPABASE_URL = "https://jvulbphmksdebkkkhgvh.supabase.co"
+SUPABASE_KEY = (
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"
+    ".eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp2dWxicGhta3NkZWJra2toZ3ZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcxOTg4ODQsImV4cCI6MjA5Mjc3NDg4NH0"
+    ".REhaZ0M8pg_9hkaIJxYNmErIsy6UARTYyzYkQbr0pT4"
+)
+ADMIN_PASSWORD = "admin123"
+
+
+# ════════════════════════════════════════════════════════
 #  DATABASE
 # ════════════════════════════════════════════════════════
 try:
@@ -74,20 +86,30 @@ CREATE TABLE IF NOT EXISTS tickets (
 @st.cache_resource(show_spinner=False)
 def get_db():
     if not SUPABASE_OK:
+        st.error("❌ supabase-py not installed. Run: pip install supabase")
         return None
-    url = st.secrets.get("SUPABASE_URL", "")
-    key = st.secrets.get("SUPABASE_KEY", "")
-    if url and key:
-        return create_client(url, key)
-    return None
+    # Try secrets first, fall back to hardcoded constants
+    url = st.secrets.get("SUPABASE_URL", SUPABASE_URL).strip()
+    key = st.secrets.get("SUPABASE_KEY", SUPABASE_KEY).strip()
+    if not url or not key:
+        st.error("❌ Supabase URL or Key is empty.")
+        return None
+    try:
+        client = create_client(url, key)
+        return client
+    except Exception as e:
+        st.error(f"❌ Failed to create Supabase client: {e}")
+        return None
 
 def db_create_ticket(user_id, job_role, query, priority):
     db = get_db()
     if db is None:
         raise ConnectionError("Supabase not configured.")
     row = {
-        "user_id": user_id, "job_role": job_role,
-        "query": query, "priority": priority,
+        "user_id": user_id,
+        "job_role": job_role,
+        "query": query,
+        "priority": priority,
         "status": "Open",
         "created_at": datetime.utcnow().isoformat(),
         "updated_at": datetime.utcnow().isoformat(),
@@ -109,7 +131,8 @@ def db_update_ticket(tid, status, note):
     if db is None:
         raise ConnectionError("Supabase not configured.")
     db.table("tickets").update({
-        "status": status, "admin_note": note,
+        "status": status,
+        "admin_note": note,
         "updated_at": datetime.utcnow().isoformat()
     }).eq("id", tid).execute()
 
@@ -156,7 +179,7 @@ def _parse_qa(text):
     i = 1
     while i < len(parts) - 1:
         num = parts[i].strip()
-        content = parts[i+1].strip() if i+1 < len(parts) else ""
+        content = parts[i + 1].strip() if i + 1 < len(parts) else ""
         i += 2
         if not content:
             continue
@@ -185,10 +208,12 @@ def answer_question(query):
     q_lower = query.lower()
     q_words = set(re.findall(r'\b\w{3,}\b', q_lower))
     best_score, best = 0, None
-    tech = {'list','tuple','dict','dictionary','set','function','class','object',
-            'lambda','decorator','generator','iterator','exception','module',
-            'package','inheritance','polymorphism','encapsulation','gil','pep8',
-            'comprehension','thread','process','async'}
+    tech = {
+        'list', 'tuple', 'dict', 'dictionary', 'set', 'function', 'class', 'object',
+        'lambda', 'decorator', 'generator', 'iterator', 'exception', 'module',
+        'package', 'inheritance', 'polymorphism', 'encapsulation', 'gil', 'pep8',
+        'comprehension', 'thread', 'process', 'async'
+    }
     for p in pairs:
         ql = p["question"].lower()
         al = p["answer"].lower()
@@ -266,20 +291,27 @@ def page_employee():
         c1, c2 = st.columns(2)
         with c1:
             user_id = st.text_input("👤 Employee ID *", placeholder="e.g. EMP-1042")
-            job_role = st.selectbox("💼 Job Role *", ["Select…","Software Engineer","Data Analyst","QA Engineer","DevOps Engineer","Product Manager","HR / Operations","Other"])
+            job_role = st.selectbox("💼 Job Role *", [
+                "Select…", "Software Engineer", "Data Analyst", "QA Engineer",
+                "DevOps Engineer", "Product Manager", "HR / Operations", "Other"
+            ])
         with c2:
-            priority = st.selectbox("🚨 Priority *", ["Medium","High","Low"])
+            priority = st.selectbox("🚨 Priority *", ["Medium", "High", "Low"])
         query_text = st.text_area("📋 Describe your problem *", value=prefill, placeholder="Describe the issue in detail…", height=120)
         if st.button("🚀 Submit Ticket", use_container_width=False):
             errors = []
-            if not user_id.strip(): errors.append("Employee ID required.")
-            if job_role == "Select…": errors.append("Select your job role.")
-            if not query_text.strip(): errors.append("Problem description required.")
-            for e in errors: st.error(e)
+            if not user_id.strip():
+                errors.append("Employee ID required.")
+            if job_role == "Select…":
+                errors.append("Select your job role.")
+            if not query_text.strip():
+                errors.append("Problem description required.")
+            for e in errors:
+                st.error(e)
             if not errors:
                 try:
                     t = db_create_ticket(user_id.strip(), job_role, query_text.strip(), priority)
-                    st.success(f"✅ Ticket #{t.get('id','–')} submitted! Our team will respond shortly.", icon="🎉")
+                    st.success(f"✅ Ticket #{t.get('id', '–')} submitted! Our team will respond shortly.", icon="🎉")
                     st.session_state.pop("prefill_query", None)
                     st.session_state["show_ticket"] = False
                 except Exception as ex:
@@ -287,7 +319,7 @@ def page_employee():
 
 
 def page_admin():
-    ADMIN_PWD = st.secrets.get("ADMIN_PASSWORD", "admin123")
+    admin_pwd = st.secrets.get("ADMIN_PASSWORD", ADMIN_PASSWORD)
     if not st.session_state.get("admin_logged_in"):
         st.markdown("# 🛡️ Admin Panel")
         st.markdown("---")
@@ -295,116 +327,164 @@ def page_admin():
         with col:
             pwd = st.text_input("Password", type="password")
             if st.button("Login →", use_container_width=True):
-                if pwd == ADMIN_PWD:
+                if pwd == admin_pwd:
                     st.session_state["admin_logged_in"] = True
                     st.rerun()
                 else:
                     st.error("Incorrect password.")
         return
 
-    c1, c2 = st.columns([5,1])
-    with c1: st.markdown("# 🛡️ Admin Dashboard")
+    c1, c2 = st.columns([5, 1])
+    with c1:
+        st.markdown("# 🛡️ Admin Dashboard")
     with c2:
-        if st.button("Logout"): st.session_state["admin_logged_in"] = False; st.rerun()
+        if st.button("Logout"):
+            st.session_state["admin_logged_in"] = False
+            st.rerun()
 
     try:
         stats = db_stats()
         cols = st.columns(4)
-        for col, val, label, icon in zip(cols,
+        for col, val, label, icon in zip(
+            cols,
             [stats["total"], stats["open"], stats["in_progress"], stats["resolved"]],
-            ["Total","Open","In Progress","Resolved"],
-            ["📋","🟡","🔵","🟢"]):
+            ["Total", "Open", "In Progress", "Resolved"],
+            ["📋", "🟡", "🔵", "🟢"]
+        ):
             with col:
-                st.markdown(f"<div class='metric-card'><div style='font-size:28px'>{icon}</div><div class='metric-number'>{val}</div><div class='metric-label'>{label}</div></div>", unsafe_allow_html=True)
+                st.markdown(
+                    f"<div class='metric-card'><div style='font-size:28px'>{icon}</div>"
+                    f"<div class='metric-number'>{val}</div>"
+                    f"<div class='metric-label'>{label}</div></div>",
+                    unsafe_allow_html=True
+                )
     except Exception as e:
         st.error(f"Stats error: {e}")
 
     st.markdown("---")
-    c1, c2, _ = st.columns([1.5,1.5,3])
-    with c1: sf = st.selectbox("Status", ["All","Open","In Progress","Resolved"])
-    with c2: pf = st.selectbox("Priority", ["All","High","Medium","Low"])
+    c1, c2, _ = st.columns([1.5, 1.5, 3])
+    with c1:
+        sf = st.selectbox("Status", ["All", "Open", "In Progress", "Resolved"])
+    with c2:
+        pf = st.selectbox("Priority", ["All", "High", "Medium", "Low"])
 
     try:
         tickets = db_get_tickets(sf if sf != "All" else None)
     except Exception as e:
-        st.error(f"DB error: {e}"); return
+        st.error(f"DB error: {e}")
+        return
 
     if pf != "All":
         tickets = [t for t in tickets if t.get("priority") == pf]
 
     if not tickets:
-        st.info("No tickets found.", icon="📭"); return
+        st.info("No tickets found.", icon="📭")
+        return
 
     st.markdown(f"**{len(tickets)} ticket(s)**")
     for t in tickets:
         tid = t.get("id")
-        status = t.get("status","Open")
-        priority = t.get("priority","Medium")
-        created = t.get("created_at","")
+        status = t.get("status", "Open")
+        priority = t.get("priority", "Medium")
+        created = t.get("created_at", "")
         try:
-            dt = datetime.fromisoformat(created.replace("Z","+00:00"))
+            dt = datetime.fromisoformat(created.replace("Z", "+00:00"))
             created_fmt = dt.strftime("%d %b %Y, %I:%M %p")
-        except: created_fmt = created
+        except Exception:
+            created_fmt = created
 
-        badge = {"Open":"badge-open","In Progress":"badge-inprogress","Resolved":"badge-resolved"}.get(status,"badge-open")
-        prio  = {"High":"prio-high","Medium":"prio-medium","Low":"prio-low"}.get(priority,"prio-medium")
+        badge = {"Open": "badge-open", "In Progress": "badge-inprogress", "Resolved": "badge-resolved"}.get(status, "badge-open")
+        prio = {"High": "prio-high", "Medium": "prio-medium", "Low": "prio-low"}.get(priority, "prio-medium")
 
-        with st.expander(f"🎫 #{tid} — {t.get('user_id','?')} ({t.get('job_role','?')}) | {status} | {priority} | {created_fmt}"):
+        with st.expander(f"🎫 #{tid} — {t.get('user_id', '?')} ({t.get('job_role', '?')}) | {status} | {priority} | {created_fmt}"):
             st.markdown(f"<span class='{badge}'>{status}</span>&nbsp;<span class='{prio}'>{priority}</span>", unsafe_allow_html=True)
-            st.markdown(f"**Employee:** {t.get('user_id','–')} &nbsp;|&nbsp; **Role:** {t.get('job_role','–')} &nbsp;|&nbsp; **Submitted:** {created_fmt}")
+            st.markdown(f"**Employee:** {t.get('user_id', '–')} &nbsp;|&nbsp; **Role:** {t.get('job_role', '–')} &nbsp;|&nbsp; **Submitted:** {created_fmt}")
             st.markdown("**Problem:**")
-            st.markdown(f"<div class='answer-box'>{t.get('query','–')}</div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='answer-box'>{t.get('query', '–')}</div>", unsafe_allow_html=True)
             st.markdown("---")
             nc1, nc2 = st.columns(2)
             with nc1:
-                new_status = st.selectbox("Update Status", ["Open","In Progress","Resolved"],
-                    index=["Open","In Progress","Resolved"].index(status), key=f"s_{tid}")
+                new_status = st.selectbox(
+                    "Update Status", ["Open", "In Progress", "Resolved"],
+                    index=["Open", "In Progress", "Resolved"].index(status),
+                    key=f"s_{tid}"
+                )
             with nc2:
                 note = st.text_area("Admin Note", value=t.get("admin_note") or "", key=f"n_{tid}", height=100)
-            bc1, bc2, _ = st.columns([1,1,3])
+            bc1, bc2, _ = st.columns([1, 1, 3])
             with bc1:
                 if st.button("💾 Save", key=f"save_{tid}", use_container_width=True):
-                    try: db_update_ticket(tid, new_status, note); st.success("Updated!"); st.rerun()
-                    except Exception as e: st.error(str(e))
+                    try:
+                        db_update_ticket(tid, new_status, note)
+                        st.success("Updated!")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(str(e))
             with bc2:
                 if st.button("🗑️ Delete", key=f"del_{tid}", use_container_width=True):
-                    try: db_delete_ticket(tid); st.warning("Deleted."); st.rerun()
-                    except Exception as e: st.error(str(e))
+                    try:
+                        db_delete_ticket(tid)
+                        st.warning("Deleted.")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(str(e))
 
 
 def page_setup():
     st.markdown("# ⚙️ Setup & Configuration")
-    with st.expander("📁 Secrets (Streamlit Cloud)", expanded=True):
-        st.code('[secrets]\nSUPABASE_URL   = "https://xxxx.supabase.co"\nSUPABASE_KEY   = "eyJ..."\nADMIN_PASSWORD = "your_password"', language="toml")
+
+    with st.expander("📁 Secrets (Streamlit Cloud) — optional if using hardcoded values", expanded=True):
+        st.code(
+            '[secrets]\n'
+            'SUPABASE_URL   = "https://jvulbphmksdebkkkhgvh.supabase.co"\n'
+            'SUPABASE_KEY   = "eyJhbGci..."\n'
+            'ADMIN_PASSWORD = "admin123"',
+            language="toml"
+        )
+
     with st.expander("🗄️ Create Supabase Table", expanded=True):
         st.code(SCHEMA_SQL, language="sql")
+
     with st.expander("📦 Install Dependencies"):
         st.code("pip install streamlit supabase PyPDF2 requests", language="bash")
+
     st.markdown("---")
     st.markdown("### 🔌 Connection Status")
     c1, c2 = st.columns(2)
     with c1:
-        if st.secrets.get("SUPABASE_URL",""): st.success("✅ Supabase URL configured")
-        else: st.error("❌ Supabase URL missing")
+        url_val = st.secrets.get("SUPABASE_URL", SUPABASE_URL)
+        if url_val:
+            st.success("✅ Supabase URL configured")
+        else:
+            st.error("❌ Supabase URL missing")
     with c2:
-        if st.secrets.get("SUPABASE_KEY",""): st.success("✅ Supabase Key configured")
-        else: st.error("❌ Supabase Key missing")
+        key_val = st.secrets.get("SUPABASE_KEY", SUPABASE_KEY)
+        if key_val:
+            st.success("✅ Supabase Key configured")
+        else:
+            st.error("❌ Supabase Key missing")
+
     st.markdown("---")
     if st.button("🧪 Test Database"):
         try:
             db = get_db()
-            if db is None: st.error("Not configured.")
+            if db is None:
+                st.error("Not configured.")
             else:
                 db.table("tickets").select("id").limit(1).execute()
                 st.success("✅ Database connected!")
-        except Exception as e: st.error(f"Failed: {e}")
+        except Exception as e:
+            st.error(f"Failed: {e}")
+
     if st.button("📄 Test Knowledge Base"):
         pairs = load_qa_pairs()
         if pairs:
             st.success(f"✅ {len(pairs)} Q&A pairs loaded!")
             with st.expander("Preview"):
-                for p in pairs[:5]: st.markdown(f"**Q{p['num']}.** {p['question']}")
-        else: st.error("No pairs loaded.")
+                for p in pairs[:5]:
+                    st.markdown(f"**Q{p['num']}.** {p['question']}")
+        else:
+            st.error("No pairs loaded.")
 
 
 # ════════════════════════════════════════════════════════
