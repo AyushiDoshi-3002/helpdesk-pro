@@ -41,16 +41,20 @@ except ImportError:
     SUPABASE_OK = False
 
 SCHEMA_SQL = """
+-- Run this in Supabase SQL Editor
+
+-- Drop old table if columns are wrong (CAREFUL: deletes data)
+-- DROP TABLE IF EXISTS tickets;
+
 CREATE TABLE IF NOT EXISTS tickets (
     id          BIGSERIAL PRIMARY KEY,
     user_id     TEXT NOT NULL,
     job_role    TEXT NOT NULL,
     query       TEXT NOT NULL,
-    priority    TEXT NOT NULL CHECK (priority IN ('High','Medium','Low')),
-    status      TEXT NOT NULL DEFAULT 'Open' CHECK (status IN ('Open','In Progress','Resolved')),
+    priority    TEXT NOT NULL DEFAULT 'Medium',
+    status      TEXT NOT NULL DEFAULT 'Open',
     admin_note  TEXT,
-    created_at  TIMESTAMPTZ DEFAULT NOW(),
-    updated_at  TIMESTAMPTZ DEFAULT NOW()
+    created_at  TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS resolved_issues (
@@ -59,6 +63,10 @@ CREATE TABLE IF NOT EXISTS resolved_issues (
     solution   TEXT NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Disable RLS so inserts/updates work without auth policies
+ALTER TABLE tickets DISABLE ROW LEVEL SECURITY;
+ALTER TABLE resolved_issues DISABLE ROW LEVEL SECURITY;
 """
 
 @st.cache_resource(show_spinner=False)
@@ -73,26 +81,52 @@ def get_db():
 def db_create_ticket(user_id, job_role, query, priority):
     db = get_db()
     if db is None: raise ConnectionError("Supabase not configured.")
-    row = {"user_id": user_id, "job_role": job_role, "query": query, "priority": priority,
-           "status": "Open", "created_at": datetime.utcnow().isoformat(), "updated_at": datetime.utcnow().isoformat()}
-    result = db.table("tickets").insert(row).execute()
-    return result.data[0] if result.data else {}
+    row = {
+        "user_id": user_id,
+        "job_role": job_role,
+        "query": query,
+        "priority": priority,
+        "status": "Open"
+    }
+    try:
+        result = db.table("tickets").insert(row).execute()
+        if result.data:
+            return result.data[0]
+        raise Exception("No data returned from insert")
+    except Exception as e:
+        raise Exception(f"Insert failed: {e}")
 
 def db_get_tickets(status_filter=None):
     db = get_db()
     if db is None: return []
-    q = db.table("tickets").select("*").order("created_at", desc=True)
-    if status_filter and status_filter != "All": q = q.eq("status", status_filter)
-    return q.execute().data or []
+    try:
+        q = db.table("tickets").select("*").order("created_at", desc=True)
+        if status_filter and status_filter != "All": q = q.eq("status", status_filter)
+        return q.execute().data or []
+    except Exception as e:
+        st.error(f"Fetch error: {e}")
+        return []
 
 def db_update_ticket(tid, status, note):
     db = get_db()
     if db is None: raise ConnectionError("Supabase not configured.")
-    db.table("tickets").update({"status": status, "admin_note": note, "updated_at": datetime.utcnow().isoformat()}).eq("id", tid).execute()
+    try:
+        result = db.table("tickets").update({
+            "status": status,
+            "admin_note": note
+        }).eq("id", tid).execute()
+        if not result.data:
+            raise Exception("No data returned — row may not exist or RLS is blocking update")
+    except Exception as e:
+        raise Exception(f"Update failed: {e}")
 
 def db_delete_ticket(tid):
     db = get_db()
-    if db: db.table("tickets").delete().eq("id", tid).execute()
+    if db:
+        try:
+            db.table("tickets").delete().eq("id", tid).execute()
+        except Exception as e:
+            raise Exception(f"Delete failed: {e}")
 
 def db_stats():
     tickets = db_get_tickets()
