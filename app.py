@@ -134,34 +134,67 @@ def db_stats():
 
 
 # ════════════════════════════════════════════════════════
-#  IMPROVED LEARNED ANSWERS LOOKUP
-#  Scores each stored Q by token overlap with the new query.
-#  Returns the best match if similarity is above threshold.
+#  ROBUST LEARNED ANSWERS LOOKUP
+#  Multi-strategy: substring → keyword overlap → token Jaccard
+#  Works for short queries like "what is ai", "what is ml" etc.
 # ════════════════════════════════════════════════════════
 
-def _tokenize(text: str) -> set:
-    """Lowercase, strip punctuation, return set of meaningful tokens (len >= 3)."""
-    return set(re.findall(r'\b[a-z]{3,}\b', text.lower()))
+def _normalize(text: str) -> str:
+    """Lowercase and strip extra whitespace/punctuation."""
+    return re.sub(r'[^\w\s]', '', text.lower()).strip()
 
-def _similarity_score(query_tokens: set, stored_query: str) -> float:
+def _all_words(text: str) -> list:
+    """All words (length >= 2) — allows short terms like 'ai', 'ml', 'db'."""
+    return re.findall(r'\b[a-z]{2,}\b', text.lower())
+
+def _keyword_score(query: str, stored_query: str) -> float:
     """
-    Jaccard-style overlap score between query tokens and stored question tokens.
-    Returns a float between 0.0 and 1.0.
+    Multi-strategy similarity score (0.0–1.0):
+
+    Strategy 1 – Exact / substring match: highest priority.
+      "what is ai"  stored:"what is ai"           → 1.0
+      "what is ai"  stored:"what is artificial intelligence / ai"  → 0.9
+
+    Strategy 2 – All important keywords present:
+      Every word in the short query (≥2 chars) appears in the stored query → 0.85
+
+    Strategy 3 – Jaccard over all words (≥2 chars):
+      Covers partial overlaps like "what ai" vs "what is ai".
     """
-    stored_tokens = _tokenize(stored_query)
-    if not stored_tokens or not query_tokens:
+    q_norm  = _normalize(query)
+    s_norm  = _normalize(stored_query)
+
+    # Strategy 1: exact / substring
+    if q_norm == s_norm:
+        return 1.0
+    if q_norm in s_norm or s_norm in q_norm:
+        return 0.9
+
+    q_words = set(_all_words(query))
+    s_words = set(_all_words(stored_query))
+
+    if not q_words:
         return 0.0
-    intersection = query_tokens & stored_tokens
-    union = query_tokens | stored_tokens
+
+    # Strategy 2: all query words appear in stored query
+    if q_words and q_words.issubset(s_words):
+        return 0.85
+
+    # Strategy 3: Jaccard over all words ≥ 2 chars
+    intersection = q_words & s_words
+    union = q_words | s_words
+    if not union:
+        return 0.0
     return len(intersection) / len(union)
+
 
 def check_learned_answers(query: str):
     """
-    Check Supabase resolved_issues for a previously solved similar query.
-    Uses token-overlap similarity. Returns (solution, matched_query, score) or None.
-    
-    Threshold: 0.25 — meaning at least ~25% of meaningful words overlap.
-    Lower = more permissive, higher = stricter.
+    Search resolved_issues in Supabase for the best matching previous answer.
+    Uses multi-strategy scoring so short queries like 'what is ai' are caught.
+
+    Returns dict with solution/matched_query/score, or None if no good match.
+    Threshold: 0.3 — catches most paraphrases while avoiding false positives.
     """
     db = get_db()
     if db is None:
@@ -176,26 +209,22 @@ def check_learned_answers(query: str):
     if not rows:
         return None
 
-    query_tokens = _tokenize(query)
-    if not query_tokens:
-        return None
-
-    THRESHOLD = 0.25  # Tune this: raise for stricter matching, lower for more permissive
+    THRESHOLD = 0.3  # Lower = more permissive. 0.3 works well for short queries.
 
     best_score = 0.0
-    best_row = None
+    best_row   = None
 
     for row in rows:
-        score = _similarity_score(query_tokens, row.get("query", ""))
+        score = _keyword_score(query, row.get("query", ""))
         if score > best_score:
             best_score = score
-            best_row = row
+            best_row   = row
 
     if best_row and best_score >= THRESHOLD:
         return {
-            "solution": best_row["solution"],
+            "solution":     best_row["solution"],
             "matched_query": best_row["query"],
-            "score": best_score
+            "score":        best_score
         }
 
     return None
