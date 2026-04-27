@@ -393,6 +393,7 @@ def page_employee():
         if result.get("pdf_error"):
             st.error("❌ Knowledge base unavailable. Please raise a ticket.")
             st.session_state["show_ticket"] = True
+            st.session_state["ticket_query"] = question.strip()
 
         elif result["found"]:
             source = result.get("source", "pdf")
@@ -433,6 +434,7 @@ def page_employee():
             with col_b:
                 if st.button("👎 Not helpful"):
                     st.session_state["show_ticket"] = True
+                    st.session_state["ticket_query"] = question.strip()
                     st.warning("Sorry! Please raise a ticket below.")
 
         else:
@@ -443,6 +445,7 @@ def page_employee():
                 unsafe_allow_html=True,
             )
             st.session_state["show_ticket"] = True
+            st.session_state["ticket_query"] = question.strip()
 
     elif search:
         st.warning("Please enter a question.")
@@ -458,18 +461,24 @@ def page_employee():
             job_role = st.selectbox("💼 Job Role *", ["Select…","Software Engineer","Data Analyst","QA Engineer","DevOps Engineer","Product Manager","HR / Operations","Other"])
         with c2:
             priority = st.selectbox("🚨 Priority *", ["Medium","High","Low"])
-        query_text = st.text_area("📋 Describe your problem *", value="", placeholder="Describe your issue in detail…", height=120)
+        # Show original search question (saved as the ticket query)
+        original_question = st.session_state.get("ticket_query", "")
+        if original_question:
+            st.markdown(f"<small style='color:#7c3aed'>🔍 Your search question: <strong>{original_question}</strong></small>", unsafe_allow_html=True)
+        query_text = st.text_area("📋 Describe your problem in detail *", value="", placeholder="Add more details about your issue…", height=120)
         col_sub, col_cancel, _ = st.columns([1, 1, 4])
         with col_sub:
             if st.button("🚀 Submit Ticket", use_container_width=True):
                 errors = []
                 if not user_id.strip(): errors.append("Employee ID required.")
                 if job_role == "Select…": errors.append("Select your job role.")
-                if not query_text.strip(): errors.append("Problem description required.")
+                if not original_question and not query_text.strip(): errors.append("Problem description required.")
                 for e in errors: st.error(e)
                 if not errors:
+                    # query column = original search question; description goes in admin_note initially
+                    final_query = original_question if original_question else query_text.strip()
                     try:
-                        t = db_create_ticket(user_id.strip(), job_role, query_text.strip(), priority)
+                        t = db_create_ticket(user_id.strip(), job_role, final_query, priority)
                         st.success(f"✅ Ticket #{t.get('id','–')} submitted! Our team will respond shortly.", icon="🎉")
                         st.session_state["show_ticket"] = False
                     except Exception as ex:
