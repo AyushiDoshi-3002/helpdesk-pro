@@ -190,41 +190,66 @@ def _keyword_score(query: str, stored_query: str) -> float:
 
 def check_learned_answers(query: str):
     """
-    Search resolved_issues in Supabase for the best matching previous answer.
-    Uses multi-strategy scoring so short queries like 'what is ai' are caught.
+    Search TWO sources for a previously answered question:
 
-    Returns dict with solution/matched_query/score, or None if no good match.
-    Threshold: 0.3 — catches most paraphrases while avoiding false positives.
+    Source 1 — tickets table:
+        Rows where admin_note is filled AND status is not NULL.
+        query column  = the original search question the user typed.
+        admin_note    = the answer the admin wrote.
+
+    Source 2 — resolved_issues table (optional legacy table):
+        Rows saved when admin marks a ticket Resolved with a note.
+
+    Uses multi-strategy scoring (exact → substring → keyword → Jaccard).
+    Threshold: 0.3 — works well for short queries like "what is j".
+    Returns dict with solution/matched_query/score, or None if no match.
     """
     db = get_db()
     if db is None:
         return None
 
-    try:
-        response = db.table("resolved_issues").select("*").execute()
-        rows = response.data or []
-    except Exception:
-        return None
-
-    if not rows:
-        return None
-
-    THRESHOLD = 0.3  # Lower = more permissive. 0.3 works well for short queries.
-
+    THRESHOLD = 0.3
     best_score = 0.0
-    best_row   = None
+    best_solution = None
+    best_matched  = None
 
-    for row in rows:
-        score = _keyword_score(query, row.get("query", ""))
-        if score > best_score:
-            best_score = score
-            best_row   = row
+    # ── Source 1: tickets table — admin_note column ───────────────────────────
+    try:
+        resp = db.table("tickets").select("query, admin_note").not_.is_("admin_note", "null").execute()
+        for row in (resp.data or []):
+            note = (row.get("admin_note") or "").strip()
+            q    = (row.get("query") or "").strip()
+            if not note or not q:
+                continue
+            score = _keyword_score(query, q)
+            if score > best_score:
+                best_score    = score
+                best_solution = note
+                best_matched  = q
+    except Exception:
+        pass  # tickets table missing or error — skip
 
-    if best_row and best_score >= THRESHOLD:
+    # ── Source 2: resolved_issues table ──────────────────────────────────────
+    try:
+        resp2 = db.table("resolved_issues").select("query, solution").execute()
+        for row in (resp2.data or []):
+            sol = (row.get("solution") or "").strip()
+            q   = (row.get("query") or "").strip()
+            if not sol or not q:
+                continue
+            score = _keyword_score(query, q)
+            if score > best_score:
+                best_score    = score
+                best_solution = sol
+                best_matched  = q
+    except Exception:
+        pass  # resolved_issues table missing — skip silently
+
+    if best_solution and best_score >= THRESHOLD:
         return {
-            "solution":     best_row["solution"],
-            "matched_query": best_row["query"],
-            "score":        best_score
+            "solution":      best_solution,
+            "matched_query": best_matched,
+            "score":         best_score
         }
 
     return None
