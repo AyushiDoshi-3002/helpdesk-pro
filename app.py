@@ -33,6 +33,16 @@ div.stButton > button:hover { background: linear-gradient(135deg, #6d28d9, #4c1d
 
 
 # ════════════════════════════════════════════════════════
+#  IMPORT APPROVAL PIPELINE
+# ════════════════════════════════════════════════════════
+try:
+    from approval_pipeline import page_approval_pipeline
+    PIPELINE_AVAILABLE = True
+except ImportError:
+    PIPELINE_AVAILABLE = False
+
+
+# ════════════════════════════════════════════════════════
 #  DATABASE
 # ════════════════════════════════════════════════════════
 try:
@@ -126,11 +136,9 @@ def db_stats():
 
 
 # ════════════════════════════════════════════════════════
-#  LEARNED ANSWERS LOOKUP  (Supabase — fallback only)
+#  LEARNED ANSWERS LOOKUP
 # ════════════════════════════════════════════════════════
 
-# Stop-words to exclude from keyword matching so generic words
-# like "what", "is", "the", "a" don't create false positives.
 _STOP_WORDS = {
     "what", "is", "are", "the", "a", "an", "of", "in", "on", "at",
     "to", "for", "and", "or", "how", "why", "when", "where", "who",
@@ -142,82 +150,51 @@ def _normalize(text: str) -> str:
     return re.sub(r'[^\w\s]', '', text.lower()).strip()
 
 def _content_words(text: str) -> set:
-    """Extract meaningful (non-stop) words only."""
     words = re.findall(r'\b[a-z]{2,}\b', text.lower())
     return {w for w in words if w not in _STOP_WORDS}
 
 def _keyword_score(query: str, stored_query: str) -> float:
-    """
-    Returns a similarity score in [0, 1].
-
-    Key design decisions vs the original:
-    - Stop-words are stripped before any comparison, so "what is AI"
-      and "what is Supabase" no longer share meaningful overlap.
-    - Exact content-word match → 1.0
-    - Subset/superset checks are removed; only Jaccard similarity is used.
-    - A bonus is added only for exact full-string match.
-    """
     q_norm = _normalize(query)
     s_norm = _normalize(stored_query)
-
-    # Exact full-string match
     if q_norm == s_norm:
         return 1.0
-
     q_words = _content_words(query)
     s_words = _content_words(stored_query)
-
-    # If either side has no content words after stop-word removal,
-    # we cannot make a reliable comparison — return 0.
     if not q_words or not s_words:
         return 0.0
-
-    # Jaccard similarity on content words only
     intersection = q_words & s_words
     union = q_words | s_words
-    jaccard = len(intersection) / len(union)
+    return len(intersection) / len(union)
 
-    return jaccard
-
-
-# Raised from 0.3 → 0.55 so that only genuinely similar questions match.
 _LEARNED_THRESHOLD = 0.55
 
 def check_learned_answers(query: str):
     db = get_db()
     if db is None:
         return None
-
     best_score, best_solution, best_matched = 0.0, None, None
-
-    # Search resolved tickets with admin notes
     try:
         resp = db.table("tickets").select("query, admin_note").not_.is_("admin_note", "null").execute()
         for row in (resp.data or []):
             note = (row.get("admin_note") or "").strip()
             q = (row.get("query") or "").strip()
-            if not note or not q:
-                continue
+            if not note or not q: continue
             score = _keyword_score(query, q)
             if score > best_score:
                 best_score, best_solution, best_matched = score, note, q
     except Exception:
         pass
-
-    # Search dedicated resolved_issues table
     try:
         resp2 = db.table("resolved_issues").select("query, solution").execute()
         for row in (resp2.data or []):
             sol = (row.get("solution") or "").strip()
             q = (row.get("query") or "").strip()
-            if not sol or not q:
-                continue
+            if not sol or not q: continue
             score = _keyword_score(query, q)
             if score > best_score:
                 best_score, best_solution, best_matched = score, sol, q
     except Exception:
         pass
-
     if best_solution and best_score >= _LEARNED_THRESHOLD:
         return {"solution": best_solution, "matched_query": best_matched, "score": best_score}
     return None
@@ -309,10 +286,6 @@ def load_model_and_embeddings():
 
 # ════════════════════════════════════════════════════════
 #  ANSWER LOOKUP
-#
-#  Priority order:
-#    1. PDF semantic search  ← PRIMARY (always tried first)
-#    2. Supabase learned answers ← FALLBACK (only if PDF has no match)
 # ════════════════════════════════════════════════════════
 def answer_question(query: str) -> dict:
 
@@ -325,8 +298,7 @@ def answer_question(query: str) -> dict:
             scores = util.cos_sim(query_embedding, embeddings)[0]
             best_idx = int(scores.argmax())
             best_score = float(scores[best_idx])
-            THRESHOLD = 0.4
-            if best_score >= THRESHOLD:
+            if best_score >= 0.4:
                 question, answer = pairs[best_idx]
                 return {
                     "found": True,
@@ -337,7 +309,7 @@ def answer_question(query: str) -> dict:
                     "source": "pdf"
                 }
         except Exception:
-            pass  # PDF search errored — fall through to Supabase
+            pass
 
     # ── Step 2: Supabase learned answers (FALLBACK) ──────────────────────────
     learned = check_learned_answers(query)
@@ -697,18 +669,39 @@ def page_setup():
 
 
 # ════════════════════════════════════════════════════════
-#  MAIN
+#  MAIN — SIDEBAR + ROUTING
 # ════════════════════════════════════════════════════════
 with st.sidebar:
     st.markdown("## 🤖 HelpDesk Pro")
     st.markdown("---")
-    page = st.radio("Navigation", ["🔍 Employee Portal", "🛡️ Admin Panel", "⚙️ Setup / Config"])
+
+    page = st.radio("Navigation", [
+        "🔍 Employee Portal",
+        "🛡️ Admin Panel",
+        "📋 Approval Pipeline",
+        "⚙️ Setup / Config",
+    ])
+
     st.markdown("---")
+
+    if not PIPELINE_AVAILABLE:
+        st.warning("⚠️ approval_pipeline.py not found.", icon="⚠️")
+
     st.markdown("<small style='opacity:0.6'>Powered by Supabase + pdfplumber</small>", unsafe_allow_html=True)
+
 
 if page == "🔍 Employee Portal":
     page_employee()
+
 elif page == "🛡️ Admin Panel":
     page_admin()
+
+elif page == "📋 Approval Pipeline":
+    if PIPELINE_AVAILABLE:
+        page_approval_pipeline()
+    else:
+        st.error("❌ `approval_pipeline.py` is missing from your project folder.")
+        st.info("Make sure `approval_pipeline.py` is in the same directory as `app.py` and restart the app.")
+
 elif page == "⚙️ Setup / Config":
     page_setup()
