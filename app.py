@@ -52,6 +52,13 @@ CREATE TABLE IF NOT EXISTS tickets (
     created_at  TIMESTAMPTZ DEFAULT NOW(),
     updated_at  TIMESTAMPTZ DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS resolved_issues (
+    id         BIGSERIAL PRIMARY KEY,
+    query      TEXT NOT NULL,
+    solution   TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
 """
 
 @st.cache_resource(show_spinner=False)
@@ -93,39 +100,36 @@ def db_stats():
             "in_progress": sum(1 for t in tickets if t["status"]=="In Progress"),
             "resolved": sum(1 for t in tickets if t["status"]=="Resolved")}
 
+def check_learned_answers(query):
+    """Check Supabase resolved_issues table for previously solved queries."""
+    db = get_db()
+    if db is None: return None
+    try:
+        response = db.table("resolved_issues").select("*").execute()
+        for row in response.data:
+            if query.lower() in row["query"].lower() or row["query"].lower() in query.lower():
+                return row["solution"]
+    except: pass
+    return None
+
 
 # ════════════════════════════════════════════════════════
-#  Q&A ENGINE — extracts directly from PDF, no hardcoded Q&A
+#  PDF DOWNLOAD
 # ════════════════════════════════════════════════════════
 _GDRIVE_FILE_ID = "1cUagShzCe0XsCbF5NEU9T62ICcU2I5AO"
 
-
-@st.cache_resource(show_spinner="📄 Loading knowledge base from PDF…")
-def load_qa_pairs():
-    """Download PDF and extract Q&A pairs. Returns empty list if PDF unreachable."""
-    text = _fetch_pdf()
-    if not text:
-        return []
-    pairs = _parse_qa(text)
-    return pairs
-
-
-def _fetch_pdf():
-    """Download PDF from Google Drive handling the virus-scan confirm page."""
+@st.cache_resource(show_spinner="📄 Downloading PDF…")
+def get_pdf_bytes():
+    """Download PDF bytes from Google Drive. Returns bytes or None."""
     try:
-        import PyPDF2
         session = requests.Session()
-
-        # Attempt 1: direct download
         url1 = f"https://drive.google.com/uc?export=download&id={_GDRIVE_FILE_ID}"
         resp = session.get(url1, timeout=30)
 
-        # Attempt 2: usercontent URL (more reliable for public files)
         if "text/html" in resp.headers.get("content-type", ""):
             url2 = f"https://drive.usercontent.google.com/download?id={_GDRIVE_FILE_ID}&export=download&confirm=t"
             resp = session.get(url2, timeout=30)
 
-        # Attempt 3: extract confirm token from HTML and retry
         if "text/html" in resp.headers.get("content-type", ""):
             token_match = re.search(r'confirm=([0-9A-Za-z_\-]+)', resp.text)
             if token_match:
@@ -133,139 +137,133 @@ def _fetch_pdf():
                 resp = session.get(url3, timeout=30)
 
         resp.raise_for_status()
-
         if "text/html" in resp.headers.get("content-type", ""):
-            return None  # Could not get the PDF
-
-        reader = PyPDF2.PdfReader(io.BytesIO(resp.content))
-        return "\n".join(page.extract_text() or "" for page in reader.pages)
-
+            return None
+        return resp.content
     except Exception:
         return None
 
 
-def _parse_qa(text):
-    """Parse numbered Q&A pairs from raw PDF text."""
-    pairs = []
-    text = re.sub(r'\r\n', '\n', text)
-    text = re.sub(r'\n{3,}', '\n\n', text)
+# ════════════════════════════════════════════════════════
+#  Q&A EXTRACTION  — same logic as your working code
+#  Uses pdfplumber + splits on "q." and "answer"
+# ════════════════════════════════════════════════════════
+@st.cache_resource(show_spinner="📄 Extracting Q&A from PDF…")
+def load_qa_pairs():
+    """
+    Extract Q&A pairs from PDF exactly like your reference code:
+    - Split text on 'q.'
+    - Then split each part on 'answer'
+    - Filter noise (short answers, enroll/course mentions)
+    """
+    pdf_bytes = get_pdf_bytes()
+    if not pdf_bytes:
+        return []
 
-    # Split on numbered items like "1.", "2.", "10."
-    parts = re.split(r'\n(\d{1,3})[.)]\s+', text)
+    try:
+        import pdfplumber
+        text = ""
+        with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
+            for page in pdf.pages:
+                page_text = page.extract_text()
+                if page_text:
+                    text += page_text + "\n"
+    except Exception as e:
+        st.warning(f"pdfplumber failed: {e}")
+        return []
 
-    if len(parts) > 3:
-        i = 1
-        while i < len(parts) - 1:
-            num = parts[i].strip()
-            content = parts[i+1].strip() if i+1 < len(parts) else ""
-            i += 2
-            if not content or len(content) < 10:
-                continue
-
-            lines = content.split('\n')
-            q_lines, a_lines, found_q_end = [], [], False
-
-            for line in lines:
-                line = line.strip()
-                if not line:
-                    if q_lines: found_q_end = True
-                    continue
-                if not found_q_end:
-                    q_lines.append(line)
-                    if line.endswith('?'): found_q_end = True
-                else:
-                    a_lines.append(line)
-
-            # If no blank-line separator, split at '?'
-            if not a_lines and q_lines:
-                full = " ".join(q_lines)
-                idx = full.find('?')
-                if idx != -1:
-                    q_lines = [full[:idx+1]]
-                    a_lines = [full[idx+1:].strip()]
-
-            q = re.sub(r'\s+', ' ', " ".join(q_lines)).strip()
-            a = re.sub(r'\s+', ' ', " ".join(a_lines)).strip()
-
-            if len(q) >= 8 and len(a) >= 5:
-                pairs.append({"num": num, "question": q, "answer": a})
-
-    # Fallback: Q: / A: format
-    if len(pairs) < 5:
-        pairs = []
-        for block in re.split(r'\n(?=Q\d*[.:)]?\s)', text):
-            qm = re.search(r'Q\d*[.:)]?\s*(.+?\?)', block, re.DOTALL)
-            am = re.search(r'A[.:)]?\s*(.+?)(?=\n\n|$)', block, re.DOTALL)
-            if qm and am:
-                q = re.sub(r'\s+', ' ', qm.group(1)).strip()
-                a = re.sub(r'\s+', ' ', am.group(1)).strip()
-                if len(q) >= 8 and len(a) >= 5:
-                    pairs.append({"num": str(len(pairs)+1), "question": q, "answer": a})
-
+    text = text.lower()
+    pairs = _extract_qa_pairs(text)
     return pairs
 
 
+def _extract_qa_pairs(text):
+    """Exact same logic from your reference code."""
+    qa_pairs = []
+    parts = re.split(r'q\.', text)
+
+    for part in parts:
+        if "answer" in part:
+            try:
+                q_part, a_part = part.split("answer", 1)
+                question = q_part.strip()
+                answer = a_part.strip()
+
+                # Filter noise exactly like your code
+                if "enroll" in answer or "course" in answer:
+                    continue
+                if len(answer) < 30:
+                    continue
+                # Additional: skip if question is empty or too short
+                if len(question) < 5:
+                    continue
+
+                qa_pairs.append((question, answer))
+            except:
+                continue
+
+    return qa_pairs
+
+
+# ════════════════════════════════════════════════════════
+#  SEMANTIC SEARCH  — SentenceTransformer like your code
+# ════════════════════════════════════════════════════════
+@st.cache_resource(show_spinner="🧠 Loading semantic search model…")
+def load_model_and_embeddings():
+    """Load SentenceTransformer and encode all questions from PDF."""
+    try:
+        from sentence_transformers import SentenceTransformer, util
+        pairs = load_qa_pairs()
+        if not pairs:
+            return None, None, None, util
+
+        model = SentenceTransformer('all-MiniLM-L6-v2')
+        questions = [q for q, a in pairs]
+        embeddings = model.encode(questions, convert_to_tensor=True)
+        return model, embeddings, pairs, util
+    except Exception as e:
+        st.warning(f"Semantic model error: {e}")
+        return None, None, None, None
+
+
 def answer_question(query):
-    """Score Q&A pairs from the PDF and return the best match."""
-    pairs = load_qa_pairs()
+    """
+    Semantic similarity search — same as your knowledge_agent().
+    Returns {"found", "answer", "matched", "score", "pdf_error"}
+    """
+    # First check learned answers from Supabase
+    learned = check_learned_answers(query)
+    if learned:
+        return {"found": True, "answer": learned, "matched": "Previously resolved issue", "score": 1.0, "pdf_error": False, "learned": True}
 
-    # PDF could not be loaded at all
-    if pairs is None or len(pairs) == 0:
-        return {"found": False, "answer": "", "matched": "", "pdf_error": True}
+    model, embeddings, pairs, util = load_model_and_embeddings()
 
-    stop = {'what','which','when','where','how','why','does','did','can','the',
-            'and','for','are','was','were','has','have','had','its','this','that',
-            'with','from','they','them','their','there','been','being','would','you',
-            'about','tell','explain','mean','means','define','difference','between',
-            'python','give','please','write'}
+    if model is None or embeddings is None or pairs is None:
+        return {"found": False, "answer": "", "matched": "", "score": 0, "pdf_error": True, "learned": False}
 
-    tech_terms = {
-        'list','tuple','dict','dictionary','set','function','class','object',
-        'lambda','decorator','generator','iterator','exception','module','package',
-        'inheritance','polymorphism','encapsulation','abstraction','gil','pep8','pep',
-        'comprehension','thread','process','async','await','coroutine','closure',
-        'mutable','immutable','scope','namespace','metaclass','dataclass','typing',
-        'args','kwargs','overloading','overriding','string','integer','float',
-        'boolean','none','bytes','map','filter','reduce','zip','enumerate',
-        'import','pip','virtualenv','unittest','pytest','assert','debug','logging',
-        'oop','solid','algorithm','recursion','binary','tree','graph',
-        'stack','queue','sort','search','variable','operator','loop',
-        'condition','statement','expression','syntax','error','index',
-    }
+    try:
+        query_embedding = model.encode(query.lower(), convert_to_tensor=True)
+        scores = util.cos_sim(query_embedding, embeddings)[0]
+        best_idx = int(scores.argmax())
+        best_score = float(scores[best_idx])
 
-    query_clean = query.lower().strip()
-    query_words = set(re.findall(r'\b\w{3,}\b', query_clean)) - stop
-    best_score, best_match = 0, None
+        THRESHOLD = 0.4  # Same threshold as your code
 
-    for p in pairs:
-        ql = p["question"].lower()
-        al = p["answer"].lower()
-        qw = set(re.findall(r'\b\w{3,}\b', ql)) - stop
-        aw = set(re.findall(r'\b\w{3,}\b', al)) - stop
-        score = 0
+        if best_score >= THRESHOLD:
+            question, answer = pairs[best_idx]
+            return {
+                "found": True,
+                "answer": answer.strip(),
+                "matched": question.strip(),
+                "score": best_score,
+                "pdf_error": False,
+                "learned": False,
+            }
+        else:
+            return {"found": False, "answer": "", "matched": "", "score": best_score, "pdf_error": False, "learned": False}
 
-        if query_clean in ql: score += 50
-        score += len(query_words & qw) * 4
-        score += len(query_words & aw) * 1
-        score += len((query_words & tech_terms) & (qw & tech_terms)) * 6
-
-        # Partial word match (e.g. "inherit" → "inheritance")
-        for qword in query_words:
-            for pword in qw:
-                if len(qword) >= 4 and len(pword) >= 4 and (qword in pword or pword in qword):
-                    score += 2
-
-        if len(p["answer"]) < 20: score -= 3
-
-        if score > best_score:
-            best_score, best_match = score, p
-
-    threshold = max(4, len(query_words) * 2)
-
-    if best_match and best_score >= threshold:
-        return {"found": True, "answer": best_match["answer"], "matched": best_match["question"], "pdf_error": False}
-
-    return {"found": False, "answer": "", "matched": "", "pdf_error": False}
+    except Exception as e:
+        return {"found": False, "answer": str(e), "matched": "", "score": 0, "pdf_error": True, "learned": False}
 
 
 # ════════════════════════════════════════════════════════
@@ -273,15 +271,15 @@ def answer_question(query):
 # ════════════════════════════════════════════════════════
 def page_employee():
     st.markdown("# 🔍 Employee Help Portal")
-    st.markdown("<p style='color:#6b7280'>Ask any Python-related question. If no answer is found, raise a support ticket.</p>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#6b7280'>Ask any question. If no answer is found in the knowledge base, raise a support ticket.</p>", unsafe_allow_html=True)
     st.markdown("---")
 
-    # Show PDF load status
+    # Show PDF/model load status
     pairs = load_qa_pairs()
     if len(pairs) == 0:
-        st.error("⚠️ Knowledge base PDF could not be loaded. Please contact admin or raise a ticket directly.")
+        st.error("⚠️ Knowledge base could not be loaded from PDF. Please contact admin or raise a ticket directly.")
     else:
-        st.info(f"📚 Knowledge base loaded — {len(pairs)} Q&A pairs from PDF.", icon="✅")
+        st.success(f"📚 Knowledge base ready — {len(pairs)} Q&A pairs extracted from PDF.", icon="✅")
 
     st.markdown("### 💬 Ask a Question")
     col1, col2 = st.columns([4, 1])
@@ -291,23 +289,41 @@ def page_employee():
         search = st.button("🔎 Search", use_container_width=True)
 
     if search and question.strip():
-        with st.spinner("🔍 Searching PDF knowledge base…"):
+        with st.spinner("🧠 Searching knowledge base…"):
             result = answer_question(question.strip())
 
         if result.get("pdf_error"):
-            st.error("❌ PDF knowledge base is unavailable. Please raise a ticket and our team will assist you.")
+            st.error("❌ Knowledge base unavailable. Please raise a ticket.")
             st.session_state["prefill_query"] = question.strip()
             st.session_state["show_ticket"] = True
 
         elif result["found"]:
             st.markdown("#### ✅ Answer Found")
-            st.markdown(f"<small style='color:#7c3aed'>📌 Matched: <em>{result['matched']}</em></small>", unsafe_allow_html=True)
+            if result.get("learned"):
+                st.markdown("<small style='color:#16a34a'>💡 From previously resolved issues</small>", unsafe_allow_html=True)
+            else:
+                st.markdown(f"<small style='color:#7c3aed'>📌 Matched: <em>{result['matched'][:120]}</em> (score: {result['score']:.2f})</small>", unsafe_allow_html=True)
             st.markdown(f"<div class='answer-box'>{result['answer']}</div>", unsafe_allow_html=True)
-            st.success("Answer extracted from the PDF knowledge base.", icon="📚")
+
+            # Feedback
+            st.markdown("---")
+            col_a, col_b, _ = st.columns([1, 1, 4])
+            with col_a:
+                if st.button("👍 Helpful"):
+                    st.success("Great! Glad it helped.")
+            with col_b:
+                if st.button("👎 Not helpful"):
+                    st.session_state["prefill_query"] = question.strip()
+                    st.session_state["show_ticket"] = True
+                    st.warning("Sorry! Please raise a ticket below.")
 
         else:
-            st.markdown("#### ❌ No Answer Found in Knowledge Base")
-            st.markdown("<div class='no-answer-box'>⚠️ This question is not covered in our knowledge base. Please raise a support ticket and our team will help you.</div>", unsafe_allow_html=True)
+            st.markdown("#### ❌ No Answer Found")
+            st.markdown(
+                f"<div class='no-answer-box'>⚠️ No answer found (best similarity score: {result['score']:.2f}). "
+                f"Please raise a support ticket and our team will help you.</div>",
+                unsafe_allow_html=True,
+            )
             st.session_state["prefill_query"] = question.strip()
             st.session_state["show_ticket"] = True
 
@@ -414,11 +430,25 @@ def page_admin():
                 new_status = st.selectbox("Update Status",["Open","In Progress","Resolved"],
                     index=["Open","In Progress","Resolved"].index(status), key=f"s_{tid}")
             with nc2:
-                note = st.text_area("Admin Note", value=t.get("admin_note") or "", key=f"n_{tid}", height=100)
-            bc1, bc2, _ = st.columns([1,1,3])
+                note = st.text_area("Admin Note / Solution", value=t.get("admin_note") or "", key=f"n_{tid}", height=100,
+                                    placeholder="Write solution here — it will be saved to the knowledge base.")
+            bc1, bc2, bc3, _ = st.columns([1,1,1.5,1])
             with bc1:
                 if st.button("💾 Save", key=f"save_{tid}", use_container_width=True):
-                    try: db_update_ticket(tid, new_status, note); st.success("Updated!"); st.rerun()
+                    try:
+                        db_update_ticket(tid, new_status, note)
+                        # If resolved and note written, save to resolved_issues so AI learns it
+                        if new_status == "Resolved" and note.strip():
+                            db = get_db()
+                            if db:
+                                db.table("resolved_issues").insert({
+                                    "query": t.get("query",""),
+                                    "solution": note.strip()
+                                }).execute()
+                            st.success("✅ Updated & solution saved to knowledge base!")
+                        else:
+                            st.success("Updated!")
+                        st.rerun()
                     except Exception as e: st.error(str(e))
             with bc2:
                 if st.button("🗑️ Delete", key=f"del_{tid}", use_container_width=True):
@@ -430,10 +460,10 @@ def page_setup():
     st.markdown("# ⚙️ Setup & Configuration")
     with st.expander("📁 Streamlit Secrets", expanded=True):
         st.code('[secrets]\nSUPABASE_URL   = "https://xxxx.supabase.co"\nSUPABASE_KEY   = "eyJ..."\nADMIN_PASSWORD = "your_password"', language="toml")
-    with st.expander("🗄️ Create Supabase Table", expanded=True):
+    with st.expander("🗄️ Create Supabase Tables", expanded=True):
         st.code(SCHEMA_SQL, language="sql")
     with st.expander("📦 Install Dependencies"):
-        st.code("pip install streamlit supabase PyPDF2 requests", language="bash")
+        st.code("pip install streamlit supabase pdfplumber sentence-transformers requests", language="bash")
     st.markdown("---")
     st.markdown("### 🔌 Connection Status")
     c1, c2 = st.columns(2)
@@ -452,17 +482,23 @@ def page_setup():
                 db.table("tickets").select("id").limit(1).execute()
                 st.success("✅ Database connected!")
         except Exception as e: st.error(f"Failed: {e}")
-    if st.button("📄 Test Knowledge Base (PDF)"):
-        pairs = load_qa_pairs()
-        if pairs:
-            st.success(f"✅ {len(pairs)} Q&A pairs extracted from PDF!")
-            with st.expander("Preview first 5"):
-                for p in pairs[:5]:
-                    st.markdown(f"**Q{p['num']}.** {p['question']}")
-                    st.markdown(f"*A: {p['answer'][:150]}…*")
-                    st.markdown("---")
+
+    if st.button("📄 Test PDF + Q&A Extraction"):
+        pdf_bytes = get_pdf_bytes()
+        if not pdf_bytes:
+            st.error("❌ Could not download PDF. Check Google Drive sharing settings (must be 'Anyone with link').")
         else:
-            st.error("❌ Could not extract Q&A from PDF. Check that your Google Drive file is publicly shared.")
+            st.success(f"✅ PDF downloaded ({len(pdf_bytes)//1024} KB)")
+            pairs = load_qa_pairs()
+            if pairs:
+                st.success(f"✅ {len(pairs)} Q&A pairs extracted!")
+                with st.expander("Preview first 5 pairs"):
+                    for i, (q, a) in enumerate(pairs[:5]):
+                        st.markdown(f"**Q:** {q[:200]}")
+                        st.markdown(f"**A:** {a[:200]}")
+                        st.markdown("---")
+            else:
+                st.error("❌ No Q&A pairs found. The PDF may use a different format.")
 
 
 # ════════════════════════════════════════════════════════
@@ -473,7 +509,7 @@ with st.sidebar:
     st.markdown("---")
     page = st.radio("Navigation", ["🔍 Employee Portal", "🛡️ Admin Panel", "⚙️ Setup / Config"])
     st.markdown("---")
-    st.markdown("<small style='opacity:0.6'>Powered by Supabase</small>", unsafe_allow_html=True)
+    st.markdown("<small style='opacity:0.6'>Powered by Supabase + pdfplumber</small>", unsafe_allow_html=True)
 
 if page == "🔍 Employee Portal":
     page_employee()
