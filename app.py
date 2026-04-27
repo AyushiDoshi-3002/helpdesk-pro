@@ -332,13 +332,6 @@ def page_employee():
 
     st.markdown("---")
 
-    # Raise Ticket button always visible at bottom
-    col_ticket, _ = st.columns([1, 4])
-    with col_ticket:
-        if st.button("📝 Raise a Support Ticket", use_container_width=True):
-            st.session_state["show_ticket"] = True
-            st.rerun()
-
     show = st.session_state.get("show_ticket", False)
     if show:
         st.markdown("### 📝 Support Ticket")
