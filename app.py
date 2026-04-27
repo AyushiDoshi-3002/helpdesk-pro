@@ -318,14 +318,11 @@ def page_employee():
         else:
             st.markdown("#### ❌ No Answer Found")
             st.markdown(
-                f"<div class='no-answer-box'>⚠️ No answer found in the knowledge base. "
-                f"Would you like to raise a support ticket?</div>",
+                "<div class='no-answer-box'>⚠️ No answer found in the knowledge base. "
+                "Please fill in the ticket details below and our team will help you.</div>",
                 unsafe_allow_html=True,
             )
-            # Show a clear button — don't auto-open the form
-            if st.button("🎫 Raise a Ticket"):
-                st.session_state["show_ticket"] = True
-                st.rerun()
+            st.session_state["show_ticket"] = True
 
     elif search:
         st.warning("Please enter a question.")
