@@ -16,6 +16,7 @@ section[data-testid="stSidebar"] * { color: white !important; }
 .main { background: #f8f7ff; }
 .answer-box { background: linear-gradient(135deg, #ede9fe, #ddd6fe); border-radius: 12px; padding: 20px; border-left: 4px solid #7c3aed; font-size: 15px; line-height: 1.7; color: #1e1b4b; }
 .no-answer-box { background: #fff7ed; border-radius: 12px; padding: 16px 20px; border-left: 4px solid #f97316; color: #7c2d12; font-size: 14px; }
+.learned-box { background: linear-gradient(135deg, #d1fae5, #a7f3d0); border-radius: 12px; padding: 20px; border-left: 4px solid #059669; font-size: 15px; line-height: 1.7; color: #064e3b; }
 .badge-open { background:#fef3c7;color:#92400e;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600; }
 .badge-inprogress { background:#dbeafe;color:#1e40af;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600; }
 .badge-resolved { background:#d1fae5;color:#065f46;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600; }
@@ -42,9 +43,6 @@ except ImportError:
 
 SCHEMA_SQL = """
 -- Run this in Supabase SQL Editor
-
--- Drop old table if columns are wrong (CAREFUL: deletes data)
--- DROP TABLE IF EXISTS tickets;
 
 CREATE TABLE IF NOT EXISTS tickets (
     id          BIGSERIAL PRIMARY KEY,
@@ -134,16 +132,72 @@ def db_stats():
             "in_progress": sum(1 for t in tickets if t["status"]=="In Progress"),
             "resolved": sum(1 for t in tickets if t["status"]=="Resolved")}
 
-def check_learned_answers(query):
-    """Check Supabase resolved_issues table for previously solved queries."""
+
+# ════════════════════════════════════════════════════════
+#  IMPROVED LEARNED ANSWERS LOOKUP
+#  Scores each stored Q by token overlap with the new query.
+#  Returns the best match if similarity is above threshold.
+# ════════════════════════════════════════════════════════
+
+def _tokenize(text: str) -> set:
+    """Lowercase, strip punctuation, return set of meaningful tokens (len >= 3)."""
+    return set(re.findall(r'\b[a-z]{3,}\b', text.lower()))
+
+def _similarity_score(query_tokens: set, stored_query: str) -> float:
+    """
+    Jaccard-style overlap score between query tokens and stored question tokens.
+    Returns a float between 0.0 and 1.0.
+    """
+    stored_tokens = _tokenize(stored_query)
+    if not stored_tokens or not query_tokens:
+        return 0.0
+    intersection = query_tokens & stored_tokens
+    union = query_tokens | stored_tokens
+    return len(intersection) / len(union)
+
+def check_learned_answers(query: str):
+    """
+    Check Supabase resolved_issues for a previously solved similar query.
+    Uses token-overlap similarity. Returns (solution, matched_query, score) or None.
+    
+    Threshold: 0.25 — meaning at least ~25% of meaningful words overlap.
+    Lower = more permissive, higher = stricter.
+    """
     db = get_db()
-    if db is None: return None
+    if db is None:
+        return None
+
     try:
         response = db.table("resolved_issues").select("*").execute()
-        for row in response.data:
-            if query.lower() in row["query"].lower() or row["query"].lower() in query.lower():
-                return row["solution"]
-    except: pass
+        rows = response.data or []
+    except Exception:
+        return None
+
+    if not rows:
+        return None
+
+    query_tokens = _tokenize(query)
+    if not query_tokens:
+        return None
+
+    THRESHOLD = 0.25  # Tune this: raise for stricter matching, lower for more permissive
+
+    best_score = 0.0
+    best_row = None
+
+    for row in rows:
+        score = _similarity_score(query_tokens, row.get("query", ""))
+        if score > best_score:
+            best_score = score
+            best_row = row
+
+    if best_row and best_score >= THRESHOLD:
+        return {
+            "solution": best_row["solution"],
+            "matched_query": best_row["query"],
+            "score": best_score
+        }
+
     return None
 
 
@@ -154,22 +208,18 @@ _GDRIVE_FILE_ID = "1cUagShzCe0XsCbF5NEU9T62ICcU2I5AO"
 
 @st.cache_resource(show_spinner="📄 Downloading PDF…")
 def get_pdf_bytes():
-    """Download PDF bytes from Google Drive. Returns bytes or None."""
     try:
         session = requests.Session()
         url1 = f"https://drive.google.com/uc?export=download&id={_GDRIVE_FILE_ID}"
         resp = session.get(url1, timeout=30)
-
         if "text/html" in resp.headers.get("content-type", ""):
             url2 = f"https://drive.usercontent.google.com/download?id={_GDRIVE_FILE_ID}&export=download&confirm=t"
             resp = session.get(url2, timeout=30)
-
         if "text/html" in resp.headers.get("content-type", ""):
             token_match = re.search(r'confirm=([0-9A-Za-z_\-]+)', resp.text)
             if token_match:
                 url3 = f"https://drive.google.com/uc?export=download&id={_GDRIVE_FILE_ID}&confirm={token_match.group(1)}"
                 resp = session.get(url3, timeout=30)
-
         resp.raise_for_status()
         if "text/html" in resp.headers.get("content-type", ""):
             return None
@@ -179,21 +229,13 @@ def get_pdf_bytes():
 
 
 # ════════════════════════════════════════════════════════
-#  Q&A EXTRACTION  — same logic as your working code
-#  Uses pdfplumber + splits on "q." and "answer"
+#  Q&A EXTRACTION
 # ════════════════════════════════════════════════════════
 @st.cache_resource(show_spinner="📄 Extracting Q&A from PDF…")
 def load_qa_pairs():
-    """
-    Extract Q&A pairs from PDF exactly like your reference code:
-    - Split text on 'q.'
-    - Then split each part on 'answer'
-    - Filter noise (short answers, enroll/course mentions)
-    """
     pdf_bytes = get_pdf_bytes()
     if not pdf_bytes:
         return []
-
     try:
         import pdfplumber
         text = ""
@@ -205,52 +247,40 @@ def load_qa_pairs():
     except Exception as e:
         st.warning(f"pdfplumber failed: {e}")
         return []
-
     text = text.lower()
-    pairs = _extract_qa_pairs(text)
-    return pairs
-
+    return _extract_qa_pairs(text)
 
 def _extract_qa_pairs(text):
-    """Exact same logic from your reference code."""
     qa_pairs = []
     parts = re.split(r'q\.', text)
-
     for part in parts:
         if "answer" in part:
             try:
                 q_part, a_part = part.split("answer", 1)
                 question = q_part.strip()
                 answer = a_part.strip()
-
-                # Filter noise exactly like your code
                 if "enroll" in answer or "course" in answer:
                     continue
                 if len(answer) < 30:
                     continue
-                # Additional: skip if question is empty or too short
                 if len(question) < 5:
                     continue
-
                 qa_pairs.append((question, answer))
             except:
                 continue
-
     return qa_pairs
 
 
 # ════════════════════════════════════════════════════════
-#  SEMANTIC SEARCH  — SentenceTransformer like your code
+#  SEMANTIC SEARCH
 # ════════════════════════════════════════════════════════
 @st.cache_resource(show_spinner="🧠 Loading semantic search model…")
 def load_model_and_embeddings():
-    """Load SentenceTransformer and encode all questions from PDF."""
     try:
         from sentence_transformers import SentenceTransformer, util
         pairs = load_qa_pairs()
         if not pairs:
             return None, None, None, util
-
         model = SentenceTransformer('all-MiniLM-L6-v2')
         questions = [q for q, a in pairs]
         embeddings = model.encode(questions, convert_to_tensor=True)
@@ -262,27 +292,34 @@ def load_model_and_embeddings():
 
 def answer_question(query):
     """
-    Semantic similarity search — same as your knowledge_agent().
-    Returns {"found", "answer", "matched", "score", "pdf_error"}
+    Priority order:
+      1. Check Supabase resolved_issues (learned from admin-resolved tickets)
+      2. Fall back to PDF semantic search
     """
-    # First check learned answers from Supabase
+    # ── Step 1: Check learned answers from resolved tickets ──────────────────
     learned = check_learned_answers(query)
     if learned:
-        return {"found": True, "answer": learned, "matched": "Previously resolved issue", "score": 1.0, "pdf_error": False, "learned": True}
+        return {
+            "found": True,
+            "answer": learned["solution"],
+            "matched": learned["matched_query"],
+            "score": learned["score"],
+            "pdf_error": False,
+            "source": "learned"   # distinct source tag
+        }
 
+    # ── Step 2: PDF semantic search ──────────────────────────────────────────
     model, embeddings, pairs, util = load_model_and_embeddings()
 
     if model is None or embeddings is None or pairs is None:
-        return {"found": False, "answer": "", "matched": "", "score": 0, "pdf_error": True, "learned": False}
+        return {"found": False, "answer": "", "matched": "", "score": 0, "pdf_error": True, "source": "none"}
 
     try:
         query_embedding = model.encode(query.lower(), convert_to_tensor=True)
         scores = util.cos_sim(query_embedding, embeddings)[0]
         best_idx = int(scores.argmax())
         best_score = float(scores[best_idx])
-
-        THRESHOLD = 0.4  # Same threshold as your code
-
+        THRESHOLD = 0.4
         if best_score >= THRESHOLD:
             question, answer = pairs[best_idx]
             return {
@@ -291,13 +328,12 @@ def answer_question(query):
                 "matched": question.strip(),
                 "score": best_score,
                 "pdf_error": False,
-                "learned": False,
+                "source": "pdf"
             }
         else:
-            return {"found": False, "answer": "", "matched": "", "score": best_score, "pdf_error": False, "learned": False}
-
+            return {"found": False, "answer": "", "matched": "", "score": best_score, "pdf_error": False, "source": "none"}
     except Exception as e:
-        return {"found": False, "answer": str(e), "matched": "", "score": 0, "pdf_error": True, "learned": False}
+        return {"found": False, "answer": str(e), "matched": "", "score": 0, "pdf_error": True, "source": "none"}
 
 
 # ════════════════════════════════════════════════════════
@@ -308,7 +344,6 @@ def page_employee():
     st.markdown("<p style='color:#6b7280'>Ask any question. If no answer is found in the knowledge base, raise a support ticket.</p>", unsafe_allow_html=True)
     st.markdown("---")
 
-    # Show PDF/model load status
     pairs = load_qa_pairs()
     if len(pairs) == 0:
         st.error("⚠️ Knowledge base could not be loaded from PDF. Please contact admin or raise a ticket directly.")
@@ -331,14 +366,36 @@ def page_employee():
             st.session_state["show_ticket"] = True
 
         elif result["found"]:
-            st.markdown("#### ✅ Answer Found")
-            if result.get("learned"):
-                st.markdown("<small style='color:#16a34a'>💡 From previously resolved issues</small>", unsafe_allow_html=True)
-            else:
-                st.markdown(f"<small style='color:#7c3aed'>📌 Matched: <em>{result['matched'][:120]}</em> (score: {result['score']:.2f})</small>", unsafe_allow_html=True)
-            st.markdown(f"<div class='answer-box'>{result['answer']}</div>", unsafe_allow_html=True)
+            source = result.get("source", "pdf")
 
-            # Feedback
+            if source == "learned":
+                # ── Answer came from a previously resolved admin ticket ──────
+                st.markdown("#### ✅ Answer Found")
+                st.markdown(
+                    "<small style='color:#059669'>💡 <strong>Source: Previously resolved support ticket</strong></small>",
+                    unsafe_allow_html=True,
+                )
+                st.markdown(
+                    f"<small style='color:#6b7280'>📌 Similar question: <em>{result['matched'][:160]}</em> "
+                    f"(similarity: {result['score']:.0%})</small>",
+                    unsafe_allow_html=True,
+                )
+                st.markdown(f"<div class='learned-box'>{result['answer']}</div>", unsafe_allow_html=True)
+            else:
+                # ── Answer came from PDF knowledge base ──────────────────────
+                st.markdown("#### ✅ Answer Found")
+                st.markdown(
+                    "<small style='color:#7c3aed'>📚 <strong>Source: PDF Knowledge Base</strong></small>",
+                    unsafe_allow_html=True,
+                )
+                st.markdown(
+                    f"<small style='color:#6b7280'>📌 Matched: <em>{result['matched'][:120]}</em> "
+                    f"(score: {result['score']:.2f})</small>",
+                    unsafe_allow_html=True,
+                )
+                st.markdown(f"<div class='answer-box'>{result['answer']}</div>", unsafe_allow_html=True)
+
+            # Feedback buttons
             st.markdown("---")
             col_a, col_b, _ = st.columns([1, 1, 4])
             with col_a:
@@ -372,7 +429,6 @@ def page_employee():
             job_role = st.selectbox("💼 Job Role *", ["Select…","Software Engineer","Data Analyst","QA Engineer","DevOps Engineer","Product Manager","HR / Operations","Other"])
         with c2:
             priority = st.selectbox("🚨 Priority *", ["Medium","High","Low"])
-        # Always empty — employee describes in their own words
         query_text = st.text_area("📋 Describe your problem *", value="", placeholder="Describe your issue in detail…", height=120)
         col_sub, col_cancel, _ = st.columns([1, 1, 4])
         with col_sub:
@@ -468,22 +524,34 @@ def page_admin():
                 new_status = st.selectbox("Update Status",["Open","In Progress","Resolved"],
                     index=["Open","In Progress","Resolved"].index(status), key=f"s_{tid}")
             with nc2:
-                note = st.text_area("Admin Note / Solution", value=t.get("admin_note") or "", key=f"n_{tid}", height=100,
-                                    placeholder="Write solution here — it will be saved to the knowledge base.")
-            bc1, bc2, bc3, _ = st.columns([1,1,1.5,1])
+                note = st.text_area(
+                    "Admin Note / Solution",
+                    value=t.get("admin_note") or "",
+                    key=f"n_{tid}",
+                    height=100,
+                    placeholder="Write solution here — it will be saved to the knowledge base for future queries."
+                )
+            bc1, bc2, _, _ = st.columns([1,1,1.5,1])
             with bc1:
                 if st.button("💾 Save", key=f"save_{tid}", use_container_width=True):
                     try:
                         db_update_ticket(tid, new_status, note)
-                        # If resolved and note written, save to resolved_issues so AI learns it
+                        # ── Save to resolved_issues so future similar questions auto-answer ──
                         if new_status == "Resolved" and note.strip():
                             db = get_db()
                             if db:
-                                db.table("resolved_issues").insert({
-                                    "query": t.get("query",""),
-                                    "solution": note.strip()
-                                }).execute()
-                            st.success("✅ Updated & solution saved to knowledge base!")
+                                # Avoid duplicates: check if this exact ticket query is already stored
+                                existing = db.table("resolved_issues").select("id").eq("query", t.get("query","")).execute()
+                                if not existing.data:
+                                    db.table("resolved_issues").insert({
+                                        "query": t.get("query",""),
+                                        "solution": note.strip()
+                                    }).execute()
+                                    st.success("✅ Updated & solution saved to knowledge base! Future similar questions will be auto-answered.")
+                                else:
+                                    # Update existing solution if already stored
+                                    db.table("resolved_issues").update({"solution": note.strip()}).eq("query", t.get("query","")).execute()
+                                    st.success("✅ Updated & existing knowledge base entry refreshed!")
                         else:
                             st.success("Updated!")
                         st.rerun()
@@ -524,7 +592,7 @@ def page_setup():
     if st.button("📄 Test PDF + Q&A Extraction"):
         pdf_bytes = get_pdf_bytes()
         if not pdf_bytes:
-            st.error("❌ Could not download PDF. Check Google Drive sharing settings (must be 'Anyone with link').")
+            st.error("❌ Could not download PDF.")
         else:
             st.success(f"✅ PDF downloaded ({len(pdf_bytes)//1024} KB)")
             pairs = load_qa_pairs()
@@ -536,7 +604,29 @@ def page_setup():
                         st.markdown(f"**A:** {a[:200]}")
                         st.markdown("---")
             else:
-                st.error("❌ No Q&A pairs found. The PDF may use a different format.")
+                st.error("❌ No Q&A pairs found.")
+
+    # ── View Learned Answers ──────────────────────────────────────────────────
+    st.markdown("---")
+    st.markdown("### 🧠 Learned Answers (from resolved tickets)")
+    if st.button("📋 View All Learned Answers"):
+        db = get_db()
+        if db is None:
+            st.error("Supabase not configured.")
+        else:
+            try:
+                rows = db.table("resolved_issues").select("*").order("created_at", desc=True).execute().data or []
+                if rows:
+                    st.success(f"{len(rows)} learned answer(s) in database.")
+                    for row in rows:
+                        with st.expander(f"🟢 {row['query'][:100]}"):
+                            st.markdown(f"**Original question:** {row['query']}")
+                            st.markdown(f"**Admin solution:** {row['solution']}")
+                            st.markdown(f"<small style='color:#6b7280'>Saved: {row.get('created_at','')[:10]}</small>", unsafe_allow_html=True)
+                else:
+                    st.info("No learned answers yet. Resolve tickets with a note to build the knowledge base.")
+            except Exception as e:
+                st.error(f"Error: {e}")
 
 
 # ════════════════════════════════════════════════════════
