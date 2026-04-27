@@ -294,7 +294,6 @@ def page_employee():
 
         if result.get("pdf_error"):
             st.error("❌ Knowledge base unavailable. Please raise a ticket.")
-            st.session_state["prefill_query"] = question.strip()
             st.session_state["show_ticket"] = True
 
         elif result["found"]:
@@ -313,48 +312,63 @@ def page_employee():
                     st.success("Great! Glad it helped.")
             with col_b:
                 if st.button("👎 Not helpful"):
-                    st.session_state["prefill_query"] = question.strip()
                     st.session_state["show_ticket"] = True
                     st.warning("Sorry! Please raise a ticket below.")
 
         else:
             st.markdown("#### ❌ No Answer Found")
             st.markdown(
-                f"<div class='no-answer-box'>⚠️ No answer found (best similarity score: {result['score']:.2f}). "
-                f"Please raise a support ticket and our team will help you.</div>",
+                f"<div class='no-answer-box'>⚠️ No answer found in the knowledge base. "
+                f"Would you like to raise a support ticket?</div>",
                 unsafe_allow_html=True,
             )
-            st.session_state["prefill_query"] = question.strip()
-            st.session_state["show_ticket"] = True
+            # Show a clear button — don't auto-open the form
+            if st.button("🎫 Raise a Ticket"):
+                st.session_state["show_ticket"] = True
+                st.rerun()
 
     elif search:
         st.warning("Please enter a question.")
 
     st.markdown("---")
+
+    # Raise Ticket button always visible at bottom
+    col_ticket, _ = st.columns([1, 4])
+    with col_ticket:
+        if st.button("📝 Raise a Support Ticket", use_container_width=True):
+            st.session_state["show_ticket"] = True
+            st.rerun()
+
     show = st.session_state.get("show_ticket", False)
-    with st.expander("📝 Raise a Support Ticket", expanded=show):
-        prefill = st.session_state.get("prefill_query", "")
+    if show:
+        st.markdown("### 📝 Support Ticket")
         c1, c2 = st.columns(2)
         with c1:
             user_id = st.text_input("👤 Employee ID *", placeholder="e.g. EMP-1042")
             job_role = st.selectbox("💼 Job Role *", ["Select…","Software Engineer","Data Analyst","QA Engineer","DevOps Engineer","Product Manager","HR / Operations","Other"])
         with c2:
             priority = st.selectbox("🚨 Priority *", ["Medium","High","Low"])
-        query_text = st.text_area("📋 Describe your problem *", value=prefill, placeholder="Describe the issue in detail…", height=120)
-        if st.button("🚀 Submit Ticket"):
-            errors = []
-            if not user_id.strip(): errors.append("Employee ID required.")
-            if job_role == "Select…": errors.append("Select your job role.")
-            if not query_text.strip(): errors.append("Problem description required.")
-            for e in errors: st.error(e)
-            if not errors:
-                try:
-                    t = db_create_ticket(user_id.strip(), job_role, query_text.strip(), priority)
-                    st.success(f"✅ Ticket #{t.get('id','–')} submitted! Our team will respond shortly.", icon="🎉")
-                    st.session_state.pop("prefill_query", None)
-                    st.session_state["show_ticket"] = False
-                except Exception as ex:
-                    st.error(f"Failed: {ex}")
+        # Always empty — employee describes in their own words
+        query_text = st.text_area("📋 Describe your problem *", value="", placeholder="Describe your issue in detail…", height=120)
+        col_sub, col_cancel, _ = st.columns([1, 1, 4])
+        with col_sub:
+            if st.button("🚀 Submit Ticket", use_container_width=True):
+                errors = []
+                if not user_id.strip(): errors.append("Employee ID required.")
+                if job_role == "Select…": errors.append("Select your job role.")
+                if not query_text.strip(): errors.append("Problem description required.")
+                for e in errors: st.error(e)
+                if not errors:
+                    try:
+                        t = db_create_ticket(user_id.strip(), job_role, query_text.strip(), priority)
+                        st.success(f"✅ Ticket #{t.get('id','–')} submitted! Our team will respond shortly.", icon="🎉")
+                        st.session_state["show_ticket"] = False
+                    except Exception as ex:
+                        st.error(f"Failed: {ex}")
+        with col_cancel:
+            if st.button("✖ Cancel", use_container_width=True):
+                st.session_state["show_ticket"] = False
+                st.rerun()
 
 
 def page_admin():
