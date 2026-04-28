@@ -1,15 +1,39 @@
 """
-approval_pipeline.py  –  role-based tabs
-─────────────────────────────────────────
-Tabs: Submit (public) | Team Lead | Tech Manager | CTO | CEO
-Each approver tab is password-protected and shows only the
-requests currently sitting at that person's stage.
+approval_pipeline.py  –  role-based tabs + Supabase persistence
+────────────────────────────────────────────────────────────────
+Install dependency:  pip install supabase
+
+Run this SQL once in your Supabase SQL editor to create the table:
+──────────────────────────────────────────────────────────────────
+create table if not exists ap_requests (
+    id          text primary key,
+    title       text,
+    category    text,
+    subtype     text,
+    description text,
+    urgency     text,
+    requester   text,
+    chain       jsonb,
+    stage_idx   integer default 0,
+    status      text,
+    created_at  timestamptz,
+    expires_at  timestamptz,
+    history     jsonb,
+    done        boolean default false
+);
 """
 
+import json
 import streamlit as st
 from datetime import datetime, timedelta, timezone
+from supabase import create_client, Client
 
-# ── Passwords (one per role) ──────────────────────────────────────────────────
+# ── Supabase config ───────────────────────────────────────────────────────────
+SUPABASE_URL = "https://jvulbphmksdebkkkhgvh.supabase.co"
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp2dWxicGhta3NkZWJra2toZ3ZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcxOTg4ODQsImV4cCI6MjA5Mjc3NDg4NH0.REhaZ0M8pg_9hkaIJxYNmErIsy6UARTYyzYkQbr0pT4"
+TABLE = "ap_requests"
+
+# ── Role passwords ────────────────────────────────────────────────────────────
 ROLE_PASSWORDS = {
     "Team Lead":    "Lead123",
     "Tech Manager": "Manager123",
@@ -53,7 +77,6 @@ DOC_CATEGORIES = {
     },
 }
 
-# Chain always walks bottom-up to the category's top approver
 _CHAINS = {
     "CEO":          ["Team Lead", "Tech Manager", "CTO", "CEO"],
     "CTO":          ["Team Lead", "Tech Manager", "CTO"],
@@ -67,6 +90,87 @@ def _build_chain(category: str) -> list:
     return list(_CHAINS.get(cfg.get("approver", "Team Lead"), ["Team Lead"]))
 
 
+# ── Supabase client (cached) ──────────────────────────────────────────────────
+
+@st.cache_resource
+def _get_sb() -> Client:
+    return create_client(SUPABASE_URL, SUPABASE_KEY)
+
+
+# ── DB helpers ────────────────────────────────────────────────────────────────
+
+def _dt_to_str(dt):
+    """Convert datetime → ISO string for storage."""
+    if isinstance(dt, datetime):
+        return dt.astimezone(timezone.utc).isoformat()
+    return dt
+
+def _str_to_dt(s):
+    """Convert ISO string → aware datetime."""
+    if isinstance(s, datetime):
+        return s if s.tzinfo else s.replace(tzinfo=timezone.utc)
+    if isinstance(s, str):
+        try:
+            dt = datetime.fromisoformat(s.replace("Z", "+00:00"))
+            return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+        except Exception:
+            pass
+    return s
+
+def _serialize(req: dict) -> dict:
+    """Prepare a request dict for Supabase (datetimes → strings, lists → json)."""
+    row = dict(req)
+    row["created_at"] = _dt_to_str(row.get("created_at"))
+    row["expires_at"] = _dt_to_str(row.get("expires_at"))
+    # history entries have a "time" key that must also be serialized
+    history = []
+    for entry in row.get("history", []):
+        e = dict(entry)
+        e["time"] = _dt_to_str(e.get("time"))
+        history.append(e)
+    row["history"] = history
+    return row
+
+def _deserialize(row: dict) -> dict:
+    """Convert a Supabase row back into a request dict."""
+    req = dict(row)
+    req["created_at"] = _str_to_dt(req.get("created_at"))
+    req["expires_at"] = _str_to_dt(req.get("expires_at"))
+    history = []
+    for entry in (req.get("history") or []):
+        e = dict(entry)
+        e["time"] = _str_to_dt(e.get("time"))
+        history.append(e)
+    req["history"] = history
+    # jsonb comes back as list already; ensure chain is a list
+    if not isinstance(req.get("chain"), list):
+        req["chain"] = json.loads(req["chain"]) if req.get("chain") else []
+    return req
+
+def _db_insert(req: dict):
+    """Insert a new request row into Supabase."""
+    try:
+        _get_sb().table(TABLE).insert(_serialize(req)).execute()
+    except Exception as e:
+        st.error(f"DB insert error: {e}")
+
+def _db_update(req: dict):
+    """Upsert the full request row (called after every approve/reject/expire)."""
+    try:
+        _get_sb().table(TABLE).upsert(_serialize(req)).execute()
+    except Exception as e:
+        st.error(f"DB update error: {e}")
+
+def _db_load_all() -> list:
+    """Fetch all rows ordered by created_at asc."""
+    try:
+        res = _get_sb().table(TABLE).select("*").order("created_at", desc=False).execute()
+        return [_deserialize(row) for row in (res.data or [])]
+    except Exception as e:
+        st.error(f"DB load error: {e}")
+        return []
+
+
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _now():
@@ -74,11 +178,15 @@ def _now():
 
 def _fmt(dt):
     try:
+        if isinstance(dt, str):
+            dt = _str_to_dt(dt)
         return dt.strftime("%d %b %Y, %I:%M %p")
     except Exception:
         return str(dt)
 
 def _time_left(expires_at):
+    if isinstance(expires_at, str):
+        expires_at = _str_to_dt(expires_at)
     diff = expires_at - _now()
     secs = int(diff.total_seconds())
     if secs <= 0:
@@ -92,13 +200,21 @@ def _time_left(expires_at):
 
 def _init():
     defaults = {
-        "ap_requests":  [],
-        "ap_next_id":   1,
-        "ap_role_auth": {},   # { "Team Lead": True/False, ... }
+        "ap_role_auth":    {},
+        "ap_loaded":       False,   # have we fetched from DB this session?
     }
     for k, v in defaults.items():
         if k not in st.session_state:
             st.session_state[k] = v
+
+def _load_requests():
+    """Load from Supabase once per session (refresh button available)."""
+    rows = _db_load_all()
+    st.session_state.ap_requests = rows
+    # derive next_id from highest existing REQ number
+    ids = [int(r["id"].split("-")[1]) for r in rows if r.get("id", "").startswith("REQ-")]
+    st.session_state.ap_next_id = (max(ids) + 1) if ids else 1
+    st.session_state.ap_loaded  = True
 
 
 # ── Core actions ──────────────────────────────────────────────────────────────
@@ -133,7 +249,9 @@ def _create(title, category, subtype, description, urgency, requester):
                          "action": f"Submitted → routed to {chain[0]}"}],
             "done": False,
         }
+
     st.session_state.ap_requests.append(req)
+    _db_insert(req)          # ← persist to Supabase
     return req
 
 def _approve(req, note):
@@ -150,12 +268,14 @@ def _approve(req, note):
         req["expires_at"] = _now() + timedelta(hours=TIMEOUT_HOURS)
         req["history"].append({"time": _now(), "by": "System",
                                 "action": f"Forwarded to {req['chain'][next_idx]}"})
+    _db_update(req)          # ← persist to Supabase
 
 def _reject(req, note):
     stage = req["chain"][req["stage_idx"]]
     req["status"] = "Rejected"
     req["done"]   = True
     req["history"].append({"time": _now(), "by": stage, "action": "Rejected", "note": note})
+    _db_update(req)          # ← persist to Supabase
 
 def _check_expiry(req):
     if not req["done"] and _now() > req["expires_at"]:
@@ -164,16 +284,31 @@ def _check_expiry(req):
         req["done"]   = True
         req["history"].append({"time": _now(), "by": "System",
                                 "action": f"Expired — no response from {stage}"})
+        _db_update(req)      # ← persist to Supabase
 
 
 # ── Main entry ────────────────────────────────────────────────────────────────
 
 def page_approval_pipeline():
     _init()
+
+    # Load from DB once per session; offer manual refresh
+    if not st.session_state.ap_loaded:
+        _load_requests()
+
+    # Run expiry checks (and push any changes to DB)
     for r in st.session_state.ap_requests:
         _check_expiry(r)
 
-    st.title("Document Approval Pipeline")
+    # Header row with refresh button
+    hcol, rcol = st.columns([5, 1])
+    with hcol:
+        st.title("Document Approval Pipeline")
+    with rcol:
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("🔄 Refresh", use_container_width=True):
+            _load_requests()
+            st.rerun()
 
     def _n(role):
         return sum(
@@ -219,8 +354,8 @@ def _view_submit():
         description = st.text_area("What does this document need to cover?",
                                    placeholder="Describe the purpose and scope…", height=90)
 
-        cfg   = DOC_CATEGORIES[category]
-        chain = _build_chain(category)
+        cfg       = DOC_CATEGORIES[category]
+        chain     = _build_chain(category)
         route_str = (
             "Auto-approved instantly"
             if cfg["auto"]
@@ -265,7 +400,7 @@ def _view_submit():
         _request_card(req, show_actions=False, ctx="sub")
 
 
-# ── Role tab (password-gated, approve/reject only) ────────────────────────────
+# ── Role tab ──────────────────────────────────────────────────────────────────
 
 def _view_role(role: str):
     authed = st.session_state.ap_role_auth.get(role, False)
@@ -294,12 +429,10 @@ def _view_role(role: str):
 
     ctx = role.replace(" ", "_").lower()
 
-    # Requests sitting at this role right now
     mine = [
         r for r in reversed(st.session_state.ap_requests)
         if not r["done"] and r["chain"] and r["chain"][r["stage_idx"]] == role
     ]
-    # Requests this role already acted on
     handled = [
         r for r in reversed(st.session_state.ap_requests)
         if r["done"] and any(e.get("by") == role for e in r["history"])
@@ -342,7 +475,6 @@ def _request_card(req: dict, show_actions: bool, ctx: str = ""):
 
         st.markdown(f"> {req['description']}")
 
-        # Pipeline progress
         if req["chain"]:
             parts = []
             for i, s in enumerate(req["chain"]):
@@ -360,7 +492,7 @@ def _request_card(req: dict, show_actions: bool, ctx: str = ""):
 
         with st.expander("History", key=f"hist_{k}"):
             for entry in req["history"]:
-                t    = _fmt(entry["time"]) if isinstance(entry["time"], datetime) else str(entry["time"])
+                t    = _fmt(entry.get("time", ""))
                 note = f" — {entry['note']}" if entry.get("note") else ""
                 st.markdown(f"`{t}`  **{entry['by']}**: {entry['action']}{note}")
 
