@@ -9,22 +9,52 @@ from datetime import datetime, timedelta, timezone
 ADMIN_PASSWORD = "admin123"
 TIMEOUT_HOURS  = 2
 
-APPROVAL_CHAIN = ["Team Lead", "Tech Manager", "CTO", "CEO"]
-
-DOC_TYPES = [
-    "Technical - Database",
-    "Technical - Infrastructure",
-    "Technical - API / Code",
-    "Policy / HR",
-    "Finance / Legal",
-    "Security / Compliance",
-    "General / Internal",
-]
-
-NEEDS_FULL_CHAIN = {
-    "Technical - Database", "Technical - Infrastructure",
-    "Technical - API / Code", "Finance / Legal", "Security / Compliance",
+# ── Document taxonomy ─────────────────────────────────────────────────────────
+DOC_CATEGORIES = {
+    "Security": {
+        "label":    "🔒 Security",
+        "subtypes": ["Legal", "Compliance", "Public API", "Financial"],
+        "approver": "CEO",
+        "auto":     False,
+    },
+    "Technical": {
+        "label":    "⚙️ Technical",
+        "subtypes": ["Architecture", "Database", "Tech Stack", "Infrastructure", "Code Standards"],
+        "approver": "CTO",
+        "auto":     False,
+    },
+    "Operations": {
+        "label":    "🔧 Operations",
+        "subtypes": ["Runbooks", "Deployment", "Monitoring", "Setup Guides"],
+        "approver": "Tech Manager",
+        "auto":     False,
+    },
+    "Team": {
+        "label":    "👥 Team",
+        "subtypes": ["Internal Processes", "Troubleshooting", "Setup Guides"],
+        "approver": "Team Lead",
+        "auto":     False,
+    },
+    "General": {
+        "label":    "📄 General",
+        "subtypes": ["FAQs", "Onboarding", "General Info"],
+        "approver": "Admin",
+        "auto":     True,   # auto-approved, no human steps
+    },
 }
+
+# Each approver level implies all levels below it must also sign off
+_CHAINS = {
+    "CEO":          ["Team Lead", "Tech Manager", "CTO", "CEO"],
+    "CTO":          ["Team Lead", "Tech Manager", "CTO"],
+    "Tech Manager": ["Team Lead", "Tech Manager"],
+    "Team Lead":    ["Team Lead"],
+    "Admin":        [],
+}
+
+def _build_chain(category: str) -> list:
+    cfg = DOC_CATEGORIES.get(category, {})
+    return list(_CHAINS.get(cfg.get("approver", "Team Lead"), ["Team Lead"]))
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -74,20 +104,36 @@ def _init():
 
 # ── Core actions ──────────────────────────────────────────────────────────────
 
-def _create(title, doc_type, description, urgency, requester):
-    rid   = f"REQ-{st.session_state.ap_next_id:03d}"
+def _create(title, category, subtype, description, urgency, requester):
+    rid  = f"REQ-{st.session_state.ap_next_id:03d}"
     st.session_state.ap_next_id += 1
-    now   = _now()
-    chain = list(APPROVAL_CHAIN) if doc_type in NEEDS_FULL_CHAIN else ["Team Lead", "Tech Manager"]
+    now  = _now()
+    cfg  = DOC_CATEGORIES[category]
+    chain = _build_chain(category)
+    auto  = cfg["auto"]  # General → auto-approve
 
-    req = {
-        "id": rid, "title": title, "doc_type": doc_type,
-        "description": description, "urgency": urgency, "requester": requester,
-        "chain": chain, "stage_idx": 0, "status": "Pending",
-        "created_at": now, "expires_at": now + timedelta(hours=TIMEOUT_HOURS),
-        "history": [{"time": now, "by": "System", "action": f"Submitted → routed to {chain[0]}"}],
-        "done": False,
-    }
+    if auto:
+        req = {
+            "id": rid, "title": title, "category": category, "subtype": subtype,
+            "description": description, "urgency": urgency, "requester": requester,
+            "chain": [], "stage_idx": 0, "status": "Approved",
+            "created_at": now, "expires_at": now,
+            "history": [
+                {"time": now, "by": "System", "action": "Submitted"},
+                {"time": now, "by": "Admin",  "action": "Auto-approved (General document)"},
+            ],
+            "done": True,
+        }
+    else:
+        req = {
+            "id": rid, "title": title, "category": category, "subtype": subtype,
+            "description": description, "urgency": urgency, "requester": requester,
+            "chain": chain, "stage_idx": 0, "status": "Pending",
+            "created_at": now, "expires_at": now + timedelta(hours=TIMEOUT_HOURS),
+            "history": [{"time": now, "by": "System",
+                         "action": f"Submitted → routed to {chain[0]}"}],
+            "done": False,
+        }
     st.session_state.ap_requests.append(req)
     return req
 
@@ -150,17 +196,29 @@ def _view_submit():
         col1, col2 = st.columns(2)
         with col1:
             requester = st.text_input("Your Name / Employee ID", placeholder="e.g. Priya K · EMP-042")
-            doc_type  = st.selectbox("Document Type", DOC_TYPES)
+            category  = st.selectbox(
+                "Document Category",
+                list(DOC_CATEGORIES.keys()),
+                format_func=lambda c: DOC_CATEGORIES[c]["label"],
+            )
         with col2:
             title   = st.text_input("Document Title", placeholder="e.g. Database Backup Procedure")
             urgency = st.selectbox("Urgency", ["Normal", "URGENT", "CRITICAL"])
 
+        # Subtype depends on chosen category — inside the form, selectbox re-renders on submit
+        subtype = st.selectbox("Document Subtype", DOC_CATEGORIES[category]["subtypes"])
+
         description = st.text_area("What does this document need to cover?",
                                    placeholder="Describe the purpose and scope…", height=90)
 
-        route = ("Team Lead → Tech Manager → CTO → CEO"
-                 if doc_type in NEEDS_FULL_CHAIN else "Team Lead → Tech Manager")
-        st.caption(f"Approval route: {route}  ·  {TIMEOUT_HOURS}h per level")
+        # Route preview
+        cfg   = DOC_CATEGORIES[category]
+        chain = _build_chain(category)
+        if cfg["auto"]:
+            route_str = "Auto-approved (no human review needed)"
+        else:
+            route_str = "  →  ".join(chain) + f"  ·  {TIMEOUT_HOURS}h per level"
+        st.caption(f"Approval route: {route_str}")
 
         submitted = st.form_submit_button("Submit Request", type="primary", use_container_width=True)
 
@@ -172,8 +230,11 @@ def _view_submit():
         for e in errors:
             st.error(e)
         if not errors:
-            req = _create(title.strip(), doc_type, description.strip(), urgency, requester.strip())
-            st.success(f"**{req['id']}** submitted — first stop: **{req['chain'][0]}**")
+            req = _create(title.strip(), category, subtype, description.strip(), urgency, requester.strip())
+            if req["done"]:
+                st.success(f"**{req['id']}** auto-approved instantly. ✅")
+            else:
+                st.success(f"**{req['id']}** submitted — first stop: **{req['chain'][0]}**")
 
     # ── All requests ──────────────────────────────────────────────────────────
     all_reqs = list(reversed(st.session_state.ap_requests))
@@ -256,7 +317,7 @@ def _request_row(req: dict, show_actions: bool, ctx: str = ""):
         # One-line meta
         col1, col2, col3, col4 = st.columns(4)
         col1.markdown(f"**Requester**  \n{req['requester']}")
-        col2.markdown(f"**Type**  \n{req['doc_type']}")
+        col2.markdown(f"**Category**  \n{req.get('category','—')} › {req.get('subtype','—')}")
         col3.markdown(f"**Stage**  \n{stage if not req['done'] else '—'}")
         col4.markdown(f"**Status**  \n{req['status']}")
 
