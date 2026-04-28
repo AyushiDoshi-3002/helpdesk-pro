@@ -11,10 +11,10 @@ from datetime import datetime, timedelta, timezone
 
 # ── Passwords (one per role) ──────────────────────────────────────────────────
 ROLE_PASSWORDS = {
-    "Team Lead":    "lead123",
-    "Tech Manager": "mgr123",
-    "CTO":          "cto123",
-    "CEO":          "ceo123",
+    "Team Lead":    "Lead123",
+    "Tech Manager": "Manager123",
+    "CTO":          "CTO123",
+    "CEO":          "CEO123",
 }
 
 TIMEOUT_HOURS = 2
