@@ -150,24 +150,36 @@ def _deserialize(row: dict) -> dict:
 def _db_insert(req: dict):
     """Insert a new request row into Supabase."""
     try:
-        _get_sb().table(TABLE).insert(_serialize(req)).execute()
+        row = _serialize(req)
+        res = _get_sb().table(TABLE).insert(row).execute()
+        if hasattr(res, "data") and res.data:
+            st.toast(f"✅ Saved to Supabase: {req['id']}", icon="🗄️")
+        else:
+            st.warning(f"⚠️ Insert returned no data. Response: {res}")
     except Exception as e:
-        st.error(f"DB insert error: {e}")
+        st.error(f"❌ DB insert error for {req.get('id')}: {type(e).__name__}: {e}")
 
 def _db_update(req: dict):
     """Upsert the full request row (called after every approve/reject/expire)."""
     try:
-        _get_sb().table(TABLE).upsert(_serialize(req)).execute()
+        row = _serialize(req)
+        res = _get_sb().table(TABLE).upsert(row).execute()
+        if hasattr(res, "data") and res.data:
+            st.toast(f"✅ Updated in Supabase: {req['id']}", icon="🗄️")
+        else:
+            st.warning(f"⚠️ Upsert returned no data. Response: {res}")
     except Exception as e:
-        st.error(f"DB update error: {e}")
+        st.error(f"❌ DB update error for {req.get('id')}: {type(e).__name__}: {e}")
 
 def _db_load_all() -> list:
     """Fetch all rows ordered by created_at asc."""
     try:
         res = _get_sb().table(TABLE).select("*").order("created_at", desc=False).execute()
-        return [_deserialize(row) for row in (res.data or [])]
+        rows = res.data or []
+        st.caption(f"🗄️ Loaded {len(rows)} record(s) from Supabase.")
+        return [_deserialize(row) for row in rows]
     except Exception as e:
-        st.error(f"DB load error: {e}")
+        st.error(f"❌ DB load error: {type(e).__name__}: {e}")
         return []
 
 
@@ -291,6 +303,14 @@ def _check_expiry(req):
 
 def page_approval_pipeline():
     _init()
+
+    # ── Supabase connection test ──────────────────────────────────────────────
+    try:
+        test = _get_sb().table(TABLE).select("id").limit(1).execute()
+        st.success(f"🟢 Supabase connected — table `{TABLE}` is reachable.")
+    except Exception as e:
+        st.error(f"🔴 Supabase connection FAILED: {type(e).__name__}: {e}")
+        st.stop()
 
     # Load from DB once per session; offer manual refresh
     if not st.session_state.ap_loaded:
