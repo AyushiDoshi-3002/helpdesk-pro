@@ -196,7 +196,7 @@ def _view_submit():
 
     st.divider()
     for req in all_reqs:
-        _request_row(req, show_actions=False)
+        _request_row(req, show_actions=False, ctx="sub")
 
 
 # ── Review view ───────────────────────────────────────────────────────────────
@@ -229,23 +229,25 @@ def _view_review():
     else:
         st.subheader(f"{len(pending)} pending")
         for req in pending:
-            _request_row(req, show_actions=True)
+            _request_row(req, show_actions=True, ctx="rev")
 
     if closed:
         st.divider()
         with st.expander(f"Closed ({len(closed)})"):
             for req in closed:
-                _request_row(req, show_actions=False)
+                _request_row(req, show_actions=False, ctx="rev_c")
 
 
 # ── Request row ───────────────────────────────────────────────────────────────
 
-def _request_row(req: dict, show_actions: bool):
+def _request_row(req: dict, show_actions: bool, ctx: str = ""):
     stage  = req["chain"][req["stage_idx"]] if not req["done"] else "—"
     timer  = _time_left(req["expires_at"]) if not req["done"] else ""
     urg_icon = {"URGENT": "🟡", "CRITICAL": "🔴"}.get(req["urgency"], "")
+    rid = req["id"]
+    k = f"{ctx}_{rid}"  # unique key prefix per call site
 
-    label = f"{req['id']}  ·  {req['title']}  {urg_icon}"
+    label = f"{rid}  ·  {req['title']}  {urg_icon}"
     if timer:
         label += f"  ·  ⏳ {timer}"
 
@@ -276,7 +278,7 @@ def _request_row(req: dict, show_actions: bool):
         st.markdown("  →  ".join(step_parts))
 
         # History (compact)
-        with st.expander("History"):
+        with st.expander("History", key=f"hist_{k}"):
             for entry in req["history"]:
                 t    = _fmt(entry["time"]) if isinstance(entry["time"], datetime) else str(entry["time"])
                 note = f" — {entry['note']}" if entry.get("note") else ""
@@ -284,22 +286,22 @@ def _request_row(req: dict, show_actions: bool):
 
         # Approve / Reject
         if show_actions and not req["done"]:
-            note = st.text_input("Note (optional)", key=f"note_{req['id']}",
+            note = st.text_input("Note (optional)", key=f"note_{k}",
                                  placeholder="Reason or comment…")
             ca, cr, _ = st.columns([1, 1, 4])
             with ca:
-                if st.button("Approve", key=f"ap_{req['id']}", type="primary", use_container_width=True):
+                if st.button("Approve", key=f"ap_{k}", type="primary", use_container_width=True):
                     _approve(req, note)
                     st.rerun()
             with cr:
-                if st.button("Reject", key=f"rj_{req['id']}", use_container_width=True):
+                if st.button("Reject", key=f"rj_{k}", use_container_width=True):
                     _reject(req, note)
                     st.rerun()
 
         # Delete (admin only)
         if st.session_state.ap_authed:
-            if st.button("Delete", key=f"del_{req['id']}"):
+            if st.button("Delete", key=f"del_{k}"):
                 st.session_state.ap_requests = [
-                    r for r in st.session_state.ap_requests if r["id"] != req["id"]
+                    r for r in st.session_state.ap_requests if r["id"] != rid
                 ]
                 st.rerun()
