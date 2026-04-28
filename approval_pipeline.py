@@ -2,600 +2,402 @@
 approval_pipeline.py
 ────────────────────
 Drop this file in the same folder as app.py.
-Your existing app.py already has:
+Called by app.py as: page_approval_pipeline()
 
-    from approval_pipeline import page_approval_pipeline
-
-and calls  page_approval_pipeline()  when the user picks
-"📋 Approval Pipeline" in the sidebar. That's all it needs.
-
-Flow implemented (fully in session_state — no extra DB table needed):
-  1. Admin submits document request form
-  2. System auto-creates request with 2-hour expiry timer
-  3. Auto-routes to Team Lead
-  4. Team Lead: Approve / Reject / Forward
-  5. If no response in 2h → auto-expire
-  6. Tech Manager: Approve / Reject / Escalate
-  7. Auto-forward to CTO (for technical docs)
-  8. CTO: Approve / Reject / Forward to CEO
-  9. System completes → KB-ready
+Flow:
+  Submit → Team Lead → Tech Manager → CTO → CEO → Approved
+  Single admin password. One clean page. No tab switching.
 """
 
 import streamlit as st
 from datetime import datetime, timedelta, timezone
 
-# ── Constants ─────────────────────────────────────────────────────────────────
-TIMEOUT_HOURS = 2          # hours before a stage auto-expires
-ADMIN_PASSWORD = "admin123"  # shared with your existing app
+# ── Config ────────────────────────────────────────────────────────────────────
+ADMIN_PASSWORD = "admin123"
+TIMEOUT_HOURS  = 2
 
-DOC_TYPES = {
-    "Technical - Database":      {"needs_cto": True,  "label": "🗄️ Database"},
-    "Technical - Infrastructure": {"needs_cto": True,  "label": "🏗️ Infrastructure"},
-    "Technical - API / Code":     {"needs_cto": True,  "label": "💻 API / Code"},
-    "Policy / HR":               {"needs_cto": False, "label": "📜 Policy / HR"},
-    "Finance / Legal":           {"needs_cto": True,  "label": "💼 Finance / Legal"},
-    "Security / Compliance":     {"needs_cto": True,  "label": "🔒 Security"},
-    "General / Internal":        {"needs_cto": False, "label": "📄 General"},
+APPROVAL_CHAIN = ["Team Lead", "Tech Manager", "CTO", "CEO"]
+
+DOC_TYPES = [
+    "Technical - Database",
+    "Technical - Infrastructure",
+    "Technical - API / Code",
+    "Policy / HR",
+    "Finance / Legal",
+    "Security / Compliance",
+    "General / Internal",
+]
+
+# These doc types go through all 4 levels; others stop at Tech Manager
+NEEDS_FULL_CHAIN = {
+    "Technical - Database", "Technical - Infrastructure",
+    "Technical - API / Code", "Finance / Legal", "Security / Compliance",
 }
 
-URGENCY_LEVELS = ["Normal", "URGENT", "CRITICAL"]
 
-# Stage order
-STAGES = ["Team Lead", "Tech Manager", "CTO", "CEO", "Completed"]
+# ── Helpers ───────────────────────────────────────────────────────────────────
 
-# ── Session-state DB ──────────────────────────────────────────────────────────
+def _now():
+    return datetime.now(timezone.utc)
+
+
+def _fmt(dt):
+    try:
+        return dt.strftime("%d %b %Y, %I:%M %p")
+    except Exception:
+        return str(dt)
+
+
+def _time_left(expires_at):
+    diff = expires_at - _now()
+    secs = int(diff.total_seconds())
+    if secs <= 0:
+        return "⏰ Expired"
+    h, rem = divmod(secs, 3600)
+    m, _   = divmod(rem, 60)
+    return f"⏳ {h}h {m}m left" if h else f"⏳ {m}m left"
+
+
+def _status_icon(status):
+    return {"Approved": "✅", "Rejected": "❌", "Expired": "⏰"}.get(status, "🔄")
+
+
+# ── Session-state init ────────────────────────────────────────────────────────
 
 def _init():
     if "ap_requests" not in st.session_state:
         st.session_state.ap_requests = []
     if "ap_next_id" not in st.session_state:
         st.session_state.ap_next_id = 1
-    if "ap_role" not in st.session_state:
-        st.session_state.ap_role = None          # None | "Team Lead" | "Tech Manager" | "CTO" | "CEO"
-    if "ap_admin_authed" not in st.session_state:
-        st.session_state.ap_admin_authed = False
+    if "ap_authed" not in st.session_state:
+        st.session_state.ap_authed = False
+    if "ap_view" not in st.session_state:
+        st.session_state.ap_view = "submit"
 
 
-def _now() -> datetime:
-    return datetime.now(timezone.utc)
+# ── Core actions ──────────────────────────────────────────────────────────────
 
-
-def _fmt(dt: datetime) -> str:
-    try:
-        return dt.strftime("%d %b %Y, %I:%M %p UTC")
-    except Exception:
-        return str(dt)
-
-
-def _time_left(expires_at: datetime) -> str:
-    delta = expires_at - _now()
-    if delta.total_seconds() <= 0:
-        return "⏰ EXPIRED"
-    m, s = divmod(int(delta.total_seconds()), 60)
-    h, m = divmod(m, 60)
-    if h > 0:
-        return f"⏳ {h}h {m}m left"
-    return f"⏳ {m}m {s}s left"
-
-
-def _create_request(title, description, urgency, role, doc_type, requester_id) -> dict:
-    rid = f"REQ-2026-{st.session_state.ap_next_id:03d}"
+def _create(title, doc_type, description, urgency, requester):
+    rid   = f"REQ-{st.session_state.ap_next_id:03d}"
     st.session_state.ap_next_id += 1
-    now = _now()
+    now   = _now()
+    chain = list(APPROVAL_CHAIN) if doc_type in NEEDS_FULL_CHAIN else ["Team Lead", "Tech Manager"]
+
     req = {
-        "id":           rid,
-        "title":        title,
-        "description":  description,
-        "urgency":      urgency,
-        "requester_role": role,
-        "requester_id": requester_id,
-        "doc_type":     doc_type,
-        "needs_cto":    DOC_TYPES.get(doc_type, {}).get("needs_cto", False),
-        "status":       "Pending Team Lead",
-        "current_stage": "Team Lead",
-        "created_at":   now,
-        "expires_at":   now + timedelta(hours=TIMEOUT_HOURS),
-        "audit": [
-            {
-                "time":   now,
-                "actor":  "System",
-                "action": "Request created & routed to Team Lead",
-                "note":   f"Auto-routed based on doc type: {doc_type}",
-            }
-        ],
-        "approved_by":  [],   # list of stages approved
-        "rejected_by":  None,
-        "forward_to":   None,
-        "completed":    False,
+        "id":          rid,
+        "title":       title,
+        "doc_type":    doc_type,
+        "description": description,
+        "urgency":     urgency,
+        "requester":   requester,
+        "chain":       chain,
+        "stage_idx":   0,
+        "status":      "Pending",
+        "created_at":  now,
+        "expires_at":  now + timedelta(hours=TIMEOUT_HOURS),
+        "history":     [{"time": now, "by": "System",
+                         "action": f"Created and routed to {chain[0]}"}],
+        "done":        False,
     }
     st.session_state.ap_requests.append(req)
     return req
 
 
-def _add_audit(req: dict, actor: str, action: str, note: str = ""):
-    req["audit"].append({
-        "time":   _now(),
-        "actor":  actor,
-        "action": action,
-        "note":   note,
-    })
+def _approve(req, note):
+    stage = req["chain"][req["stage_idx"]]
+    req["history"].append({"time": _now(), "by": stage, "action": "Approved", "note": note})
+
+    next_idx = req["stage_idx"] + 1
+    if next_idx >= len(req["chain"]):
+        req["status"] = "Approved"
+        req["done"]   = True
+        req["history"].append({"time": _now(), "by": "System",
+                                "action": "All levels approved — request COMPLETE ✅"})
+    else:
+        req["stage_idx"]  = next_idx
+        req["expires_at"] = _now() + timedelta(hours=TIMEOUT_HOURS)
+        req["history"].append({"time": _now(), "by": "System",
+                                "action": f"Auto-forwarded to {req['chain'][next_idx]}"})
 
 
-def _check_expiry(req: dict):
-    """Auto-expire if current stage timed out."""
-    if req["completed"] or req["status"] in ("Approved", "Rejected", "Expired"):
+def _reject(req, note):
+    stage = req["chain"][req["stage_idx"]]
+    req["status"] = "Rejected"
+    req["done"]   = True
+    req["history"].append({"time": _now(), "by": stage, "action": "Rejected ❌", "note": note})
+
+
+def _check_expiry(req):
+    if req["done"]:
         return
     if _now() > req["expires_at"]:
-        req["status"]    = "Expired"
-        req["completed"] = True
-        _add_audit(req, "System", "Auto-expired due to timeout",
-                   f"No response from {req['current_stage']} within {TIMEOUT_HOURS}h.")
+        stage         = req["chain"][req["stage_idx"]]
+        req["status"] = "Expired"
+        req["done"]   = True
+        req["history"].append({"time": _now(), "by": "System",
+                                "action": f"Auto-expired — no response from {stage} within {TIMEOUT_HOURS}h"})
 
 
-def _advance_stage(req: dict, current_actor: str, note: str):
-    """Move request to the next stage in the chain."""
-    req["approved_by"].append(current_actor)
-    _add_audit(req, current_actor, "Approved — forwarding to next stage", note)
-
-    needs_cto = req.get("needs_cto", False)
-    cur = req["current_stage"]
-
-    if cur == "Team Lead":
-        req["current_stage"] = "Tech Manager"
-        req["status"]        = "Pending Tech Manager"
-    elif cur == "Tech Manager":
-        if needs_cto:
-            req["current_stage"] = "CTO"
-            req["status"]        = "Pending CTO"
-        else:
-            _complete(req, current_actor, note)
-            return
-    elif cur in ("CTO", "CEO"):
-        _complete(req, current_actor, note)
-        return
-
-    req["expires_at"] = _now() + timedelta(hours=TIMEOUT_HOURS)
-
-
-def _reject(req: dict, actor: str, note: str):
-    req["rejected_by"] = actor
-    req["status"]      = "Rejected"
-    req["completed"]   = True
-    _add_audit(req, actor, "Rejected", note)
-
-
-def _escalate_to_ceo(req: dict, actor: str, note: str):
-    req["current_stage"] = "CEO"
-    req["status"]        = "Pending CEO"
-    req["expires_at"]    = _now() + timedelta(hours=TIMEOUT_HOURS)
-    _add_audit(req, actor, "Escalated to CEO", note)
-
-
-def _forward(req: dict, actor: str, forward_to: str, note: str):
-    req["forward_to"] = forward_to
-    _add_audit(req, actor, f"Forwarded to {forward_to}", note)
-
-
-def _complete(req: dict, actor: str, note: str):
-    req["status"]    = "Approved"
-    req["completed"] = True
-    _add_audit(req, actor, "✅ Final approval — document request APPROVED", note)
-
-
-# ── Main entry point called by app.py ─────────────────────────────────────────
+# ── Main entry point ──────────────────────────────────────────────────────────
 
 def page_approval_pipeline():
     _init()
 
-    # Auto-expire stale requests on every render
     for r in st.session_state.ap_requests:
         _check_expiry(r)
 
-    st.markdown("# 📋 Document Approval Pipeline")
-    st.markdown(
-        "<p style='color:#6b7280'>Request documents through a structured multi-level approval chain "
-        "with automatic routing and 2-hour stage timers.</p>",
-        unsafe_allow_html=True,
+    st.markdown("## 📋 Document Approval Pipeline")
+    st.caption("Submit a document request and it moves through up to 4 approval levels automatically.")
+    st.divider()
+
+    # ── Two-button switcher ───────────────────────────────────────────────────
+    pending_count = sum(1 for r in st.session_state.ap_requests if not r["done"])
+
+    col_a, col_b, _ = st.columns([2, 2, 5])
+    with col_a:
+        if st.button(
+            "📝 Submit Request",
+            type="primary" if st.session_state.ap_view == "submit" else "secondary",
+            use_container_width=True,
+        ):
+            st.session_state.ap_view = "submit"
+            st.rerun()
+    with col_b:
+        if st.button(
+            f"✅ Review  ({pending_count} pending)",
+            type="primary" if st.session_state.ap_view == "review" else "secondary",
+            use_container_width=True,
+        ):
+            st.session_state.ap_view = "review"
+            st.rerun()
+
+    st.divider()
+
+    if st.session_state.ap_view == "submit":
+        _view_submit()
+    else:
+        _view_review()
+
+
+# ── Submit view ───────────────────────────────────────────────────────────────
+
+def _view_submit():
+
+    # Compact "how it works" box
+    st.info(
+        "**How it works:** Submit below → System auto-routes to **Team Lead** → "
+        "**Tech Manager** → **CTO** → **CEO** (for technical/finance/security docs). "
+        "Each level has **2 hours** to approve or reject. No response = auto-expire.",
+        icon="ℹ️",
     )
 
-    # Role selector + admin login in a top bar
-    _role_bar()
+    st.subheader("New Document Request")
 
-    st.markdown("---")
-
-    # Three columns of tabs
-    tab_submit, tab_review, tab_all, tab_audit = st.tabs([
-        "📝 Submit Request",
-        "✅ Review / Approve",
-        "📊 All Requests",
-        "📜 Audit Trail",
-    ])
-
-    with tab_submit:
-        _tab_submit()
-
-    with tab_review:
-        _tab_review()
-
-    with tab_all:
-        _tab_all()
-
-    with tab_audit:
-        _tab_audit()
-
-
-# ── Role bar ──────────────────────────────────────────────────────────────────
-
-def _role_bar():
-    col1, col2, col3 = st.columns([3, 2, 2])
-
-    with col1:
-        role_options = ["— I am viewing only —", "Team Lead", "Tech Manager", "CTO", "CEO"]
-        current_idx  = role_options.index(st.session_state.ap_role) if st.session_state.ap_role in role_options else 0
-        chosen = st.selectbox(
-            "👤 Your Role (for reviewing requests)",
-            role_options,
-            index=current_idx,
-            label_visibility="visible",
-        )
-        st.session_state.ap_role = None if chosen == role_options[0] else chosen
-
-    with col2:
-        st.markdown("<br>", unsafe_allow_html=True)
-        stats = _stats()
-        st.markdown(
-            f"🟡 **{stats['pending']}** pending &nbsp;|&nbsp; "
-            f"✅ **{stats['approved']}** approved &nbsp;|&nbsp; "
-            f"❌ **{stats['rejected']}** rejected",
-            unsafe_allow_html=True,
-        )
-
-    with col3:
-        if not st.session_state.ap_admin_authed:
-            with st.expander("🔐 Admin Login"):
-                pwd = st.text_input("Password", type="password", key="ap_admin_pwd")
-                if st.button("Login", key="ap_admin_login"):
-                    if pwd == ADMIN_PASSWORD:
-                        st.session_state.ap_admin_authed = True
-                        st.rerun()
-                    else:
-                        st.error("Wrong password.")
-        else:
-            st.markdown("<br>", unsafe_allow_html=True)
-            st.success("🔓 Admin logged in")
-            if st.button("Logout", key="ap_logout"):
-                st.session_state.ap_admin_authed = False
-                st.rerun()
-
-
-def _stats() -> dict:
-    reqs = st.session_state.ap_requests
-    return {
-        "total":    len(reqs),
-        "pending":  sum(1 for r in reqs if not r["completed"]),
-        "approved": sum(1 for r in reqs if r["status"] == "Approved"),
-        "rejected": sum(1 for r in reqs if r["status"] == "Rejected"),
-        "expired":  sum(1 for r in reqs if r["status"] == "Expired"),
-    }
-
-
-# ── Tab: Submit ───────────────────────────────────────────────────────────────
-
-def _tab_submit():
-    st.subheader("📝 New Document Request")
-    st.markdown(
-        "Fill in the form below. The system will automatically route your request "
-        "through the approval chain based on document type."
-    )
-
-    # Flow diagram
-    with st.expander("ℹ️ How the approval flow works", expanded=False):
-        st.markdown("""
-| Step | Who | What happens |
-|------|-----|--------------|
-| 1 | **You** | Fill & submit this form |
-| 2 | 🤖 System | Creates request + starts 2-hour timer |
-| 3 | 🤖 System | Auto-routes to **Team Lead** |
-| 4 | 👤 Team Lead | Approve / Reject / Forward |
-| 5 | 🤖 System | If no reply in 2h → **auto-expire** |
-| 6 | 👤 Tech Manager | Approve / Reject / Escalate |
-| 7 | 🤖 System | Auto-forward to **CTO** (for technical docs) |
-| 8 | 👤 CTO | Approve / Reject / Forward to CEO |
-| 9 | 🤖 System | Mark **APPROVED** → document can be created |
-        """)
-
-    st.markdown("---")
-
-    with st.form("ap_submit_form", clear_on_submit=True):
+    with st.form("ap_form", clear_on_submit=True):
         c1, c2 = st.columns(2)
         with c1:
-            requester_id = st.text_input("👤 Your Employee ID *", placeholder="e.g. EMP-1042")
-            requester_role = st.text_input("💼 Your Role / Team *", placeholder="e.g. Admin - Infrastructure Team")
-            urgency = st.selectbox("🚨 Urgency *", URGENCY_LEVELS)
-
+            requester   = st.text_input("👤 Your Name / Employee ID *", placeholder="e.g. Priya K · EMP-042")
+            doc_type    = st.selectbox("📂 Document Type *", DOC_TYPES)
         with c2:
-            title = st.text_input("📄 Document Title *", placeholder="e.g. New Database Backup Procedure")
-            doc_type = st.selectbox("📂 Document Type *", list(DOC_TYPES.keys()))
-            st.markdown("<br>", unsafe_allow_html=True)
-            cto_note = "→ Requires CTO approval" if DOC_TYPES[doc_type]["needs_cto"] else "→ Team Lead + Tech Manager only"
-            st.caption(f"Routing preview: {cto_note}")
+            title       = st.text_input("📄 Document Title *", placeholder="e.g. Database Backup Procedure")
+            urgency     = st.selectbox("🚨 Urgency", ["Normal", "URGENT", "CRITICAL"])
 
         description = st.text_area(
-            "📋 Description *",
-            placeholder="Describe what this document needs to cover and why it's needed…",
-            height=120,
+            "📋 What does this document need to cover? *",
+            placeholder="Describe the purpose and scope of the document…",
+            height=100,
         )
+
+        chain_label = (
+            "Team Lead → Tech Manager → CTO → CEO"
+            if doc_type in NEEDS_FULL_CHAIN
+            else "Team Lead → Tech Manager"
+        )
+        st.caption(f"⚡ Routing: **{chain_label}**")
 
         submitted = st.form_submit_button("🚀 Submit Request", type="primary", use_container_width=True)
 
     if submitted:
         errors = []
-        if not requester_id.strip():   errors.append("Employee ID required.")
-        if not requester_role.strip(): errors.append("Your role/team required.")
-        if not title.strip():          errors.append("Document title required.")
-        if not description.strip():    errors.append("Description required.")
+        if not requester.strip():   errors.append("Name / Employee ID required.")
+        if not title.strip():       errors.append("Document title required.")
+        if not description.strip(): errors.append("Description required.")
+        for e in errors:
+            st.error(e)
+        if not errors:
+            req = _create(title.strip(), doc_type, description.strip(), urgency, requester.strip())
+            st.success(f"✅ **{req['id']}** submitted! First stop: **{req['chain'][0]}**")
+            st.caption(f"⏰ Approval window: {_fmt(req['created_at'])} → {_fmt(req['expires_at'])}")
 
-        if errors:
-            for e in errors:
-                st.error(e)
-        else:
-            req = _create_request(
-                title=title.strip(),
-                description=description.strip(),
-                urgency=urgency,
-                role=requester_role.strip(),
-                doc_type=doc_type,
-                requester_id=requester_id.strip(),
-            )
-            st.success(f"✅ **{req['id']}** created! Routed to Team Lead — 2-hour approval timer started.")
-            st.info(f"⏰ Expires at: {_fmt(req['expires_at'])}")
-            st.balloons()
-
-
-# ── Tab: Review / Approve ─────────────────────────────────────────────────────
-
-def _tab_review():
-    role = st.session_state.ap_role
-
-    if not role:
-        st.info("👆 Select your role in the **Your Role** dropdown above to see requests awaiting your approval.")
+    # ── All requests list ─────────────────────────────────────────────────────
+    all_reqs = list(reversed(st.session_state.ap_requests))
+    if not all_reqs:
         return
 
-    # Which requests need this role?
-    stage_map = {
-        "Team Lead":    "Team Lead",
-        "Tech Manager": "Tech Manager",
-        "CTO":          "CTO",
-        "CEO":          "CEO",
-    }
-    my_stage = stage_map.get(role, "")
-    pending = [
-        r for r in st.session_state.ap_requests
-        if not r["completed"] and r["current_stage"] == my_stage
-    ]
+    st.divider()
+    st.subheader("📊 All Requests")
 
-    st.subheader(f"✅ Requests Awaiting Your Approval — {role}")
+    # Stats row
+    counts = {"Pending": 0, "Approved": 0, "Rejected": 0, "Expired": 0}
+    for r in all_reqs:
+        k = r["status"] if r["status"] in counts else "Pending"
+        counts[k] += 1
 
-    # Also show forwarded-to-you requests
-    forwarded = [
-        r for r in st.session_state.ap_requests
-        if not r["completed"] and r.get("forward_to") == role
-    ]
-    if forwarded:
-        st.warning(f"📨 {len(forwarded)} request(s) forwarded directly to you.")
-        for r in forwarded:
-            _review_card(r, role, forwarded=True)
-        st.markdown("---")
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("🔄 Pending",  counts["Pending"])
+    c2.metric("✅ Approved", counts["Approved"])
+    c3.metric("❌ Rejected", counts["Rejected"])
+    c4.metric("⏰ Expired",  counts["Expired"])
 
-    if not pending and not forwarded:
-        st.success("🎉 No requests waiting for your approval right now.")
+    st.markdown("")
+    for req in all_reqs:
+        _request_card(req, show_actions=False)
+
+
+# ── Review view ───────────────────────────────────────────────────────────────
+
+def _view_review():
+    # Auth gate
+    if not st.session_state.ap_authed:
+        st.subheader("🔐 Admin Login")
+        st.caption("Same password as your Admin Panel.")
+        col, _ = st.columns([1.5, 2.5])
+        with col:
+            pwd = st.text_input("Password", type="password", key="ap_pwd")
+            if st.button("Login →", type="primary", use_container_width=True):
+                if pwd == ADMIN_PASSWORD:
+                    st.session_state.ap_authed = True
+                    st.rerun()
+                else:
+                    st.error("Incorrect password.")
         return
 
-    for req in pending:
-        _review_card(req, role)
+    # Header + logout
+    hcol, lcol = st.columns([5, 1])
+    with hcol:
+        st.subheader("✅ Review & Approve")
+    with lcol:
+        if st.button("Logout", key="ap_logout"):
+            st.session_state.ap_authed = False
+            st.rerun()
+
+    pending = [r for r in reversed(st.session_state.ap_requests) if not r["done"]]
+    closed  = [r for r in reversed(st.session_state.ap_requests) if r["done"]]
+
+    if not pending:
+        st.success("🎉 No pending requests right now.")
+    else:
+        st.markdown(f"**{len(pending)} request(s) awaiting approval**")
+        for req in pending:
+            _request_card(req, show_actions=True)
+
+    if closed:
+        st.divider()
+        with st.expander(f"📚 Closed requests ({len(closed)})", expanded=False):
+            for req in closed:
+                _request_card(req, show_actions=False)
 
 
-def _review_card(req: dict, role: str, forwarded: bool = False):
-    urgency_color = {"Normal": "🟢", "URGENT": "🟡", "CRITICAL": "🔴"}.get(req["urgency"], "⚪")
-    label = (
-        f"{urgency_color} **{req['id']}** · {req['title']} "
-        f"| {req['doc_type']} | {req['urgency']} | {_time_left(req['expires_at'])}"
-    )
-    with st.expander(label, expanded=True):
+# ── Request card (used in both views) ────────────────────────────────────────
+
+def _request_card(req: dict, show_actions: bool):
+    icon    = _status_icon(req["status"])
+    urgency = {"URGENT": "🟡 URGENT", "CRITICAL": "🔴 CRITICAL"}.get(req["urgency"], "🟢 Normal")
+    stage   = req["chain"][req["stage_idx"]] if not req["done"] else req["status"]
+    timer   = _time_left(req["expires_at"]) if not req["done"] else ""
+
+    header  = f"{icon} **{req['id']}** · {req['title']}  |  {urgency}  |  {req['doc_type']}"
+    if timer:
+        header += f"  |  {timer}"
+
+    with st.expander(header, expanded=(show_actions and not req["done"])):
+
+        # Details
         c1, c2, c3 = st.columns(3)
-        c1.markdown(f"**Requester:** {req['requester_id']}")
-        c2.markdown(f"**Role:** {req['requester_role']}")
-        c3.markdown(f"**Submitted:** {_fmt(req['created_at'])}")
-        c1.markdown(f"**Doc Type:** {req['doc_type']}")
-        c2.markdown(f"**Urgency:** {req['urgency']}")
-        c3.markdown(f"**Needs CTO:** {'Yes' if req['needs_cto'] else 'No'}")
+        c1.markdown(f"**Requester:** {req['requester']}")
+        c2.markdown(f"**Created:** {_fmt(req['created_at'])}")
+        c3.markdown(f"**Stage:** {stage}")
 
-        st.markdown("**Description:**")
+        # Description block
         st.markdown(
-            f"<div style='background:#ede9fe;padding:14px;border-radius:10px;"
-            f"border-left:4px solid #7c3aed;color:#1e1b4b;font-size:14px'>"
+            f"<div style='background:#f5f3ff;padding:12px 16px;border-radius:10px;"
+            f"border-left:4px solid #7c3aed;color:#1e1b4b;font-size:14px;margin:10px 0'>"
             f"{req['description']}</div>",
             unsafe_allow_html=True,
         )
 
-        # Previous approvals
-        if req["approved_by"]:
-            st.markdown(f"**✅ Already approved by:** {', '.join(req['approved_by'])}")
+        # Pipeline progress
+        _pipeline_visual(req)
 
-        st.markdown("---")
-        note = st.text_area(
-            "📝 Your note / reason (optional)",
-            key=f"note_{req['id']}_{role}",
-            placeholder="Add context for the audit trail…",
-            height=70,
-        )
+        # History
+        with st.expander("📜 Approval history", expanded=False):
+            for entry in req["history"]:
+                t    = _fmt(entry["time"]) if isinstance(entry["time"], datetime) else str(entry["time"])
+                note = f" — *{entry['note']}*" if entry.get("note") else ""
+                st.markdown(
+                    f"<small style='color:#9ca3af'>{t}</small>&nbsp;&nbsp;"
+                    f"**{entry['by']}** · {entry['action']}{note}",
+                    unsafe_allow_html=True,
+                )
 
-        # Build action buttons based on role
-        cols = st.columns(4)
-        note_val = note  # capture before button click
-
-        with cols[0]:
-            if st.button("✅ Approve", key=f"ap_{req['id']}_{role}", use_container_width=True, type="primary"):
-                _advance_stage(req, role, note_val or "Approved.")
-                st.success("Approved & forwarded!")
-                st.rerun()
-
-        with cols[1]:
-            if st.button("❌ Reject", key=f"rj_{req['id']}_{role}", use_container_width=True):
-                _reject(req, role, note_val or "Rejected.")
-                st.error("Request rejected.")
-                st.rerun()
-
-        with cols[2]:
-            # Forward option
-            forward_targets = [s for s in STAGES[:-1] if s != role]
-            fwd_to = st.selectbox(
-                "Forward to",
-                ["— select —"] + forward_targets,
-                key=f"fwd_sel_{req['id']}_{role}",
-                label_visibility="collapsed",
+        # Approve / Reject (only in review view for pending requests)
+        if show_actions and not req["done"]:
+            st.markdown("---")
+            st.markdown(f"**Reviewing as: {stage}**")
+            note = st.text_area(
+                "Note (optional)",
+                key=f"note_{req['id']}",
+                placeholder="Add a reason or comment for the audit trail…",
+                height=60,
             )
-            if st.button("🔄 Forward", key=f"fwd_{req['id']}_{role}", use_container_width=True):
-                if fwd_to == "— select —":
-                    st.warning("Select a person to forward to.")
-                else:
-                    _forward(req, role, fwd_to, note_val or f"Forwarded to {fwd_to}.")
-                    req["current_stage"] = fwd_to
-                    req["status"] = f"Pending {fwd_to}"
-                    req["expires_at"] = _now() + timedelta(hours=TIMEOUT_HOURS)
-                    st.info(f"Forwarded to {fwd_to}.")
+            ca, cr, _ = st.columns([1, 1, 4])
+            with ca:
+                if st.button("✅ Approve", key=f"ap_{req['id']}", type="primary", use_container_width=True):
+                    _approve(req, note)
+                    st.rerun()
+            with cr:
+                if st.button("❌ Reject", key=f"rj_{req['id']}", use_container_width=True):
+                    _reject(req, note)
                     st.rerun()
 
-        with cols[3]:
-            # CTO can escalate to CEO
-            if role == "CTO":
-                if st.button("⬆️ → CEO", key=f"ceo_{req['id']}", use_container_width=True):
-                    _escalate_to_ceo(req, role, note_val or "Escalated to CEO for final decision.")
-                    st.warning("Escalated to CEO.")
-                    st.rerun()
-
-
-# ── Tab: All Requests ─────────────────────────────────────────────────────────
-
-def _tab_all():
-    st.subheader("📊 All Requests")
-
-    reqs = list(reversed(st.session_state.ap_requests))
-    if not reqs:
-        st.info("No requests yet. Use the **Submit Request** tab to create one.")
-        return
-
-    # Filter
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        sf = st.selectbox("Filter by Status", [
-            "All", "Pending Team Lead", "Pending Tech Manager",
-            "Pending CTO", "Pending CEO", "Approved", "Rejected", "Expired"
-        ], key="ap_status_filter")
-    with c2:
-        uf = st.selectbox("Filter by Urgency", ["All"] + URGENCY_LEVELS, key="ap_urgency_filter")
-    with c3:
-        # Admin can delete
-        if st.session_state.ap_admin_authed:
-            if st.button("🗑️ Clear ALL requests", key="ap_clear_all"):
-                st.session_state.ap_requests = []
-                st.rerun()
-
-    if sf != "All":
-        reqs = [r for r in reqs if r["status"] == sf]
-    if uf != "All":
-        reqs = [r for r in reqs if r["urgency"] == uf]
-
-    st.markdown(f"**{len(reqs)} request(s) shown**")
-    st.markdown("---")
-
-    if not reqs:
-        st.info("No requests match the selected filters.")
-        return
-
-    for req in reqs:
-        _summary_card(req)
-
-
-def _summary_card(req: dict):
-    status_icon = {
-        "Approved": "✅",
-        "Rejected": "❌",
-        "Expired":  "⏰",
-    }.get(req["status"], "⏳")
-
-    urgency_color = {"Normal": "🟢", "URGENT": "🟡", "CRITICAL": "🔴"}.get(req["urgency"], "⚪")
-    timer_str = "" if req["completed"] else f" | {_time_left(req['expires_at'])}"
-
-    with st.expander(
-        f"{status_icon} {req['id']} — {req['title']} | {urgency_color} {req['urgency']} | "
-        f"{req['status']}{timer_str}",
-        expanded=False,
-    ):
-        c1, c2, c3 = st.columns(3)
-        c1.markdown(f"**Requester:** {req['requester_id']}")
-        c2.markdown(f"**Role:** {req['requester_role']}")
-        c3.markdown(f"**Doc Type:** {req['doc_type']}")
-        c1.markdown(f"**Status:** {req['status']}")
-        c2.markdown(f"**Stage:** {req['current_stage']}")
-        c3.markdown(f"**Created:** {_fmt(req['created_at'])}")
-
-        if req["approved_by"]:
-            st.success(f"✅ Approved by: {' → '.join(req['approved_by'])}")
-        if req["rejected_by"]:
-            st.error(f"❌ Rejected by: {req['rejected_by']}")
-        if req["status"] == "Expired":
-            st.warning(f"⏰ Expired at stage: {req['current_stage']}")
-
-        # Progress bar
-        stage_idx = STAGES.index(req["current_stage"]) if req["current_stage"] in STAGES else 0
-        progress = stage_idx / (len(STAGES) - 1) if not req["completed"] else 1.0
-        if req["status"] == "Approved":
-            progress = 1.0
-        st.progress(progress, text=f"Pipeline progress: {req['current_stage']}")
-
-        # Admin delete
-        if st.session_state.ap_admin_authed:
-            if st.button(f"🗑️ Delete {req['id']}", key=f"del_{req['id']}"):
+        # Delete (admin only)
+        if st.session_state.ap_authed:
+            st.markdown("")
+            if st.button("🗑️ Delete this request", key=f"del_{req['id']}"):
                 st.session_state.ap_requests = [
                     r for r in st.session_state.ap_requests if r["id"] != req["id"]
                 ]
                 st.rerun()
 
 
-# ── Tab: Audit Trail ──────────────────────────────────────────────────────────
+# ── Pipeline progress visual ──────────────────────────────────────────────────
 
-def _tab_audit():
-    st.subheader("📜 Full Audit Trail")
+def _pipeline_visual(req: dict):
+    chain     = req["chain"]
+    stage_idx = req["stage_idx"]
+    done      = req["done"]
+    status    = req["status"]
 
-    reqs = list(reversed(st.session_state.ap_requests))
-    if not reqs:
-        st.info("No requests yet.")
-        return
+    cols = st.columns(len(chain))
+    for i, stage in enumerate(chain):
+        with cols[i]:
+            if status == "Approved":
+                bg, icon, label = "#d1fae5", "✅", "Done"
+            elif done and i == stage_idx:
+                bg, icon, label = "#fee2e2", ("❌" if status == "Rejected" else "⏰"), status
+            elif i < stage_idx:
+                bg, icon, label = "#d1fae5", "✅", "Done"
+            elif i == stage_idx and not done:
+                bg, icon, label = "#fef3c7", "⏳", "Current"
+            else:
+                bg, icon, label = "#f1f5f9", "⬜", "Waiting"
 
-    # Filter to one request or show all
-    req_ids = ["All requests"] + [r["id"] for r in reqs]
-    chosen = st.selectbox("Select Request", req_ids, key="ap_audit_filter")
-
-    if chosen != "All requests":
-        reqs = [r for r in reqs if r["id"] == chosen]
-
-    for req in reqs:
-        st.markdown(f"#### {req['id']} — {req['title']}")
-        st.caption(f"Status: **{req['status']}** | Doc type: {req['doc_type']} | Urgency: {req['urgency']}")
-
-        for entry in req["audit"]:
-            t     = entry["time"]
-            actor = entry["actor"]
-            action = entry["action"]
-            note  = entry.get("note", "")
-
-            icon = "🤖" if actor == "System" else "👤"
-            time_str = _fmt(t) if isinstance(t, datetime) else str(t)
-
-            cols = st.columns([1.5, 1.5, 4])
-            cols[0].markdown(f"<small style='color:#6b7280'>{time_str}</small>", unsafe_allow_html=True)
-            cols[1].markdown(f"{icon} **{actor}**")
-            cols[2].markdown(f"{action}" + (f" — *{note}*" if note else ""))
-
-        st.markdown("---")
+            st.markdown(
+                f"<div style='text-align:center;background:{bg};border-radius:10px;"
+                f"padding:10px 4px;font-size:12px'>"
+                f"<div style='font-size:22px'>{icon}</div>"
+                f"<strong style='font-size:11px'>{stage}</strong><br>"
+                f"<small style='color:#6b7280'>{label}</small>"
+                f"</div>",
+                unsafe_allow_html=True,
+            )
