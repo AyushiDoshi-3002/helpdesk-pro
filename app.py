@@ -201,30 +201,58 @@ def check_learned_answers(query: str):
 
 
 # ════════════════════════════════════════════════════════
-#  PDF DOWNLOAD
+#  PDF DOWNLOAD FROM SUPABASE STORAGE
+#  ↓ Change this to your actual PDF filename in the bucket
 # ════════════════════════════════════════════════════════
-_GDRIVE_FILE_ID = "1cUagShzCe0XsCbF5NEU9T62ICcU2I5AO"
+_SUPABASE_PDF_FILENAME = "questions"   # ← CHANGE THIS
+_SUPABASE_BUCKET_NAME  = "documents"           # ← change if your bucket name differs
 
-@st.cache_resource(show_spinner="📄 Downloading PDF…")
+@st.cache_resource(show_spinner="📄 Downloading PDF from Supabase…")
 def get_pdf_bytes():
     try:
-        session = requests.Session()
-        url1 = f"https://drive.usercontent.google.com/download?id={_GDRIVE_FILE_ID}&export=download&confirm=t&uuid=1"
-        resp = session.get(url1, timeout=30)
-        if "text/html" in resp.headers.get("content-type", ""):
-            url2 = f"https://drive.google.com/uc?export=download&id={_GDRIVE_FILE_ID}"
-            resp = session.get(url2, timeout=30)
-            token_match = re.search(r'confirm=([0-9A-Za-z_\-]+)', resp.text)
-            if token_match:
-                resp = session.get(
-                    f"https://drive.google.com/uc?export=download&id={_GDRIVE_FILE_ID}&confirm={token_match.group(1)}",
-                    timeout=30
-                )
-        resp.raise_for_status()
-        if "text/html" in resp.headers.get("content-type", ""):
+        supabase_url = st.secrets.get("SUPABASE_URL", "")
+        supabase_key = st.secrets.get("SUPABASE_KEY", "")
+
+        if not supabase_url or not supabase_key:
+            st.warning("Supabase URL or Key not configured in secrets.")
             return None
+
+        # ── Try public bucket URL first (works if bucket is set to Public) ──
+        public_url = (
+            f"{supabase_url}/storage/v1/object/public"
+            f"/{_SUPABASE_BUCKET_NAME}/{_SUPABASE_PDF_FILENAME}"
+        )
+        resp = requests.get(public_url, timeout=30)
+
+        # ── If public URL fails (private bucket), fall back to signed URL ──
+        if resp.status_code != 200:
+            signed_url_endpoint = (
+                f"{supabase_url}/storage/v1/object/sign"
+                f"/{_SUPABASE_BUCKET_NAME}/{_SUPABASE_PDF_FILENAME}"
+            )
+            sign_resp = requests.post(
+                signed_url_endpoint,
+                headers={
+                    "apikey": supabase_key,
+                    "Authorization": f"Bearer {supabase_key}",
+                    "Content-Type": "application/json",
+                },
+                json={"expiresIn": 3600},
+                timeout=15,
+            )
+            sign_resp.raise_for_status()
+            signed_path = sign_resp.json().get("signedURL", "")
+            if not signed_path:
+                st.warning("Could not generate signed URL for PDF.")
+                return None
+            full_signed_url = f"{supabase_url}/storage/v1{signed_path}"
+            resp = requests.get(full_signed_url, timeout=30)
+
+        resp.raise_for_status()
         return resp.content
-    except Exception:
+
+    except Exception as e:
+        st.warning(f"PDF download failed: {e}")
         return None
 
 
@@ -632,7 +660,7 @@ def page_setup():
     if st.button("📄 Test PDF + Q&A Extraction"):
         pdf_bytes = get_pdf_bytes()
         if not pdf_bytes:
-            st.error("❌ Could not download PDF.")
+            st.error("❌ Could not download PDF from Supabase Storage.")
         else:
             st.success(f"✅ PDF downloaded ({len(pdf_bytes) // 1024} KB)")
             pairs = load_qa_pairs()
