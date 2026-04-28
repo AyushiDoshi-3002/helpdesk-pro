@@ -1,5 +1,5 @@
 """
-approval_pipeline.py  —  Agentic Document Approval Pipeline
+##approval_pipeline.py  —  Agentic Document Approval Pipeline
 ============================================================
 Drop this alongside app.py and restart Streamlit.
 
@@ -15,7 +15,7 @@ Flow (matches your spec exactly):
   9. Next user gets answer→  answered from KB on Employee Portal
 
 Heartbeat: Streamlit auto-reruns every HEARTBEAT_SECONDS seconds
-           while the pipeline tab is open, simulating agent waking.
+           while the pipeline tab is open, simulating agent waking.##
 """
 
 import streamlit as st
