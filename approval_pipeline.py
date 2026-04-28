@@ -556,7 +556,9 @@ def _render_classifier_block(cls: dict):
         tags_html += "<span class='cls-tag tag-sec'>CEO-level routing</span>"
     if cls.get("auto_pass_senior"):
         tags_html += "<span class='cls-tag tag-low'>senior auto-pass</span>"
-    summary = f"<div style='font-size:12px;color:#64748b;margin-top:6px;font-style:italic'>"{cls.get('summary','')}"</div>" if cls.get("summary") else ""
+    summary_text = cls.get("summary", "")
+    summary = (f"<div style=\"font-size:12px;color:#64748b;margin-top:6px;font-style:italic\">"
+               f"&ldquo;{summary_text}&rdquo;</div>") if summary_text else ""
     return f"""
     <div class='cls-block'>
         <div style='font-size:11px;font-family:monospace;color:#64748b;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px'>System classification</div>
@@ -841,22 +843,7 @@ def page_approval_pipeline():
         if "pipeline_filter" not in st.session_state:
             st.session_state["pipeline_filter"] = "All"
 
-        # Build pill row
-        pill_html = "<div style='display:flex;flex-wrap:wrap;gap:6px;margin-bottom:18px'>"
-        for label, icon, bg, fg in FILTER_TABS:
-            active = st.session_state["pipeline_filter"] == label
-            border = f"2px solid {fg}" if active else f"1px solid #e2e8f0"
-            font_w = "700" if active else "400"
-            shadow = f"box-shadow:0 0 0 3px {bg};" if active else ""
-            pill_html += (
-                f"<span style='background:{bg if active else 'white'};color:{fg};"
-                f"border:{border};border-radius:20px;padding:5px 13px;font-size:12px;"
-                f"font-weight:{font_w};cursor:pointer;{shadow}white-space:nowrap'>"
-                f"{icon} {label}</span>"
-            )
-        pill_html += "</div>"
-
-        # Render pills as display only, use buttons underneath for interaction
+        # Render pill buttons
         cols = st.columns(len(FILTER_TABS))
         for i, (label, icon, bg, fg) in enumerate(FILTER_TABS):
             with cols[i]:
