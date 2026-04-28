@@ -1,21 +1,17 @@
 """
-##approval_pipeline.py  —  Agentic Document Approval Pipeline
-============================================================
-Drop this alongside app.py and restart Streamlit.
+approval_pipeline.py  —  Hierarchical Agentic Approval Pipeline
+================================================================
 
-Flow (matches your spec exactly):
-  1. Junior creates task  →  written to Supabase queue
-  2. Classifier agent     →  auto, reads doc_type, sets route
-  3. Routes to CTO        →  auto, assigned by classifier
-  4. CTO analyzes         →  auto, Claude API
-  5. Escalates to CEO     →  auto, CTO creates new task for CEO
-  6. Notify you           →  auto, banner in UI (+ webhook ready)
-  7. YOU approve          →  ONLY manual step
-  8. KB updated           →  auto, on approval writes to resolved_issues
-  9. Next user gets answer→  answered from KB on Employee Portal
+Exact hierarchy:
+  Junior Agent    → completes edit, creates "Review edit" task for Senior
+  Senior Agent    → reviews, creates "Approve technical change" task for Tech Lead
+  Tech Lead Agent → reviews, creates "Final approval" task for CTO (or CEO if security)
+  CTO/CEO Agent   → analyzes, if human needed → creates approval request for YOU
+  YOU             → only manual step — approve/reject in dashboard
+  KB Update       → auto-triggered on approval → writes to resolved_issues
 
-Heartbeat: Streamlit auto-reruns every HEARTBEAT_SECONDS seconds
-           while the pipeline tab is open, simulating agent waking.##
+Each agent has a heartbeat — wakes every N seconds, checks its queue,
+processes ONE task, sleeps again.
 """
 
 import streamlit as st
@@ -24,116 +20,228 @@ import json
 import requests
 from datetime import datetime, timezone
 
-# ── Config ────────────────────────────────────────────────────────────────────
-HEARTBEAT_SECONDS = 6          # how often agents "wake up" and check queue
-ANTHROPIC_MODEL   = "claude-sonnet-4-20250514"
+# ── Config ─────────────────────────────────────────────────────────────────
+HEARTBEAT_SEC  = 7
+ANTHROPIC_MODEL = "claude-sonnet-4-20250514"
 
-# ── Styles ────────────────────────────────────────────────────────────────────
+# ── Agent definitions (in order) ────────────────────────────────────────────
+AGENTS = [
+    {
+        "id":       "junior",
+        "label":    "Junior Agent",
+        "icon":     "👩‍💻",
+        "color":    "#6366f1",
+        "bg":       "#eef2ff",
+        "manual":   True,   # human fills form
+        "creates":  "senior",
+        "task_label": "Review edit",
+        "desc":     "Completes edit suggestion → creates task for Senior Agent",
+    },
+    {
+        "id":       "senior",
+        "label":    "Senior Agent",
+        "icon":     "👨‍💼",
+        "color":    "#0ea5e9",
+        "bg":       "#f0f9ff",
+        "manual":   False,
+        "creates":  "techlead",
+        "task_label": "Approve technical change",
+        "desc":     "Reviews edit quality → escalates to Tech Lead",
+    },
+    {
+        "id":       "techlead",
+        "label":    "Tech Lead Agent",
+        "icon":     "🧑‍🔧",
+        "color":    "#8b5cf6",
+        "bg":       "#f5f3ff",
+        "manual":   False,
+        "creates":  "cto",   # or ceo if security
+        "task_label": "Final approval",
+        "desc":     "Validates technical safety → routes to CTO or CEO",
+    },
+    {
+        "id":       "cto",
+        "label":    "CTO / CEO Agent",
+        "icon":     "🏛️",
+        "color":    "#f59e0b",
+        "bg":       "#fffbeb",
+        "manual":   False,
+        "creates":  "human",
+        "task_label": "Human approval required",
+        "desc":     "Final AI review → creates approval request for you if needed",
+    },
+    {
+        "id":       "human",
+        "label":    "Your Approval",
+        "icon":     "✅",
+        "color":    "#059669",
+        "bg":       "#f0fdf4",
+        "manual":   True,   # THE ONLY MANUAL STEP
+        "creates":  "kb",
+        "task_label": "KB update",
+        "desc":     "THE ONLY MANUAL STEP — approve or reject in dashboard",
+    },
+    {
+        "id":       "kb",
+        "label":    "KB Update",
+        "icon":     "📚",
+        "color":    "#10b981",
+        "bg":       "#ecfdf5",
+        "manual":   False,
+        "creates":  None,
+        "task_label": None,
+        "desc":     "Auto-triggered on approval → writes to resolved_issues KB",
+    },
+]
+
+AGENT_BY_ID = {a["id"]: a for a in AGENTS}
+
+# ── Status → agent mapping ───────────────────────────────────────────────────
+# Each status means "currently waiting for this agent to act"
+STATUS_AGENT = {
+    "Queued":          "junior",
+    "Senior Review":   "senior",
+    "TechLead Review": "techlead",
+    "CTO Review":      "cto",
+    "Awaiting Approval":"human",
+    "Approved":        "kb",
+    "Rejected":        "kb",
+    "Done":            "kb",
+}
+
+# ── CSS ──────────────────────────────────────────────────────────────────────
 _CSS = """
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500&display=swap');
 
-/* ── flow hierarchy ── */
-.flow-wrap { display:flex; flex-direction:column; gap:0; margin:16px 0 8px; }
-.flow-node { display:flex; align-items:flex-start; gap:14px; position:relative; }
-.flow-node:not(:last-child)::after {
-    content:''; position:absolute; left:18px; top:42px;
-    width:2px; height:calc(100% - 8px);
-    background:linear-gradient(180deg,#7c3aed55,#7c3aed11);
-}
-.f-dot {
-    width:38px; height:38px; border-radius:50%;
-    display:flex; align-items:center; justify-content:center;
-    font-size:17px; flex-shrink:0; z-index:1; border:2px solid #e5e7eb;
-}
-.f-dot.idle     { background:#f3f4f6; border-color:#d1d5db; }
-.f-dot.running  { background:#ede9fe; border-color:#7c3aed;
-                  animation:glow 1.2s ease-in-out infinite; }
-.f-dot.done     { background:#d1fae5; border-color:#059669; }
-.f-dot.fail     { background:#fee2e2; border-color:#dc2626; }
-.f-dot.waiting  { background:#fef3c7; border-color:#d97706; }
-@keyframes glow {
-    0%,100% { box-shadow:0 0 0 0 rgba(124,58,237,.3); }
-    50%      { box-shadow:0 0 0 7px rgba(124,58,237,0); }
-}
-.f-body { flex:1; padding:7px 0 18px; }
-.f-title { font-family:'Syne',sans-serif; font-size:14px; font-weight:700; color:#1e1b4b; }
-.b-auto   { display:inline-block; font-size:10px; font-weight:700;
-            padding:1px 8px; border-radius:20px; margin-left:6px;
-            background:#ede9fe; color:#7c3aed; }
-.b-manual { display:inline-block; font-size:10px; font-weight:700;
-            padding:1px 8px; border-radius:20px; margin-left:6px;
-            background:#fef3c7; color:#92400e; }
-.f-sub  { font-size:12px; color:#6b7280; margin-top:1px; }
-.f-res  { font-size:12px; margin-top:6px; padding:7px 11px;
-          border-radius:8px; line-height:1.5; }
-.f-res.done    { background:#f0fdf4; color:#166534; border-left:3px solid #059669; }
-.f-res.fail    { background:#fef2f2; color:#991b1b; border-left:3px solid #dc2626; }
-.f-res.running { background:#f5f3ff; color:#5b21b6; border-left:3px solid #7c3aed; }
-.f-res.waiting { background:#fffbeb; color:#92400e; border-left:3px solid #d97706; }
+/* ── hierarchy tree ── */
+.hier { display:flex; flex-direction:column; gap:0; margin:20px 0 10px; }
 
-/* ── task cards ── */
-.tcard {
-    background:white; border-radius:14px; padding:16px 20px;
-    margin-bottom:12px; box-shadow:0 2px 10px rgba(0,0,0,.07);
-    border-left:5px solid #7c3aed;
-}
-.tcard.escalated { border-left-color:#d97706; }
-.tcard.approved  { border-left-color:#059669; }
-.tcard.rejected  { border-left-color:#dc2626; }
+.hnode { display:flex; align-items:flex-start; gap:0; position:relative; }
 
-.pill { display:inline-block; padding:2px 10px; border-radius:20px;
-        font-size:11px; font-weight:700; margin-right:4px; }
-.p-queue     { background:#e0e7ff; color:#3730a3; }
-.p-classify  { background:#ede9fe; color:#5b21b6; }
-.p-cto       { background:#dbeafe; color:#1e40af; }
-.p-ceo       { background:#fef3c7; color:#92400e; }
-.p-escalated { background:#fef3c7; color:#92400e; }
-.p-approved  { background:#d1fae5; color:#065f46; }
-.p-rejected  { background:#fee2e2; color:#991b1b; }
+/* vertical connector line */
+.hnode:not(:last-child) .hline-wrap::after {
+    content:'';
+    position:absolute;
+    left: 19px;
+    top: 42px;
+    width: 2px;
+    height: calc(100% - 2px);
+    background: linear-gradient(180deg,#94a3b855,#94a3b811);
+    z-index:0;
+}
+.hline-wrap { position:relative; display:flex; flex-direction:column; align-items:center; }
+
+.hdot {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+    z-index: 1;
+    border: 2px solid #e2e8f0;
+    background: #f8fafc;
+    transition: all .3s;
+    margin-top: 2px;
+}
+.hdot.idle     { background:#f1f5f9; border-color:#cbd5e1; filter:grayscale(.6); }
+.hdot.active   { border-width:3px; animation:activeglow 1.4s ease-in-out infinite; }
+.hdot.done     { border-width:2px; }
+.hdot.fail     { background:#fee2e2 !important; border-color:#dc2626 !important; }
+.hdot.waiting  { animation:waitpulse 2s ease-in-out infinite; }
+
+@keyframes activeglow {
+    0%,100% { box-shadow: 0 0 0 0 rgba(99,102,241,.4); }
+    50%      { box-shadow: 0 0 0 8px rgba(99,102,241,0); }
+}
+@keyframes waitpulse {
+    0%,100% { opacity:1; } 50% { opacity:.55; }
+}
+
+/* arrow between dots */
+.harrow {
+    font-size:13px; color:#94a3b8;
+    margin: 3px 0; line-height:1;
+    z-index:1;
+}
+
+.hbody {
+    flex:1; padding: 6px 0 22px 16px;
+}
+.htitle {
+    font-family:'Syne',sans-serif;
+    font-size:14px; font-weight:700; color:#0f172a;
+    display:flex; align-items:center; gap:8px;
+}
+.badge-auto   { font-size:9px; font-weight:700; padding:2px 7px;
+                border-radius:20px; background:#ede9fe; color:#7c3aed; }
+.badge-manual { font-size:9px; font-weight:700; padding:2px 7px;
+                border-radius:20px; background:#fef3c7; color:#92400e; }
+.badge-active { font-size:9px; font-weight:700; padding:2px 7px;
+                border-radius:20px; background:#dcfce7; color:#166534;
+                animation:waitpulse 1.5s infinite; }
+
+.hdesc { font-size:12px; color:#64748b; margin-top:2px; }
+
+.hresult {
+    font-size:12px; margin-top:7px; padding:8px 12px;
+    border-radius:9px; line-height:1.6;
+}
+.hresult.done    { background:#f0fdf4; color:#166534; border-left:3px solid #059669; }
+.hresult.fail    { background:#fef2f2; color:#991b1b; border-left:3px solid #dc2626; }
+.hresult.active  { background:#f5f3ff; color:#4c1d95; border-left:3px solid #7c3aed; }
+.hresult.waiting { background:#fffbeb; color:#92400e; border-left:3px solid #d97706; }
+
+/* task chain pill */
+.creates-arrow {
+    font-size:11px; color:#94a3b8; margin:4px 0 0 0;
+    display:flex; align-items:center; gap:5px;
+}
+.creates-pill {
+    display:inline-block; font-size:10px; font-weight:600;
+    padding:2px 9px; border-radius:20px;
+    background:#f1f5f9; color:#475569; border:1px solid #e2e8f0;
+}
 
 /* ── metric cards ── */
-.mc { background:white; border-radius:14px; padding:16px;
-      text-align:center; box-shadow:0 2px 10px rgba(0,0,0,.06); }
-.mc-n { font-family:'Syne',sans-serif; font-size:28px; font-weight:800; color:#7c3aed; }
-.mc-l { font-size:12px; color:#6b7280; margin-top:2px; }
+.mc { background:white; border-radius:12px; padding:14px;
+      text-align:center; box-shadow:0 2px 8px rgba(0,0,0,.06); }
+.mc-n { font-family:'Syne',sans-serif; font-size:26px; font-weight:800; color:#6366f1; }
+.mc-l { font-size:11px; color:#6b7280; margin-top:2px; }
 
-/* ── heartbeat pulse ── */
-.hb-bar {
+/* ── status pills ── */
+.spill { display:inline-block; padding:2px 10px; border-radius:20px;
+         font-size:11px; font-weight:700; margin-right:4px; }
+
+/* ── heartbeat bar ── */
+.hbbar {
     display:flex; align-items:center; gap:10px;
     background:#f5f3ff; border-radius:10px; padding:8px 14px;
-    font-size:13px; color:#5b21b6; margin-bottom:16px;
+    font-size:13px; color:#4c1d95; margin-bottom:16px;
+    border: 1px solid #ede9fe;
 }
-.hb-dot {
-    width:10px; height:10px; border-radius:50%; background:#7c3aed;
-    animation:hbpulse 1.2s ease-in-out infinite;
+.hbdot {
+    width:9px; height:9px; border-radius:50%; background:#7c3aed;
+    animation:hbp 1.4s ease-in-out infinite;
 }
-@keyframes hbpulse {
-    0%,100% { opacity:1; transform:scale(1); }
-    50%      { opacity:.4; transform:scale(.7); }
+@keyframes hbp {
+    0%,100% { opacity:1; transform:scale(1.1); }
+    50%      { opacity:.3; transform:scale(.7); }
 }
+
+/* ── task card ── */
+.tcard {
+    background:white; border-radius:14px; padding:18px 22px;
+    margin-bottom:12px; box-shadow:0 2px 10px rgba(0,0,0,.07);
+    border-left:5px solid #6366f1;
+}
+.tcard.done     { border-left-color:#059669; }
+.tcard.rejected { border-left-color:#dc2626; }
+.tcard.waiting  { border-left-color:#f59e0b; }
 </style>
 """
 
-# ── Pipeline step definitions ─────────────────────────────────────────────────
-STEPS = [
-    {"key":"queued",     "label":"Junior creates task",    "icon":"👤", "auto":False,
-     "desc":"Junior fills form → task enters Supabase queue"},
-    {"key":"classify",   "label":"Classifier Agent",       "icon":"🧠", "auto":True,
-     "desc":"Wakes on heartbeat → reads doc_type → sets route"},
-    {"key":"cto",        "label":"CTO Agent",              "icon":"👔", "auto":True,
-     "desc":"Analyzes content via Claude → decides to approve or escalate"},
-    {"key":"ceo",        "label":"CEO Agent",              "icon":"🟣", "auto":True,
-     "desc":"Auto-created task by CTO when priority=high → CEO reviews"},
-    {"key":"notify",     "label":"Notification",           "icon":"🔔", "auto":True,
-     "desc":"Banner in UI (webhook-ready for Slack/email)"},
-    {"key":"approve",    "label":"Your Approval",          "icon":"✅", "auto":False,
-     "desc":"THE ONLY MANUAL STEP — you click Approve or Reject"},
-    {"key":"kb",         "label":"KB Update Agent",        "icon":"📚", "auto":True,
-     "desc":"On approval → writes solution to resolved_issues in Supabase"},
-]
-
-# ── Supabase helpers ──────────────────────────────────────────────────────────
+# ── Supabase ─────────────────────────────────────────────────────────────────
 @st.cache_resource(show_spinner=False)
 def _db():
     try:
@@ -149,19 +257,31 @@ def _db():
 def _now():
     return datetime.now(timezone.utc).isoformat()
 
-def _create_task(title, requester, department, doc_type, description, priority):
+def _load_sr(task):
+    try: return json.loads(task.get("stage_results") or "{}")
+    except: return {}
+
+def _create_task(title, requester, dept, doc_type, desc, priority):
     db = _db()
     if db is None: raise ConnectionError("Supabase not configured.")
     row = {
         "title":         title,
         "requester":     requester,
-        "department":    department,
+        "department":    dept,
         "request_type":  doc_type,
-        "description":   description,
+        "description":   desc,
         "priority":      priority,
-        "stage":         "queued",
-        "status":        "Queued",
-        "stage_results": json.dumps({"queued": {"status":"created", "by": requester}}),
+        "stage":         "junior",
+        "status":        "Senior Review",   # immediately queued for Senior
+        "stage_results": json.dumps({
+            "junior": {
+                "agent":    "Junior Agent",
+                "action":   "Created task",
+                "decision": "Approved",
+                "reason":   f"Edit suggested by {requester}. Forwarded to Senior Agent for review.",
+                "risk":     "Low",
+            }
+        }),
         "risk_level":    "Low",
         "created_at":    _now(),
         "updated_at":    _now(),
@@ -170,27 +290,14 @@ def _create_task(title, requester, department, doc_type, description, priority):
     if r.data: return r.data[0]
     raise Exception("Insert failed.")
 
-def _get_queued_tasks():
+def _get_tasks_for_agent(status):
     db = _db()
     if db is None: return []
     try:
         return db.table("approval_requests")\
-                 .select("*")\
-                 .in_("status", ["Queued","Classifying","CTO Review","CEO Review"])\
-                 .order("created_at")\
-                 .execute().data or []
-    except Exception: return []
-
-def _get_escalated_tasks():
-    db = _db()
-    if db is None: return []
-    try:
-        return db.table("approval_requests")\
-                 .select("*")\
-                 .eq("status","Escalated")\
-                 .order("created_at")\
-                 .execute().data or []
-    except Exception: return []
+                 .select("*").eq("status", status)\
+                 .order("created_at").execute().data or []
+    except: return []
 
 def _get_all_tasks(status_filter=None):
     db = _db()
@@ -200,13 +307,13 @@ def _get_all_tasks(status_filter=None):
         if status_filter and status_filter != "All":
             q = q.eq("status", status_filter)
         return q.execute().data or []
-    except Exception: return []
+    except: return []
 
-def _update_task(tid, **kwargs):
+def _update_task(tid, **kw):
     db = _db()
     if db is None: return
-    kwargs["updated_at"] = _now()
-    db.table("approval_requests").update(kwargs).eq("id", tid).execute()
+    kw["updated_at"] = _now()
+    db.table("approval_requests").update(kw).eq("id", tid).execute()
 
 def _delete_task(tid):
     db = _db()
@@ -216,241 +323,355 @@ def _write_kb(query, solution):
     db = _db()
     if db is None: return
     try:
-        existing = db.table("resolved_issues").select("id").eq("query", query).execute()
-        if existing.data:
-            db.table("resolved_issues").update({"solution": solution}).eq("query", query).execute()
+        ex = db.table("resolved_issues").select("id").eq("query",query).execute()
+        if ex.data:
+            db.table("resolved_issues").update({"solution":solution}).eq("query",query).execute()
         else:
-            db.table("resolved_issues").insert({"query": query, "solution": solution}).execute()
+            db.table("resolved_issues").insert({"query":query,"solution":solution}).execute()
     except Exception as e:
-        st.warning(f"KB write failed: {e}")
+        st.warning(f"KB write: {e}")
 
 def _stats():
     rows = _get_all_tasks()
+    in_progress = {"Senior Review","TechLead Review","CTO Review"}
     return {
-        "total":     len(rows),
-        "pending":   sum(1 for r in rows if r.get("status") in ("Queued","Classifying","CTO Review","CEO Review")),
-        "escalated": sum(1 for r in rows if r.get("status") == "Escalated"),
-        "approved":  sum(1 for r in rows if r.get("status") == "Approved"),
-        "rejected":  sum(1 for r in rows if r.get("status") == "Rejected"),
+        "total":    len(rows),
+        "progress": sum(1 for r in rows if r.get("status") in in_progress),
+        "awaiting": sum(1 for r in rows if r.get("status") == "Awaiting Approval"),
+        "approved": sum(1 for r in rows if r.get("status") == "Approved"),
+        "rejected": sum(1 for r in rows if r.get("status") == "Rejected"),
     }
 
-# ── Claude agent call ─────────────────────────────────────────────────────────
-def _claude(system: str, user: str) -> str:
+# ── Claude API ────────────────────────────────────────────────────────────────
+def _claude(system: str, user: str) -> dict:
     try:
         resp = requests.post(
             "https://api.anthropic.com/v1/messages",
-            headers={"Content-Type": "application/json"},
+            headers={"Content-Type":"application/json"},
             json={
                 "model":      ANTHROPIC_MODEL,
-                "max_tokens": 400,
+                "max_tokens": 300,
                 "system":     system,
                 "messages":   [{"role":"user","content":user}],
             },
             timeout=30,
         )
-        out = ""
+        raw = ""
         for block in resp.json().get("content",[]):
-            if block.get("type") == "text":
-                out += block["text"]
-        return out.strip()
+            if block.get("type") == "text": raw += block["text"]
+        raw = raw.strip().strip("```json").strip("```").strip()
+        return json.loads(raw)
     except Exception as e:
-        return json.dumps({"decision":"Approved","reason":f"API error: {e}","risk":"Low"})
+        return {"decision":"Escalate","reason":f"Error: {e}","risk":"Medium"}
 
-def _parse_json(raw: str) -> dict:
-    try:
-        clean = raw.strip().strip("```json").strip("```").strip()
-        return json.loads(clean)
-    except Exception:
-        return {"decision":"Approved","reason":raw[:200],"risk":"Low"}
+# ── Agent runners ─────────────────────────────────────────────────────────────
 
-# ── Agent logic ───────────────────────────────────────────────────────────────
-def run_classifier(task: dict) -> dict:
-    """Step 2 — classify doc_type, assign risk, route to CTO."""
-    raw = _claude(
-        system=(
-            "You are a document classifier agent. "
-            "Classify the request and respond ONLY with raw JSON "
-            "(no markdown). Keys: "
-            "'risk' (Low/Medium/High), "
-            "'category' (Financial/HR/Technical/Legal/Operational/Strategic), "
-            "'reason' (1 sentence)."
-        ),
-        user=(
-            f"Title: {task['title']}\n"
-            f"Type: {task['request_type']}\n"
-            f"Dept: {task['department']}\n"
-            f"Description: {task['description']}"
-        ),
+def _agent_system(role: str, next_role: str) -> str:
+    return (
+        f"You are the {role} in a document approval hierarchy. "
+        f"Review the request and decide whether to approve and pass to {next_role}, "
+        f"or reject it entirely. "
+        "Respond ONLY with raw JSON (no markdown). "
+        'Keys: "decision" ("Approve" or "Reject"), '
+        '"reason" (1-2 sentences), '
+        '"risk" ("Low", "Medium", or "High"), '
+        '"security_involved" (true or false).'
     )
-    result = _parse_json(raw)
+
+def _agent_user(task: dict, prev_notes: str = "") -> str:
+    return (
+        f"Document request:\n"
+        f"Title: {task['title']}\n"
+        f"Type: {task['request_type']}\n"
+        f"Department: {task['department']}\n"
+        f"Requester: {task['requester']}\n"
+        f"Description: {task['description']}\n"
+        f"Priority: {task['priority']}\n"
+        + (f"Previous agent notes: {prev_notes}\n" if prev_notes else "")
+    )
+
+def run_senior_agent(task: dict):
+    """
+    Senior Agent wakes → picks up 'Senior Review' task →
+    reviews → creates 'Approve technical change' task for Tech Lead
+    """
     sr = _load_sr(task)
-    sr["classify"] = result
-    _update_task(
-        task["id"],
-        status="CTO Review",
-        stage="cto",
-        risk_level=result.get("risk","Low"),
-        stage_results=json.dumps(sr),
+    prev = sr.get("junior",{}).get("reason","")
+    result = _claude(
+        _agent_system("Senior Agent", "Tech Lead"),
+        _agent_user(task, prev),
     )
-    return result
+    sr["senior"] = {
+        "agent":    "Senior Agent",
+        "action":   "Reviewed edit",
+        "decision": result.get("decision","Approve"),
+        "reason":   result.get("reason",""),
+        "risk":     result.get("risk","Low"),
+    }
+    if result.get("risk","Low") == "High":
+        _update_task(task["id"], risk_level="High")
 
-def run_cto(task: dict) -> dict:
-    """Step 3/4 — CTO agent analyzes; escalates to CEO if high-risk."""
-    raw = _claude(
-        system=(
-            "You are the CTO agent in an approval pipeline. "
-            "Analyze the document request. Respond ONLY with raw JSON. "
-            "Keys: 'decision' (Approved/Escalate), "
-            "'reason' (1-2 sentences), "
-            "'risk' (Low/Medium/High)."
-        ),
-        user=(
-            f"Title: {task['title']}\n"
-            f"Type: {task['request_type']}\n"
-            f"Risk from classifier: {task.get('risk_level','Unknown')}\n"
-            f"Description: {task['description']}"
-        ),
-    )
-    result = _parse_json(raw)
-    sr = _load_sr(task)
-    sr["cto"] = result
-
-    if result.get("decision") == "Escalate" or task.get("risk_level") == "High":
-        # CTO escalates → CEO agent task created (step 5)
-        sr["ceo"] = {"status": "pending", "reason": "Escalated by CTO for high-risk review."}
-        sr["notify"] = {"status": "sent", "message": "Escalated to CEO — awaiting your approval."}
-        _update_task(
-            task["id"],
-            status="Escalated",
-            stage="approve",
-            stage_results=json.dumps(sr),
-        )
+    if result.get("decision") == "Reject":
+        _update_task(task["id"],
+            status="Rejected", stage="senior",
+            stage_results=json.dumps(sr))
     else:
-        # CTO approved → skip CEO, go straight to notify + await human approval
-        sr["notify"] = {"status": "sent", "message": "CTO approved. Awaiting your final sign-off."}
-        _update_task(
-            task["id"],
-            status="Escalated",   # still needs human approval
-            stage="approve",
-            stage_results=json.dumps(sr),
-        )
-    return result
+        # Creates next task: "Approve technical change" for Tech Lead
+        _update_task(task["id"],
+            status="TechLead Review",
+            stage="techlead",
+            stage_results=json.dumps(sr))
 
-def run_kb_update(task: dict):
-    """Step 8 — write approved solution to resolved_issues KB."""
+def run_techlead_agent(task: dict):
+    """
+    Tech Lead Agent wakes → picks up 'TechLead Review' task →
+    validates technical safety → routes to CTO or CEO
+    """
+    sr    = _load_sr(task)
+    prev  = sr.get("senior",{}).get("reason","")
+    result = _claude(
+        _agent_system("Tech Lead Agent", "CTO or CEO"),
+        _agent_user(task, prev),
+    )
+    sr["techlead"] = {
+        "agent":             "Tech Lead Agent",
+        "action":            "Validated technical safety",
+        "decision":          result.get("decision","Approve"),
+        "reason":            result.get("reason",""),
+        "risk":              result.get("risk","Low"),
+        "security_involved": result.get("security_involved", False),
+    }
+    if result.get("risk","Low") == "High":
+        _update_task(task["id"], risk_level="High")
+
+    if result.get("decision") == "Reject":
+        _update_task(task["id"],
+            status="Rejected", stage="techlead",
+            stage_results=json.dumps(sr))
+    else:
+        # Creates "Final approval" task for CTO (or CEO if security)
+        assignee = "CEO" if result.get("security_involved") else "CTO"
+        sr["techlead"]["routed_to"] = assignee
+        _update_task(task["id"],
+            status="CTO Review",
+            stage="cto",
+            stage_results=json.dumps(sr))
+
+def run_cto_ceo_agent(task: dict):
+    """
+    CTO/CEO Agent wakes → sees 'Final approval' task →
+    if human approval required → creates approval request for YOU
+    """
+    sr   = _load_sr(task)
+    prev = sr.get("techlead",{}).get("reason","")
+    routed_to = sr.get("techlead",{}).get("routed_to","CTO")
+
+    result = _claude(
+        (
+            f"You are the {routed_to} agent in a document approval hierarchy. "
+            "This is the final AI review before human sign-off. "
+            "Be conservative — escalate to human if there is any doubt. "
+            "Respond ONLY with raw JSON (no markdown). "
+            'Keys: "decision" ("Approve" — auto-approve if trivial, or "Escalate" — send to human), '
+            '"reason" (1-2 sentences), "risk" ("Low","Medium","High").'
+        ),
+        _agent_user(task, prev),
+    )
+
+    sr["cto"] = {
+        "agent":    f"{routed_to} Agent",
+        "action":   "Final AI review",
+        "decision": result.get("decision","Escalate"),
+        "reason":   result.get("reason",""),
+        "risk":     result.get("risk","Medium"),
+    }
+
+    if result.get("decision") == "Approve" and result.get("risk","High") == "Low":
+        # Trivially safe — auto-approve, skip human, go straight to KB
+        sr["human"] = {
+            "agent":    "Auto",
+            "decision": "Approved",
+            "reason":   "Auto-approved by CTO/CEO agent (low risk).",
+        }
+        _update_task(task["id"],
+            status="Approved", stage="kb",
+            stage_results=json.dumps(sr))
+        _run_kb({**task, "stage_results": json.dumps(sr)})
+    else:
+        # Escalate → creates approval request for human
+        _update_task(task["id"],
+            status="Awaiting Approval",
+            stage="human",
+            stage_results=json.dumps(sr))
+
+def _run_kb(task: dict):
+    """Auto-triggered on approval → writes to resolved_issues."""
     sr = _load_sr(task)
-    solution = (
-        sr.get("cto", {}).get("reason","")
-        or sr.get("classify", {}).get("reason","")
+    reason = (
+        sr.get("cto",{}).get("reason","")
+        or sr.get("techlead",{}).get("reason","")
         or "Approved by pipeline."
     )
-    _write_kb(task["title"], f"[Pipeline approved] {solution}")
-    sr["kb"] = {"status":"updated", "written_at": _now()}
+    solution = f"[Pipeline Approved] {reason}"
+    _write_kb(task["title"], solution)
+    sr["kb"] = {"status":"updated","written_at":_now()}
     _update_task(task["id"], stage_results=json.dumps(sr))
 
-# ── Heartbeat — runs all pending agent work ───────────────────────────────────
+# ── Heartbeat — each agent checks its own queue ───────────────────────────────
 def heartbeat_tick():
     """
-    Called every HEARTBEAT_SECONDS.
-    Checks Supabase queue and advances each task one stage.
-    Simulates agents waking up, finding work, processing, sleeping.
+    Simulates each agent waking on its heartbeat:
+      Senior   → processes 'Senior Review' tasks
+      TechLead → processes 'TechLead Review' tasks
+      CTO/CEO  → processes 'CTO Review' tasks
     """
-    tasks = _get_queued_tasks()
-    for task in tasks:
-        status = task.get("status","")
-        if status == "Queued":
-            _update_task(task["id"], status="Classifying", stage="classify")
-            run_classifier(task)
-        elif status == "CTO Review":
-            run_cto(task)
-        # CEO Review is a logical state; CEO agent runs inside run_cto escalation path
-        # "Escalated" tasks wait for human approval — heartbeat skips them
+    processed = 0
+    for status, runner in [
+        ("Senior Review",   run_senior_agent),
+        ("TechLead Review", run_techlead_agent),
+        ("CTO Review",      run_cto_ceo_agent),
+    ]:
+        tasks = _get_tasks_for_agent(status)
+        for task in tasks[:2]:   # process up to 2 per tick per agent
+            try:
+                runner(task)
+                processed += 1
+            except Exception as e:
+                st.warning(f"Agent error on task #{task.get('id')}: {e}")
+    return processed
 
-def _load_sr(task: dict) -> dict:
-    try:
-        return json.loads(task.get("stage_results") or "{}")
-    except Exception:
-        return {}
+# ── Hierarchy renderer ────────────────────────────────────────────────────────
+def _pill_color(agent_id):
+    colors = {
+        "junior":   ("#eef2ff","#4338ca"),
+        "senior":   ("#f0f9ff","#0369a1"),
+        "techlead": ("#f5f3ff","#6d28d9"),
+        "cto":      ("#fffbeb","#b45309"),
+        "human":    ("#f0fdf4","#065f46"),
+        "kb":       ("#ecfdf5","#047857"),
+    }
+    return colors.get(agent_id,("#f1f5f9","#475569"))
 
-# ── Flow renderer ─────────────────────────────────────────────────────────────
-_STAGE_ORDER = ["queued","classify","cto","ceo","notify","approve","kb"]
+def _render_hierarchy(sr: dict, current_stage: str, risk_level: str = "Low"):
+    """Render the full agent hierarchy with live status for a task."""
+    st.markdown("<div class='hier'>", unsafe_allow_html=True)
 
-def _render_flow(sr: dict, current_stage: str, is_high_risk: bool = False):
-    st.markdown("<div class='flow-wrap'>", unsafe_allow_html=True)
-    for step in STEPS:
-        key = step["key"]
-        # Map step key to what's in stage_results
-        res_key = {
-            "queued":   "queued",
-            "classify": "classify",
-            "cto":      "cto",
-            "ceo":      "ceo",
-            "notify":   "notify",
-            "approve":  "approve",
-            "kb":       "kb",
-        }.get(key, key)
+    for i, agent in enumerate(AGENTS):
+        aid   = agent["id"]
+        res   = sr.get(aid)
+        bg, fg = _pill_color(aid)
 
-        in_results = res_key in sr
-        is_active  = key == current_stage
-
-        if in_results:
-            res = sr[res_key]
-            d   = res.get("decision") or res.get("status","")
-            if d in ("Approved","approved","updated","sent","created"):
-                dot_cls = "done"
-                res_html = f"<div class='f-res done'>✅ {res.get('reason') or res.get('message') or d}</div>"
-            elif d == "pending":
-                dot_cls  = "waiting"
-                res_html = f"<div class='f-res waiting'>🟣 {res.get('reason','Awaiting…')}</div>"
-            elif d in ("Escalate","Escalated"):
-                dot_cls  = "waiting"
-                res_html = f"<div class='f-res waiting'>⬆️ {res.get('reason','Escalated')}</div>"
+        # Determine dot state
+        if res:
+            d = res.get("decision","")
+            if d in ("Approved","Approve","updated","Auto") or res.get("status") == "updated":
+                dot_cls  = "done"
+                dot_style = f"background:{bg};border-color:{fg};"
+                res_cls  = "done"
+                tick     = "✅"
+                res_text = res.get("reason") or res.get("status","")
+            elif d == "Reject":
+                dot_cls  = "fail"
+                dot_style = ""
+                res_cls  = "fail"
+                tick     = "❌"
+                res_text = res.get("reason","")
+            elif d in ("Escalate","Pending") or res.get("action") == "Created task":
+                dot_cls  = "done"
+                dot_style = f"background:{bg};border-color:{fg};"
+                res_cls  = "done"
+                tick     = "⬆️" if d == "Escalate" else "✅"
+                res_text = res.get("reason") or res.get("action","")
             else:
                 dot_cls  = "done"
-                res_html = f"<div class='f-res done'>✅ {res.get('reason','')}</div>"
-        elif is_active:
-            dot_cls  = "running"
-            res_html = "<div class='f-res running'>⏳ Agent working…</div>"
+                dot_style = f"background:{bg};border-color:{fg};"
+                res_cls  = "done"
+                tick     = "✅"
+                res_text = res.get("reason","")
+        elif aid == current_stage:
+            dot_cls   = "active"
+            dot_style = f"background:{bg};border-color:{fg};"
+            res_cls   = "active"
+            tick      = ""
+            res_text  = "⏳ Agent working…"
         else:
-            dot_cls  = "idle"
-            res_html = ""
+            dot_cls   = "idle"
+            dot_style = ""
+            res_cls   = ""
+            tick      = ""
+            res_text  = ""
 
-        badge = (
-            "<span class='b-auto'>AUTO</span>" if step["auto"]
-            else "<span class='b-manual'>MANUAL</span>"
+        # Badge
+        if agent["manual"]:
+            badge = "<span class='badge-manual'>MANUAL</span>"
+        elif aid == current_stage and not res:
+            badge = "<span class='badge-active'>● ACTIVE</span>"
+        else:
+            badge = "<span class='badge-auto'>AUTO</span>"
+
+        # Creates-arrow
+        if agent["creates"] and res and res.get("decision") not in ("Reject",):
+            next_agent = AGENT_BY_ID.get(agent["creates"],{})
+            creates_html = (
+                f"<div class='creates-arrow'>"
+                f"↓ creates task "
+                f"<span class='creates-pill'>"
+                f"{agent['task_label']} → {next_agent.get('label','')}"
+                f"</span></div>"
+            )
+        else:
+            creates_html = ""
+
+        result_html = (
+            f"<div class='hresult {res_cls}'>{tick} {res_text}</div>"
+            if res_text else ""
         )
+
+        # Routed-to note for CTO/CEO
+        extra = ""
+        if aid == "techlead" and res and res.get("routed_to"):
+            extra = (
+                f"<div style='font-size:11px;color:#7c3aed;margin-top:3px'>"
+                f"→ Routed to: <strong>{res['routed_to']}</strong>"
+                + (" (security involved)" if res.get("security_involved") else "")
+                + "</div>"
+            )
+
         st.markdown(
-            f"<div class='flow-node'>"
-            f"  <div class='f-dot {dot_cls}'>{step['icon']}</div>"
-            f"  <div class='f-body'>"
-            f"    <div class='f-title'>{step['label']}{badge}</div>"
-            f"    <div class='f-sub'>{step['desc']}</div>"
-            f"    {res_html}"
+            f"<div class='hnode'>"
+            f"  <div class='hline-wrap'>"
+            f"    <div class='hdot {dot_cls}' style='{dot_style}'>{agent['icon']}</div>"
+            f"    {'<div class=\"harrow\">↓</div>' if i < len(AGENTS)-1 else ''}"
+            f"  </div>"
+            f"  <div class='hbody'>"
+            f"    <div class='htitle'>{agent['label']}{badge}</div>"
+            f"    <div class='hdesc'>{agent['desc']}</div>"
+            f"    {result_html}{extra}{creates_html}"
             f"  </div>"
             f"</div>",
             unsafe_allow_html=True,
         )
+
     st.markdown("</div>", unsafe_allow_html=True)
 
-# ── Status pill helper ────────────────────────────────────────────────────────
-def _pill(status):
-    cls = {
-        "Queued":      "p-queue",
-        "Classifying": "p-classify",
-        "CTO Review":  "p-cto",
-        "CEO Review":  "p-ceo",
-        "Escalated":   "p-escalated",
-        "Approved":    "p-approved",
-        "Rejected":    "p-rejected",
-    }.get(status, "p-queue")
-    return f"<span class='pill {cls}'>{status}</span>"
+# ── Helpers ───────────────────────────────────────────────────────────────────
+def _status_pill(status):
+    cfg = {
+        "Senior Review":    ("#dbeafe","#1e40af"),
+        "TechLead Review":  ("#ede9fe","#5b21b6"),
+        "CTO Review":       ("#fef3c7","#92400e"),
+        "Awaiting Approval":("#fef3c7","#92400e"),
+        "Approved":         ("#d1fae5","#065f46"),
+        "Rejected":         ("#fee2e2","#991b1b"),
+        "Done":             ("#d1fae5","#065f46"),
+    }
+    bg, fg = cfg.get(status,("#f1f5f9","#475569"))
+    return f"<span class='spill' style='background:{bg};color:{fg}'>{status}</span>"
 
-def _fmt_time(ts):
+def _fmt(ts):
     try:
-        dt = datetime.fromisoformat(ts.replace("Z","+00:00"))
-        return dt.strftime("%d %b %Y, %I:%M %p")
-    except Exception:
-        return ts or "—"
+        return datetime.fromisoformat(ts.replace("Z","+00:00")).strftime("%d %b %Y, %I:%M %p")
+    except: return ts or "—"
 
 # ════════════════════════════════════════════════════════
 #  PAGE ENTRY POINT
@@ -459,92 +680,77 @@ def page_approval_pipeline():
     st.markdown(_CSS, unsafe_allow_html=True)
     st.markdown("# 📋 Approval Pipeline")
     st.markdown(
-        "<p style='color:#6b7280'>Agentic document approval — agents wake automatically, "
-        "process tasks, and escalate. Your only job is the final approval.</p>",
-        unsafe_allow_html=True,
+        "<p style='color:#6b7280'>"
+        "Hierarchical agentic pipeline: Junior → Senior → Tech Lead → CTO/CEO → You → KB. "
+        "Agents wake automatically. Your only action is the final approval."
+        "</p>", unsafe_allow_html=True,
     )
 
-    # ── Heartbeat init ────────────────────────────────────────────────────────
+    # ── Heartbeat ─────────────────────────────────────────────────────────────
     if "hb_last" not in st.session_state:
         st.session_state["hb_last"] = 0.0
 
-    now = time.time()
-    time_since = now - st.session_state["hb_last"]
-    next_tick   = max(0, HEARTBEAT_SECONDS - time_since)
+    now        = time.time()
+    since      = now - st.session_state["hb_last"]
+    next_tick  = max(0, HEARTBEAT_SEC - since)
 
-    # Run heartbeat if interval elapsed
-    if time_since >= HEARTBEAT_SECONDS:
+    if since >= HEARTBEAT_SEC:
         st.session_state["hb_last"] = now
-        with st.spinner("⚙️ Agents checking queue…"):
-            heartbeat_tick()
+        n = heartbeat_tick()
+        if n:
+            st.toast(f"⚙️ {n} task(s) advanced by agents", icon="🤖")
 
-    # Heartbeat indicator
     st.markdown(
-        f"<div class='hb-bar'>"
-        f"  <div class='hb-dot'></div>"
-        f"  <span>Agents heartbeat active — next check in "
-        f"  <strong>{int(next_tick)}s</strong></span>"
+        f"<div class='hbbar'>"
+        f"  <div class='hbdot'></div>"
+        f"  <span>Agent heartbeat active — next wake in <strong>{int(next_tick)}s</strong></span>"
         f"</div>",
         unsafe_allow_html=True,
     )
-
-    # Auto-rerun to simulate real-time heartbeat
-    time.sleep(0.1)
-    st.markdown(
-        f"""<script>
-        setTimeout(function(){{
-            window.parent.document.querySelector('[data-testid="stApp"]')
-                  .dispatchEvent(new Event('rerun'));
-        }}, {int(next_tick * 1000)});
-        </script>""",
-        unsafe_allow_html=True,
-    )
-    # Streamlit-native rerun trigger using fragment workaround
-    if "rerun_counter" not in st.session_state:
-        st.session_state["rerun_counter"] = 0
-
     st.markdown("---")
 
-    tab1, tab2 = st.tabs(["➕ Submit Request", "🟣 Your Approval"])
+    tab1, tab2 = st.tabs(["👩‍💻 Submit Request", "✅ Your Approval"])
 
     # ══════════════════════════════════════════════════
-    #  TAB 1 — SUBMIT (Junior creates task)
+    #  TAB 1 — JUNIOR CREATES TASK + LIVE PIPELINE
     # ══════════════════════════════════════════════════
     with tab1:
-        st.markdown("### 👤 Step 1 — Junior Creates Task")
+        st.markdown("### 👩‍💻 Junior Agent — Create Task")
         st.markdown(
-            "<small style='color:#7c3aed'>Fill the form and submit. "
-            "The rest happens automatically.</small><br><br>",
+            "<small style='color:#6366f1'>Fill in the request. "
+            "It will automatically flow through Senior → Tech Lead → CTO/CEO.</small><br><br>",
             unsafe_allow_html=True,
         )
 
         c1, c2 = st.columns(2)
         with c1:
-            requester  = st.text_input("👤 Your Name / Employee ID *", placeholder="e.g. EMP-1042")
+            requester  = st.text_input("👤 Your Name / ID *", placeholder="e.g. Junior Dev EMP-1042")
             department = st.selectbox("🏢 Department *", [
-                "Select…","Finance","HR","Engineering",
+                "Select…","Engineering","Finance","HR",
                 "Legal","Operations","Marketing","Executive","Other",
             ])
             priority = st.selectbox("🚨 Priority", ["Medium","High","Low"])
         with c2:
-            title    = st.text_input("📌 Document Title *", placeholder="e.g. Q3 Financial Report")
-            doc_type = st.selectbox("📂 Document Type *", [
-                "Select…","Financial Report","Employee Data","System Design",
-                "Vendor Contract","Policy Document","Audit Report","Strategic Plan","Other",
+            title    = st.text_input("📌 Edit / Document Title *",
+                                     placeholder="e.g. Refactor auth module")
+            doc_type = st.selectbox("📂 Type *", [
+                "Select…","Code Change","Financial Report","Employee Data",
+                "System Design","Vendor Contract","Policy Document",
+                "Audit Report","Security Patch","Other",
             ])
 
         description = st.text_area(
-            "📋 Why do you need this document? *",
-            placeholder="Explain the business reason and urgency…",
+            "📋 Describe the edit / change *",
+            placeholder="What did you change, why, and any risks you see?",
             height=100,
         )
 
-        if st.button("🚀 Create Task", use_container_width=False):
+        if st.button("🚀 Submit to Senior Agent"):
             errors = []
             if not requester.strip():   errors.append("Your name / ID required.")
-            if department == "Select…": errors.append("Select a department.")
-            if doc_type   == "Select…": errors.append("Select a document type.")
-            if not title.strip():       errors.append("Document title required.")
+            if department == "Select…": errors.append("Select department.")
+            if doc_type   == "Select…": errors.append("Select type.")
+            if not title.strip():       errors.append("Title required.")
             if not description.strip(): errors.append("Description required.")
             for e in errors: st.error(e)
             if not errors:
@@ -554,29 +760,26 @@ def page_approval_pipeline():
                         doc_type, description.strip(), priority,
                     )
                     st.success(
-                        f"✅ Task #{t['id']} queued! "
-                        "Agents will pick it up automatically — watch the heartbeat.",
+                        f"✅ Task #{t['id']} created! "
+                        "Senior Agent will pick it up on the next heartbeat.",
                         icon="🎉",
                     )
-                    # Force immediate rerun so heartbeat processes it
                     time.sleep(0.3)
                     st.rerun()
                 except Exception as ex:
                     st.error(f"Failed: {ex}")
 
-        # ── Live queue status ─────────────────────────────────────────────────
+        # ── Stats ─────────────────────────────────────────────────────────────
         st.markdown("---")
-        st.markdown("### ⚙️ Live Pipeline Status")
-
-        # Metrics row
+        st.markdown("### 📊 Pipeline Dashboard")
         try:
             s  = _stats()
             mc = st.columns(5)
             for col, val, label, icon in zip(
                 mc,
-                [s["total"], s["pending"], s["escalated"], s["approved"], s["rejected"]],
-                ["Total","In Progress","Needs Review","Approved","Rejected"],
-                ["📋","⚙️","🟡","🟢","🔴"],
+                [s["total"],s["progress"],s["awaiting"],s["approved"],s["rejected"]],
+                ["Total","In Progress","Needs Your OK","Approved","Rejected"],
+                ["📋","⚙️","🔔","🟢","🔴"],
             ):
                 with col:
                     st.markdown(
@@ -588,24 +791,27 @@ def page_approval_pipeline():
         except Exception: pass
 
         st.markdown("")
+        sf_col, _ = st.columns([1.5,3])
+        with sf_col:
+            sf = st.selectbox("Show tasks", [
+                "All","Senior Review","TechLead Review",
+                "CTO Review","Awaiting Approval","Approved","Rejected",
+            ], key="dash_sf")
 
-        all_tasks = _get_all_tasks()
-        if not all_tasks:
-            st.info("No tasks yet. Submit a request above.", icon="📭")
+        tasks = _get_all_tasks(sf if sf != "All" else None)
+        if not tasks:
+            st.info("No tasks yet.", icon="📭")
         else:
-            for t in all_tasks:
-                status = t.get("status","Queued")
+            for t in tasks:
+                status = t.get("status","")
                 sr     = _load_sr(t)
-                stage  = t.get("stage","queued")
-                card_cls = {
-                    "Approved":"approved","Rejected":"rejected","Escalated":"escalated"
-                }.get(status,"")
+                stage  = t.get("stage","junior")
                 with st.expander(
                     f"#{t['id']} — {t.get('title','?')} | {t.get('requester','?')} | {status}"
                 ):
                     st.markdown(
-                        f"{_pill(status)}"
-                        f"<span class='pill' style='background:#f3f4f6;color:#374151'>"
+                        f"{_status_pill(status)} "
+                        f"<span class='spill' style='background:#f1f5f9;color:#475569'>"
                         f"Risk: {t.get('risk_level','—')}</span>",
                         unsafe_allow_html=True,
                     )
@@ -613,17 +819,31 @@ def page_approval_pipeline():
                         f"**Requester:** {t.get('requester','–')} &nbsp;|&nbsp; "
                         f"**Dept:** {t.get('department','–')} &nbsp;|&nbsp; "
                         f"**Type:** {t.get('request_type','–')} &nbsp;|&nbsp; "
-                        f"**Submitted:** {_fmt_time(t.get('created_at',''))}"
+                        f"**Submitted:** {_fmt(t.get('created_at',''))}"
                     )
                     st.markdown(
-                        f"<div style='background:#f5f3ff;border-left:4px solid #7c3aed;"
+                        f"<div style='background:#f8fafc;border-left:4px solid #6366f1;"
                         f"border-radius:10px;padding:11px;margin:10px 0;font-size:13px'>"
                         f"{t.get('description','–')}</div>",
                         unsafe_allow_html=True,
                     )
-                    st.markdown("**Agent Pipeline:**")
-                    _render_flow(sr, current_stage=stage,
-                                 is_high_risk=(t.get("risk_level")=="High"))
+                    st.markdown("**Agent Hierarchy:**")
+                    _render_hierarchy(sr, current_stage=stage,
+                                      risk_level=t.get("risk_level","Low"))
+
+                    # Refresh + delete
+                    rc1, rc2, _ = st.columns([1,1,4])
+                    with rc1:
+                        if st.button("🔄 Refresh", key=f"ref_{t['id']}"):
+                            st.rerun()
+                    with rc2:
+                        if st.button("🗑️ Delete", key=f"del_dash_{t['id']}"):
+                            try: _delete_task(t["id"]); st.rerun()
+                            except Exception as ex: st.error(str(ex))
+
+        # Force rerun after next heartbeat interval
+        if st.button("⟳ Refresh now", key="manual_refresh"):
+            st.rerun()
 
     # ══════════════════════════════════════════════════
     #  TAB 2 — YOUR APPROVAL (only manual step)
@@ -633,7 +853,7 @@ def page_approval_pipeline():
 
         if not st.session_state.get("exec_logged_in"):
             st.markdown("### 🔐 Login")
-            col, _ = st.columns([1.5, 2.5])
+            col, _ = st.columns([1.5,2.5])
             with col:
                 pwd = st.text_input("Password", type="password", key="exec_pwd")
                 if st.button("Login →", key="exec_login", use_container_width=True):
@@ -646,10 +866,10 @@ def page_approval_pipeline():
 
         hc, lc = st.columns([5,1])
         with hc:
-            st.markdown("### ✅ Step 7 — Your Approval (only manual step)")
+            st.markdown("### ✅ Step 5 — Your Approval")
             st.markdown(
-                "<small style='color:#6b7280'>All agent analysis is done. "
-                "Review and make the final call.</small>",
+                "<small style='color:#6b7280'>This is the ONLY manual step. "
+                "Every task here has already been reviewed by Senior → Tech Lead → CTO/CEO.</small>",
                 unsafe_allow_html=True,
             )
         with lc:
@@ -657,134 +877,143 @@ def page_approval_pipeline():
                 st.session_state["exec_logged_in"] = False
                 st.rerun()
 
-        escalated = _get_escalated_tasks()
+        awaiting = _get_tasks_for_agent("Awaiting Approval")
 
-        if not escalated:
+        if not awaiting:
             st.success("✅ Nothing waiting for your approval right now.", icon="🎉")
         else:
-            st.warning(
-                f"🔔 **{len(escalated)} task(s) need your approval.**",
-                icon="🔔",
-            )
+            st.warning(f"🔔 **{len(awaiting)} task(s) need your approval.**")
 
-        for t in escalated:
+        for t in awaiting:
             rid  = t["id"]
             sr   = _load_sr(t)
             risk = t.get("risk_level","—")
 
             with st.expander(
-                f"#{rid} — {t.get('title','?')} | Risk: {risk} | {t.get('department','—')}",
+                f"#{rid} — {t.get('title','?')} | Risk: {risk}",
                 expanded=True,
             ):
                 st.markdown(
-                    f"{_pill(t.get('status','Escalated'))}"
-                    f"<span class='pill' style='background:#f3f4f6;color:#374151'>Risk: {risk}</span>",
+                    f"{_status_pill('Awaiting Approval')} "
+                    f"<span class='spill' style='background:#f1f5f9;color:#475569'>Risk: {risk}</span>",
                     unsafe_allow_html=True,
                 )
                 st.markdown(
                     f"**Requester:** {t.get('requester','–')} &nbsp;|&nbsp; "
                     f"**Dept:** {t.get('department','–')} &nbsp;|&nbsp; "
-                    f"**Type:** {t.get('request_type','–')} &nbsp;|&nbsp; "
-                    f"**Submitted:** {_fmt_time(t.get('created_at',''))}"
+                    f"**Type:** {t.get('request_type','–')}"
                 )
                 st.markdown(
-                    f"<div style='background:#f5f3ff;border-left:4px solid #7c3aed;"
+                    f"<div style='background:#f8fafc;border-left:4px solid #6366f1;"
                     f"border-radius:10px;padding:11px;margin:10px 0;font-size:13px'>"
                     f"{t.get('description','–')}</div>",
                     unsafe_allow_html=True,
                 )
 
-                # Agent analysis summary
-                if sr.get("cto"):
-                    cto_res = sr["cto"]
-                    st.markdown(
-                        f"<div style='background:#fffbeb;border-left:4px solid #d97706;"
-                        f"border-radius:10px;padding:11px;margin:8px 0;font-size:13px'>"
-                        f"🤖 <strong>CTO Agent analysis:</strong> {cto_res.get('reason','')}"
-                        f"</div>",
-                        unsafe_allow_html=True,
-                    )
-                if sr.get("classify"):
-                    cl_res = sr["classify"]
-                    st.markdown(
-                        f"<div style='background:#f0f9ff;border-left:4px solid #0ea5e9;"
-                        f"border-radius:10px;padding:11px;margin:8px 0;font-size:13px'>"
-                        f"🧠 <strong>Classifier:</strong> Category — {cl_res.get('category','')} | "
-                        f"Risk — {cl_res.get('risk','')} | {cl_res.get('reason','')}"
-                        f"</div>",
-                        unsafe_allow_html=True,
-                    )
+                # Agent chain summary
+                for aid, label, icon in [
+                    ("junior",   "Junior",   "👩‍💻"),
+                    ("senior",   "Senior",   "👨‍💼"),
+                    ("techlead", "Tech Lead","🧑‍🔧"),
+                    ("cto",      "CTO/CEO",  "🏛️"),
+                ]:
+                    res = sr.get(aid)
+                    if res:
+                        d = res.get("decision","")
+                        color = "#f0fdf4" if d not in ("Reject","Rejected") else "#fef2f2"
+                        border = "#059669" if d not in ("Reject","Rejected") else "#dc2626"
+                        st.markdown(
+                            f"<div style='background:{color};border-left:3px solid {border};"
+                            f"border-radius:8px;padding:8px 12px;margin:4px 0;font-size:12px'>"
+                            f"{icon} <strong>{label}:</strong> {res.get('reason','')}"
+                            f"</div>",
+                            unsafe_allow_html=True,
+                        )
 
-                st.markdown("**Full agent pipeline:**")
-                _render_flow(sr, current_stage="approve", is_high_risk=(risk=="High"))
+                st.markdown("**Full hierarchy:**")
+                _render_hierarchy(sr, current_stage="human", risk_level=risk)
 
                 st.markdown("---")
                 note = st.text_area(
-                    "Your note (optional)", key=f"note_{rid}",
-                    height=70, placeholder="Add context for the KB or the requester…"
+                    "Your note (saved to KB on approval)",
+                    key=f"note_{rid}", height=70,
+                    placeholder="Add context or reasoning…",
                 )
+
                 b1, b2, b3, _ = st.columns([1,1,1,3])
                 with b1:
                     if st.button("✅ Approve", key=f"app_{rid}", use_container_width=True):
                         try:
-                            # Step 7 → 8: approve + trigger KB update
-                            sr["approve"] = {"decision":"Approved","reason": note or "Approved by authority."}
-                            _update_task(rid, status="Approved", stage="kb",
-                                         stage_results=json.dumps(sr),
-                                         reviewer_note=note)
-                            run_kb_update({**t, "stage_results": json.dumps(sr)})
-                            st.success("✅ Approved! KB updated — next user will get this answer automatically.")
+                            sr["human"] = {
+                                "agent":    "You",
+                                "decision": "Approved",
+                                "reason":   note or "Approved by authority.",
+                            }
+                            _update_task(rid,
+                                status="Approved", stage="kb",
+                                stage_results=json.dumps(sr),
+                                reviewer_note=note)
+                            # Step 8 — KB auto-update
+                            _run_kb({**t, "stage_results": json.dumps(sr)})
+                            st.success(
+                                "✅ Approved! KB updated — "
+                                "next user asking a similar question will get this answer automatically."
+                            )
                             st.rerun()
                         except Exception as ex: st.error(str(ex))
                 with b2:
                     if st.button("❌ Reject", key=f"rej_{rid}", use_container_width=True):
                         try:
-                            sr["approve"] = {"decision":"Rejected","reason": note or "Rejected by authority."}
-                            _update_task(rid, status="Rejected", stage="approve",
-                                         stage_results=json.dumps(sr),
-                                         reviewer_note=note)
+                            sr["human"] = {
+                                "agent":    "You",
+                                "decision": "Rejected",
+                                "reason":   note or "Rejected by authority.",
+                            }
+                            _update_task(rid,
+                                status="Rejected", stage="human",
+                                stage_results=json.dumps(sr),
+                                reviewer_note=note)
                             st.warning("❌ Rejected.")
                             st.rerun()
                         except Exception as ex: st.error(str(ex))
                 with b3:
                     if st.button("🗑️ Delete", key=f"del_{rid}", use_container_width=True):
-                        try:
-                            _delete_task(rid); st.rerun()
-                        except Exception as ex: st.error(str(ex))
-
-        # History of decided tasks
-        st.markdown("---")
-        st.markdown("### 📋 Decision History")
-        sf   = st.selectbox("Filter", ["Approved","Rejected","All"], key="hist_sf")
-        hist = _get_all_tasks(sf if sf != "All" else None)
-        hist = [r for r in hist if r.get("status") in ("Approved","Rejected")]
-        if not hist:
-            st.info("No decided tasks yet.")
-        else:
-            for t in hist:
-                rid    = t["id"]
-                status = t.get("status","")
-                pill_c = "p-approved" if status == "Approved" else "p-rejected"
-                with st.expander(f"#{rid} — {t.get('title','?')} | {status}"):
-                    st.markdown(f"<span class='pill {pill_c}'>{status}</span>", unsafe_allow_html=True)
-                    st.markdown(
-                        f"**Requester:** {t.get('requester','–')} | "
-                        f"**Dept:** {t.get('department','–')} | "
-                        f"**Submitted:** {_fmt_time(t.get('created_at',''))}"
-                    )
-                    if t.get("reviewer_note"):
-                        st.markdown(
-                            f"<div style='background:#f0fdf4;border-left:4px solid #059669;"
-                            f"border-radius:8px;padding:10px;font-size:13px;margin-top:6px'>"
-                            f"💬 {t['reviewer_note']}</div>",
-                            unsafe_allow_html=True,
-                        )
-                    if st.button("🗑️ Delete", key=f"hdel_{rid}"):
                         try: _delete_task(rid); st.rerun()
                         except Exception as ex: st.error(str(ex))
 
-        # ── SQL reminder ──────────────────────────────────────────────────────
-        with st.expander("📄 Supabase — run once if columns missing"):
+        # ── Decision history ──────────────────────────────────────────────────
+        st.markdown("---")
+        st.markdown("### 📋 Decision History")
+        hist = [r for r in _get_all_tasks() if r.get("status") in ("Approved","Rejected")]
+        if not hist:
+            st.info("No decisions yet.")
+        for t in hist:
+            rid    = t["id"]
+            status = t.get("status","")
+            bg     = "#d1fae5" if status=="Approved" else "#fee2e2"
+            fg     = "#065f46" if status=="Approved" else "#991b1b"
+            with st.expander(f"#{rid} — {t.get('title','?')} | {status}"):
+                st.markdown(
+                    f"<span class='spill' style='background:{bg};color:{fg}'>{status}</span>",
+                    unsafe_allow_html=True,
+                )
+                st.markdown(
+                    f"**Requester:** {t.get('requester','–')} | "
+                    f"**Dept:** {t.get('department','–')} | "
+                    f"**Submitted:** {_fmt(t.get('created_at',''))}"
+                )
+                if t.get("reviewer_note"):
+                    st.markdown(
+                        f"<div style='background:#f0fdf4;border-left:4px solid #059669;"
+                        f"border-radius:8px;padding:10px;font-size:13px;margin-top:6px'>"
+                        f"💬 {t['reviewer_note']}</div>",
+                        unsafe_allow_html=True,
+                    )
+                if st.button("🗑️ Delete", key=f"hdel_{rid}"):
+                    try: _delete_task(rid); st.rerun()
+                    except Exception as ex: st.error(str(ex))
+
+        with st.expander("📄 Supabase SQL — run once if columns missing"):
             st.code("""
 ALTER TABLE approval_requests ADD COLUMN IF NOT EXISTS stage_results TEXT;
 ALTER TABLE approval_requests ADD COLUMN IF NOT EXISTS risk_level    TEXT DEFAULT 'Low';
