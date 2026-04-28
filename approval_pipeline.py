@@ -5,192 +5,198 @@ import requests
 from datetime import datetime
 
 # ════════════════════════════════════════════════════════
-#  APPROVAL PIPELINE  —  Agentic Multi-Stage Document Flow
-#  Two tabs: Submit Request | Executive Review
+#  APPROVAL PIPELINE
+#  Tab 1 : Submit Request  (agents run automatically)
+#  Tab 2 : Executive Review (manual, only high-risk)
 # ════════════════════════════════════════════════════════
 
 _CSS = """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500&display=swap');
 
-.pipe-header {
-    font-family: 'Syne', sans-serif;
-    font-size: 28px; font-weight: 800; color: #1e1b4b; margin-bottom: 4px;
+/* ── hierarchy nodes ── */
+.hier-wrap { display:flex; flex-direction:column; gap:0; margin:20px 0 10px; }
+
+.hier-node {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    position: relative;
 }
-.flow-wrap { display:flex; flex-direction:column; gap:0; margin:16px 0; }
-.flow-node { display:flex; align-items:flex-start; gap:16px; position:relative; }
-.flow-node:not(:last-child)::after {
-    content:''; position:absolute; left:19px; top:44px;
-    width:2px; height:calc(100% - 8px);
-    background:linear-gradient(180deg,#7c3aed44,#7c3aed11);
+.hier-node:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    left: 18px;
+    top: 42px;
+    width: 2px;
+    height: calc(100% - 10px);
+    background: linear-gradient(180deg, #7c3aed55, #7c3aed11);
 }
-.flow-icon {
-    width:40px; height:40px; border-radius:50%;
-    display:flex; align-items:center; justify-content:center;
-    font-size:18px; flex-shrink:0; z-index:1; border:2px solid transparent;
+
+.hier-dot {
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 17px; flex-shrink: 0; z-index: 1;
+    border: 2px solid #e5e7eb;
+    background: #f9fafb;
+    transition: all 0.3s;
 }
-.flow-icon.waiting   { background:#f3f4f6; border-color:#d1d5db; }
-.flow-icon.running   { background:#ede9fe; border-color:#7c3aed; animation:pulse 1s infinite; }
-.flow-icon.approved  { background:#d1fae5; border-color:#059669; }
-.flow-icon.rejected  { background:#fee2e2; border-color:#dc2626; }
-.flow-icon.skipped   { background:#f9fafb; border-color:#e5e7eb; opacity:0.4; }
-.flow-icon.manual    { background:#fef3c7; border-color:#d97706; }
-@keyframes pulse {
+.hier-dot.waiting   { background:#f3f4f6; border-color:#d1d5db; }
+.hier-dot.running   { background:#ede9fe; border-color:#7c3aed;
+                       box-shadow:0 0 0 4px rgba(124,58,237,0.15);
+                       animation: glow 1.2s ease-in-out infinite; }
+.hier-dot.ok        { background:#d1fae5; border-color:#059669; }
+.hier-dot.fail      { background:#fee2e2; border-color:#dc2626; }
+.hier-dot.skipped   { background:#f3f4f6; border-color:#e5e7eb; opacity:0.45; }
+.hier-dot.pending   { background:#fef3c7; border-color:#d97706; }
+
+@keyframes glow {
     0%,100% { box-shadow:0 0 0 0 rgba(124,58,237,0.3); }
-    50%      { box-shadow:0 0 0 6px rgba(124,58,237,0); }
+    50%      { box-shadow:0 0 0 7px rgba(124,58,237,0); }
 }
-.flow-body { flex:1; padding:10px 0 18px; }
-.flow-title { font-family:'Syne',sans-serif; font-size:14px; font-weight:700; color:#1e1b4b; }
-.flow-auto-badge {
-    display:inline-block; font-size:10px; font-weight:700;
-    padding:2px 8px; border-radius:20px; margin-left:6px;
-    background:#ede9fe; color:#7c3aed; vertical-align:middle;
+
+.hier-body { flex:1; padding:8px 0 20px; }
+.hier-title {
+    font-family:'Syne',sans-serif;
+    font-size:14px; font-weight:700; color:#1e1b4b;
 }
-.flow-manual-badge {
-    display:inline-block; font-size:10px; font-weight:700;
-    padding:2px 8px; border-radius:20px; margin-left:6px;
-    background:#fef3c7; color:#92400e; vertical-align:middle;
-}
-.flow-desc  { font-size:12px; color:#6b7280; margin-top:2px; }
-.flow-result {
-    font-size:12px; margin-top:4px; padding:6px 10px;
+.badge-auto   { display:inline-block; font-size:10px; font-weight:700;
+                padding:1px 8px; border-radius:20px; margin-left:6px;
+                background:#ede9fe; color:#7c3aed; vertical-align:middle; }
+.badge-manual { display:inline-block; font-size:10px; font-weight:700;
+                padding:1px 8px; border-radius:20px; margin-left:6px;
+                background:#fef3c7; color:#92400e; vertical-align:middle; }
+.hier-sub  { font-size:12px; color:#6b7280; margin-top:1px; }
+
+.result-box {
+    font-size:12px; margin-top:6px; padding:7px 11px;
     border-radius:8px; line-height:1.5;
 }
-.flow-result.approved { background:#f0fdf4; color:#166534; border-left:3px solid #059669; }
-.flow-result.rejected { background:#fef2f2; color:#991b1b; border-left:3px solid #dc2626; }
-.flow-result.running  { background:#f5f3ff; color:#5b21b6; border-left:3px solid #7c3aed; }
-.flow-result.manual   { background:#fffbeb; color:#92400e; border-left:3px solid #d97706; }
+.result-box.ok      { background:#f0fdf4; color:#166534; border-left:3px solid #059669; }
+.result-box.fail    { background:#fef2f2; color:#991b1b; border-left:3px solid #dc2626; }
+.result-box.running { background:#f5f3ff; color:#5b21b6; border-left:3px solid #7c3aed; }
+.result-box.pending { background:#fffbeb; color:#92400e; border-left:3px solid #d97706; }
 
-.status-pill {
-    display:inline-block; padding:3px 12px; border-radius:20px;
-    font-size:11px; font-weight:700;
-}
-.pill-escalated { background:#fef3c7; color:#92400e; }
-.pill-approved  { background:#d1fae5; color:#065f46; }
-.pill-rejected  { background:#fee2e2; color:#991b1b; }
-
-.metric-card {
-    background:white; border-radius:14px; padding:18px;
+/* ── metric cards ── */
+.met-card {
+    background:white; border-radius:14px; padding:16px;
     text-align:center; box-shadow:0 2px 10px rgba(0,0,0,0.06);
 }
-.metric-number { font-family:'Syne',sans-serif; font-size:30px; font-weight:800; color:#7c3aed; }
-.metric-label  { font-size:12px; color:#6b7280; margin-top:3px; }
+.met-num   { font-family:'Syne',sans-serif; font-size:28px; font-weight:800; color:#7c3aed; }
+.met-label { font-size:12px; color:#6b7280; margin-top:2px; }
+
+/* ── status pills ── */
+.spill { display:inline-block; padding:3px 11px; border-radius:20px;
+         font-size:11px; font-weight:700; }
+.spill-esc  { background:#fef3c7; color:#92400e; }
+.spill-app  { background:#d1fae5; color:#065f46; }
+.spill-rej  { background:#fee2e2; color:#991b1b; }
 </style>
 """
 
-# ── Pipeline stage definitions ────────────────────────────────────────────────
-PIPELINE_STAGES = [
-    {"key":"intent",     "label":"Intent Agent",          "icon":"🧠", "auto":True,
-     "desc":"Classifies request type, urgency, and sensitivity level"},
-    {"key":"functional", "label":"Functional Agent",      "icon":"🟢", "auto":True,
-     "desc":"Validates business relevance — is this request valid for the department?"},
-    {"key":"technical",  "label":"Technical Agent",       "icon":"🔵", "auto":True,
-     "desc":"Checks system/data access safety and technical feasibility"},
-    {"key":"compliance", "label":"Compliance Agent",      "icon":"🔴", "auto":True,
-     "desc":"Validates confidentiality, privacy laws, and company policies"},
-    {"key":"executive",  "label":"Executive Authority",   "icon":"🟣", "auto":False,
-     "desc":"Final human approval — triggered only for high-risk documents"},
-    {"key":"fetch",      "label":"Document Fetch Agent",  "icon":"📄", "auto":True,
+# ── Stage definitions ─────────────────────────────────────────────────────────
+STAGES = [
+    {"key":"intent",      "label":"Intent Agent",         "icon":"🧠", "auto":True,
+     "desc":"Classifies request type, urgency and sensitivity"},
+    {"key":"functional",  "label":"Functional Agent",     "icon":"🟢", "auto":True,
+     "desc":"Validates business relevance for the department"},
+    {"key":"technical",   "label":"Technical Agent",      "icon":"🔵", "auto":True,
+     "desc":"Checks system/data access safety and feasibility"},
+    {"key":"compliance",  "label":"Compliance Agent",     "icon":"🔴", "auto":True,
+     "desc":"Validates confidentiality, privacy laws, company policies"},
+    {"key":"executive",   "label":"Executive Authority",  "icon":"🟣", "auto":False,
+     "desc":"Final human approval — only for high-risk documents"},
+    {"key":"fetch",       "label":"Document Fetch Agent", "icon":"📄", "auto":True,
      "desc":"Retrieves the document from the source system"},
-    {"key":"storage",    "label":"Storage Agent",         "icon":"💾", "auto":True,
+    {"key":"storage",     "label":"Storage Agent",        "icon":"💾", "auto":True,
      "desc":"Stores document securely in Drive / DB"},
-    {"key":"delivery",   "label":"Delivery Agent",        "icon":"📬", "auto":True,
+    {"key":"delivery",    "label":"Delivery Agent",       "icon":"📬", "auto":True,
      "desc":"Shares document with the requesting admin"},
 ]
 
-# ── Supabase helpers ──────────────────────────────────────────────────────────
-def _get_db():
+# ── Supabase ──────────────────────────────────────────────────────────────────
+def _db():
     try:
         from supabase import create_client
-        url = st.secrets.get("SUPABASE_URL", "")
-        key = st.secrets.get("SUPABASE_KEY", "")
+        url = st.secrets.get("SUPABASE_URL","")
+        key = st.secrets.get("SUPABASE_KEY","")
         if url and key:
             return create_client(url, key)
     except Exception:
         pass
     return None
 
-def _fetch_requests(status_filter=None):
-    db = _get_db()
-    if db is None: return []
+def _save(data: dict):
+    db = _db()
+    if db is None:
+        st.warning("⚠️ Supabase not configured — result not saved.")
+        return
     try:
-        q = db.table("approval_requests").select("*").order("created_at", desc=True)
-        if status_filter and status_filter != "All":
-            q = q.eq("status", status_filter)
-        return q.execute().data or []
+        db.table("approval_requests").insert(data).execute()
     except Exception as e:
-        st.error(f"Fetch error: {e}")
-        return []
+        st.warning(f"⚠️ Could not save to Supabase: {e}")
 
-def _create_request(title, requester, department, doc_type, description, priority, risk_level, stage_results):
-    db = _get_db()
-    if db is None: raise ConnectionError("Supabase not configured.")
-    is_escalated = risk_level == "High"
-    row = {
-        "title":         title,
-        "requester":     requester,
-        "department":    department,
-        "request_type":  doc_type,
-        "description":   description,
-        "priority":      priority,
-        "stage":         "Escalated to Executive" if is_escalated else "Document Released",
-        "status":        "Escalated"              if is_escalated else "Approved",
-        "reviewer":      None,
-        "reviewer_note": None,
-        "stage_results": json.dumps(stage_results),
-        "risk_level":    risk_level,
-        "created_at":    datetime.utcnow().isoformat(),
-        "updated_at":    datetime.utcnow().isoformat(),
-    }
-    result = db.table("approval_requests").insert(row).execute()
-    if result.data: return result.data[0]
-    raise Exception("Insert returned no data.")
-
-def _executive_decision(rid, decision, note, reviewer):
-    db = _get_db()
-    if db is None: raise ConnectionError("Supabase not configured.")
-    new_status = "Approved" if decision == "Approve" else "Rejected"
+def _exec_update(rid, approved: bool, reviewer: str, note: str):
+    db = _db()
+    if db is None:
+        raise ConnectionError("Supabase not configured.")
     db.table("approval_requests").update({
-        "status":        new_status,
-        "stage":         "Document Released" if new_status == "Approved" else "Rejected by Executive",
+        "status":        "Approved" if approved else "Rejected",
+        "stage":         "Document Released" if approved else "Rejected by Executive",
         "reviewer":      reviewer,
         "reviewer_note": note,
         "updated_at":    datetime.utcnow().isoformat(),
     }).eq("id", rid).execute()
 
-def _delete_request(rid):
-    db = _get_db()
+def _fetch_all(status=None):
+    db = _db()
+    if db is None: return []
+    try:
+        q = db.table("approval_requests").select("*").order("created_at", desc=True)
+        if status and status != "All":
+            q = q.eq("status", status)
+        return q.execute().data or []
+    except Exception as e:
+        st.error(f"Fetch error: {e}")
+        return []
+
+def _delete(rid):
+    db = _db()
     if db:
         db.table("approval_requests").delete().eq("id", rid).execute()
 
 def _stats():
-    rows = _fetch_requests()
+    rows = _fetch_all()
     return {
         "total":     len(rows),
-        "escalated": sum(1 for r in rows if r["status"] == "Escalated"),
-        "approved":  sum(1 for r in rows if r["status"] == "Approved"),
-        "rejected":  sum(1 for r in rows if r["status"] == "Rejected"),
+        "escalated": sum(1 for r in rows if r.get("status") == "Escalated"),
+        "approved":  sum(1 for r in rows if r.get("status") == "Approved"),
+        "rejected":  sum(1 for r in rows if r.get("status") == "Rejected"),
     }
 
-# ── Claude API agent decision ─────────────────────────────────────────────────
-def _call_agent(agent_name: str, ctx: dict) -> dict:
-    system = (
-        f"You are the {agent_name} in an automated document approval pipeline. "
-        "Evaluate the document request. Reply ONLY with a valid JSON object "
-        "(no markdown, no extra text) with keys: "
-        "'decision' (Approved or Rejected), "
-        "'reason' (1-2 sentences), "
-        "'risk' (Low, Medium, or High)."
+# ── Claude agent call ─────────────────────────────────────────────────────────
+def _agent_decide(agent_label: str, ctx: dict) -> dict:
+    """
+    Calls Claude claude-sonnet-4-20250514 to make an autonomous decision.
+    Returns {"decision": "Approved"|"Rejected", "reason": str, "risk": "Low"|"Medium"|"High"}
+    """
+    system_prompt = (
+        f"You are the {agent_label} in a document approval pipeline. "
+        "Evaluate the request and respond ONLY with a raw JSON object — "
+        "no markdown, no backticks, no explanation outside JSON. "
+        'Keys: "decision" (exactly "Approved" or "Rejected"), '
+        '"reason" (1-2 sentences), "risk" (exactly "Low", "Medium", or "High").'
     )
-    user_msg = (
+    user_content = (
         f"Document request:\n"
-        f"- Title: {ctx.get('title')}\n"
-        f"- Type: {ctx.get('doc_type')}\n"
-        f"- Department: {ctx.get('department')}\n"
-        f"- Requester: {ctx.get('requester')}\n"
-        f"- Description: {ctx.get('description')}\n"
-        f"- Priority: {ctx.get('priority')}\n\n"
-        f"Make your autonomous decision as {agent_name}."
+        f"Title: {ctx['title']}\n"
+        f"Type: {ctx['doc_type']}\n"
+        f"Department: {ctx['department']}\n"
+        f"Requester: {ctx['requester']}\n"
+        f"Description: {ctx['description']}\n"
+        f"Priority: {ctx['priority']}\n\n"
+        f"Make your decision as {agent_label}."
     )
     try:
         resp = requests.post(
@@ -198,58 +204,65 @@ def _call_agent(agent_name: str, ctx: dict) -> dict:
             headers={"Content-Type": "application/json"},
             json={
                 "model":      "claude-sonnet-4-20250514",
-                "max_tokens": 300,
-                "system":     system,
-                "messages":   [{"role": "user", "content": user_msg}],
+                "max_tokens": 200,
+                "system":     system_prompt,
+                "messages":   [{"role": "user", "content": user_content}],
             },
             timeout=30,
         )
-        text = ""
+        raw = ""
         for block in resp.json().get("content", []):
             if block.get("type") == "text":
-                text += block["text"]
-        text = text.strip().lstrip("```json").lstrip("```").rstrip("```").strip()
-        return json.loads(text)
+                raw += block["text"]
+        raw = raw.strip().strip("```json").strip("```").strip()
+        return json.loads(raw)
     except Exception as e:
-        return {"decision": "Approved", "reason": f"Auto-approved (fallback). {e}", "risk": "Low"}
+        # Hard fallback — do NOT silently swallow; show real error in reason
+        return {
+            "decision": "Approved",
+            "reason":   f"[API error — fallback approved] {e}",
+            "risk":     "Low",
+        }
 
-# ── Flow renderer ─────────────────────────────────────────────────────────────
-def _render_flow(stage_results: dict, current_key: str = None, high_risk: bool = False):
-    st.markdown("<div class='flow-wrap'>", unsafe_allow_html=True)
-    for stage in PIPELINE_STAGES:
-        key, auto = stage["key"], stage["auto"]
+# ── Hierarchy renderer ────────────────────────────────────────────────────────
+def _render_hierarchy(results: dict, active_key: str = None, high_risk: bool = False):
+    st.markdown("<div class='hier-wrap'>", unsafe_allow_html=True)
+    for s in STAGES:
+        key = s["key"]
 
-        if key == "executive" and not high_risk and key not in stage_results and key != current_key:
-            icon_cls, result_html = "skipped", ""
-        elif key in stage_results:
-            res = stage_results[key]
-            d   = res.get("decision", "Approved")
+        # Executive is skipped visually when not high-risk and not active
+        if key == "executive" and not high_risk and key not in results and key != active_key:
+            dot_cls     = "skipped"
+            result_html = ""
+        elif key == active_key and key not in results:
+            dot_cls     = "running"
+            result_html = "<div class='result-box running'>⏳ Agent deciding…</div>"
+        elif key in results:
+            r = results[key]
+            d = r.get("decision","")
             if d == "Pending":
-                icon_cls, result_html = "manual", (
-                    "<div class='flow-result manual'>🟣 Awaiting Executive decision…</div>"
-                )
+                dot_cls     = "pending"
+                result_html = "<div class='result-box pending'>🟣 Awaiting Executive decision…</div>"
+            elif d == "Approved":
+                dot_cls     = "ok"
+                result_html = f"<div class='result-box ok'>✅ {r.get('reason','')}</div>"
             else:
-                icon_cls    = "approved" if d == "Approved" else "rejected"
-                tick        = "✅" if d == "Approved" else "❌"
-                result_html = (
-                    f"<div class='flow-result {icon_cls}'>{tick} {res.get('reason','')}</div>"
-                )
-        elif key == current_key:
-            icon_cls    = "running"
-            result_html = "<div class='flow-result running'>⏳ Processing…</div>"
+                dot_cls     = "fail"
+                result_html = f"<div class='result-box fail'>❌ {r.get('reason','')}</div>"
         else:
-            icon_cls, result_html = "waiting", ""
+            dot_cls     = "waiting"
+            result_html = ""
 
         badge = (
-            "<span class='flow-auto-badge'>AUTO</span>" if auto
-            else "<span class='flow-manual-badge'>MANUAL</span>"
+            "<span class='badge-auto'>AUTO</span>" if s["auto"]
+            else "<span class='badge-manual'>MANUAL</span>"
         )
         st.markdown(
-            f"<div class='flow-node'>"
-            f"  <div class='flow-icon {icon_cls}'>{stage['icon']}</div>"
-            f"  <div class='flow-body'>"
-            f"    <div class='flow-title'>{stage['label']}{badge}</div>"
-            f"    <div class='flow-desc'>{stage['desc']}</div>"
+            f"<div class='hier-node'>"
+            f"  <div class='hier-dot {dot_cls}'>{s['icon']}</div>"
+            f"  <div class='hier-body'>"
+            f"    <div class='hier-title'>{s['label']}{badge}</div>"
+            f"    <div class='hier-sub'>{s['desc']}</div>"
             f"    {result_html}"
             f"  </div>"
             f"</div>",
@@ -259,312 +272,297 @@ def _render_flow(stage_results: dict, current_key: str = None, high_risk: bool =
 
 
 # ════════════════════════════════════════════════════════
-#  MAIN
+#  PAGE ENTRY POINT
 # ════════════════════════════════════════════════════════
 def page_approval_pipeline():
     st.markdown(_CSS, unsafe_allow_html=True)
-    st.markdown("<div class='pipe-header'>📋 Approval Pipeline</div>", unsafe_allow_html=True)
+    st.markdown("# 📋 Approval Pipeline")
     st.markdown(
-        "<p style='color:#6b7280;margin-bottom:20px'>"
-        "Agentic multi-stage document approval — AI agents decide automatically. "
-        "Executive review triggered only for high-risk documents.</p>",
+        "<p style='color:#6b7280'>AI agents decide automatically through each stage. "
+        "Executive review is triggered only for high-risk documents.</p>",
         unsafe_allow_html=True,
     )
     st.markdown("---")
 
-    tab_submit, tab_exec = st.tabs(["➕ Submit Request", "🟣 Executive Review"])
+    tab1, tab2 = st.tabs(["➕ Submit Request", "🟣 Executive Review"])
 
     # ══════════════════════════════════════════════════
     #  TAB 1 — SUBMIT
     # ══════════════════════════════════════════════════
-    with tab_submit:
+    with tab1:
         st.markdown("### 📝 New Document Request")
-        st.markdown(
-            "<small style='color:#7c3aed'>Submit your request — AI agents will automatically "
-            "evaluate it through each stage. Executive review is triggered only for high-risk documents.</small><br><br>",
-            unsafe_allow_html=True,
-        )
 
         c1, c2 = st.columns(2)
         with c1:
             requester  = st.text_input("👤 Admin Name / Employee ID *", placeholder="e.g. EMP-1042")
             department = st.selectbox("🏢 Department *", [
                 "Select…","Finance","HR","Engineering",
-                "Legal","Operations","Marketing","Executive","Other"
+                "Legal","Operations","Marketing","Executive","Other",
             ])
             priority = st.selectbox("🚨 Priority", ["Medium","High","Low"])
         with c2:
             title    = st.text_input("📌 Document Title *", placeholder="e.g. Q3 Financial Report")
             doc_type = st.selectbox("📂 Document Type *", [
-                "Select…","Financial Report","Employee Data",
-                "System Design","Vendor Contract","Policy Document",
-                "Audit Report","Strategic Plan","Other"
+                "Select…","Financial Report","Employee Data","System Design",
+                "Vendor Contract","Policy Document","Audit Report","Strategic Plan","Other",
             ])
 
         description = st.text_area(
             "📋 Why do you need this document? *",
-            placeholder="Explain the business reason, who will use it, and any urgency…",
+            placeholder="Explain the business reason and urgency…",
             height=100,
         )
 
-        run_clicked = st.button("🚀 Submit & Run Agents", use_container_width=False)
-
-        if run_clicked:
+        if st.button("🚀 Submit & Run Agents"):
             errors = []
             if not requester.strip():   errors.append("Admin Name / ID required.")
-            if department == "Select…": errors.append("Select department.")
-            if doc_type == "Select…":   errors.append("Select document type.")
+            if department == "Select…": errors.append("Select a department.")
+            if doc_type   == "Select…": errors.append("Select a document type.")
             if not title.strip():       errors.append("Document title required.")
             if not description.strip(): errors.append("Description required.")
             for e in errors: st.error(e)
+            if errors: st.stop()
 
-            if not errors:
-                ctx = {
-                    "title":       title.strip(),
-                    "doc_type":    doc_type,
-                    "department":  department,
-                    "requester":   requester.strip(),
-                    "description": description.strip(),
-                    "priority":    priority,
+            ctx = {
+                "title":       title.strip(),
+                "doc_type":    doc_type,
+                "department":  department,
+                "requester":   requester.strip(),
+                "description": description.strip(),
+                "priority":    priority,
+            }
+
+            st.markdown("---")
+            st.markdown("### ⚙️ Agent Pipeline Running…")
+
+            placeholder   = st.empty()
+            results       = {}
+            overall_risk  = "Low"
+            passed        = True
+
+            def redraw(active=None):
+                with placeholder.container():
+                    _render_hierarchy(results, active_key=active,
+                                      high_risk=(overall_risk == "High"))
+
+            # ── Agents 1-4 (always run automatically) ────────────
+            for key in ["intent","functional","technical","compliance"]:
+                redraw(key)
+                time.sleep(0.5)
+                label  = next(s["label"] for s in STAGES if s["key"] == key)
+                result = _agent_decide(label, ctx)
+                results[key] = result
+                if result.get("risk") == "High":
+                    overall_risk = "High"
+                if result.get("decision") == "Rejected":
+                    passed = False
+                    redraw()
+                    st.error(f"❌ **{label}** rejected: {result.get('reason','')}")
+                    break
+
+            if not passed:
+                st.stop()
+
+            # ── Executive gate — only if high-risk ───────────────
+            if overall_risk == "High":
+                results["executive"] = {
+                    "decision": "Pending",
+                    "reason":   "High-risk document escalated to Executive Authority for manual review.",
+                    "risk":     "High",
                 }
-                st.markdown("---")
-                st.markdown("### ⚙️ Agent Pipeline Running…")
+                redraw()
+                _save({
+                    "title":         ctx["title"],
+                    "requester":     ctx["requester"],
+                    "department":    ctx["department"],
+                    "request_type":  ctx["doc_type"],
+                    "description":   ctx["description"],
+                    "priority":      ctx["priority"],
+                    "stage":         "Escalated to Executive",
+                    "status":        "Escalated",
+                    "stage_results": json.dumps(results),
+                    "risk_level":    overall_risk,
+                    "created_at":    datetime.utcnow().isoformat(),
+                    "updated_at":    datetime.utcnow().isoformat(),
+                })
+                st.warning(
+                    "🟣 **Escalated to Executive Authority.** "
+                    "This document is high-risk. Go to the **Executive Review** tab to approve or reject."
+                )
+                st.stop()
 
-                flow_ph       = st.empty()
-                stage_results = {}
-                overall_risk  = "Low"
-                passed        = True
+            # ── Agents 6-8 (post-approval delivery) ──────────────
+            for key in ["fetch","storage","delivery"]:
+                redraw(key)
+                time.sleep(0.5)
+                label  = next(s["label"] for s in STAGES if s["key"] == key)
+                result = _agent_decide(label, ctx)
+                results[key] = result
 
-                pre_exec  = ["intent","functional","technical","compliance"]
-                post_exec = ["fetch","storage","delivery"]
-
-                def refresh(cur=None):
-                    with flow_ph.container():
-                        _render_flow(stage_results, current_key=cur,
-                                     high_risk=(overall_risk == "High"))
-
-                # ── Auto agents 1-4 ──────────────────────────────
-                for key in pre_exec:
-                    refresh(key)
-                    time.sleep(0.4)
-                    stage = next(s for s in PIPELINE_STAGES if s["key"] == key)
-                    result = _call_agent(stage["label"], ctx)
-                    stage_results[key] = result
-                    if result.get("risk") == "High":
-                        overall_risk = "High"
-                    if result.get("decision") == "Rejected":
-                        passed = False
-                        refresh()
-                        st.error(
-                            f"❌ **{stage['label']}** rejected this request: {result.get('reason','')}"
-                        )
-                        break
-
-                # ── Executive gate ───────────────────────────────
-                if passed and overall_risk == "High":
-                    stage_results["executive"] = {
-                        "decision": "Pending",
-                        "reason":   "Escalated to Executive Authority for manual review — high-risk document.",
-                        "risk":     "High",
-                    }
-                    refresh()
-                    try:
-                        _create_request(
-                            ctx["title"], ctx["requester"], ctx["department"],
-                            ctx["doc_type"], ctx["description"], ctx["priority"],
-                            overall_risk, stage_results,
-                        )
-                    except Exception as ex:
-                        st.warning(f"Could not save: {ex}")
-                    st.warning(
-                        "🟣 **Escalated to Executive Authority.** "
-                        "This document is high-risk. An executive must approve it "
-                        "in the **Executive Review** tab before release."
-                    )
-
-                elif passed:
-                    # ── Auto agents 6-8 ──────────────────────────
-                    for key in post_exec:
-                        refresh(key)
-                        time.sleep(0.5)
-                        stage  = next(s for s in PIPELINE_STAGES if s["key"] == key)
-                        result = _call_agent(stage["label"], ctx)
-                        stage_results[key] = result
-                    refresh()
-                    try:
-                        _create_request(
-                            ctx["title"], ctx["requester"], ctx["department"],
-                            ctx["doc_type"], ctx["description"], ctx["priority"],
-                            overall_risk, stage_results,
-                        )
-                    except Exception as ex:
-                        st.warning(f"Could not save: {ex}")
-                    st.success(
-                        "✅ **All agents approved.** Document has been fetched, stored, and delivered!"
-                    )
+            redraw()
+            _save({
+                "title":         ctx["title"],
+                "requester":     ctx["requester"],
+                "department":    ctx["department"],
+                "request_type":  ctx["doc_type"],
+                "description":   ctx["description"],
+                "priority":      ctx["priority"],
+                "stage":         "Document Released",
+                "status":        "Approved",
+                "stage_results": json.dumps(results),
+                "risk_level":    overall_risk,
+                "created_at":    datetime.utcnow().isoformat(),
+                "updated_at":    datetime.utcnow().isoformat(),
+            })
+            st.success("✅ **All agents approved.** Document fetched, stored, and delivered!")
 
     # ══════════════════════════════════════════════════
     #  TAB 2 — EXECUTIVE REVIEW
     # ══════════════════════════════════════════════════
-    with tab_exec:
+    with tab2:
         ADMIN_PWD = st.secrets.get("ADMIN_PASSWORD", "admin123")
-        if not st.session_state.get("exec_pipeline_logged_in"):
+
+        if not st.session_state.get("exec_logged_in"):
             st.markdown("### 🔐 Executive Login")
             col, _ = st.columns([1.5, 2.5])
             with col:
                 pwd = st.text_input("Password", type="password", key="exec_pwd")
-                if st.button("Login →", use_container_width=True, key="exec_login"):
+                if st.button("Login →", key="exec_login", use_container_width=True):
                     if pwd == ADMIN_PWD:
-                        st.session_state["exec_pipeline_logged_in"] = True
+                        st.session_state["exec_logged_in"] = True
                         st.rerun()
                     else:
                         st.error("Incorrect password.")
+            st.stop()
+
+        hc, lc = st.columns([5,1])
+        with hc: st.markdown("### 🟣 Executive Authority")
+        with lc:
+            if st.button("Logout", key="exec_out"):
+                st.session_state["exec_logged_in"] = False
+                st.rerun()
+
+        # Metrics
+        s  = _stats()
+        mc = st.columns(4)
+        for col, val, label, icon in zip(
+            mc,
+            [s["total"], s["escalated"], s["approved"], s["rejected"]],
+            ["Total","Needs Review","Approved","Rejected"],
+            ["📋","🟡","🟢","🔴"],
+        ):
+            with col:
+                st.markdown(
+                    f"<div class='met-card'><div style='font-size:20px'>{icon}</div>"
+                    f"<div class='met-num'>{val}</div>"
+                    f"<div class='met-label'>{label}</div></div>",
+                    unsafe_allow_html=True,
+                )
+
+        st.markdown("---")
+        sf   = st.selectbox("Show", ["All","Escalated","Approved","Rejected"], key="exec_sf")
+        rows = _fetch_all(sf if sf != "All" else None)
+
+        if not rows:
+            st.info("No requests found.", icon="📭")
         else:
-            hcol, lcol = st.columns([5,1])
-            with hcol: st.markdown("### 🟣 Executive Authority — Escalated Requests")
-            with lcol:
-                if st.button("Logout", key="exec_logout"):
-                    st.session_state["exec_pipeline_logged_in"] = False
-                    st.rerun()
+            st.markdown(f"**{len(rows)} request(s)**")
+            for r in rows:
+                rid    = r["id"]
+                status = r.get("status","Escalated")
+                risk   = r.get("risk_level","—")
+                pill   = {"Escalated":"spill-esc","Approved":"spill-app",
+                          "Rejected":"spill-rej"}.get(status,"spill-esc")
+                try:
+                    dt  = datetime.fromisoformat(r["created_at"].replace("Z","+00:00"))
+                    fmt = dt.strftime("%d %b %Y, %I:%M %p")
+                except Exception:
+                    fmt = r.get("created_at","")
 
-            try:
-                s  = _stats()
-                mc = st.columns(4)
-                for col, val, label, icon in zip(
-                    mc,
-                    [s["total"], s["escalated"], s["approved"], s["rejected"]],
-                    ["Total","Needs Review","Approved","Rejected"],
-                    ["📋","🟡","🟢","🔴"],
+                with st.expander(
+                    f"#{rid} — {r.get('title','?')} | {r.get('requester','?')} | {status} | Risk: {risk}"
                 ):
-                    with col:
-                        st.markdown(
-                            f"<div class='metric-card'>"
-                            f"<div style='font-size:22px'>{icon}</div>"
-                            f"<div class='metric-number'>{val}</div>"
-                            f"<div class='metric-label'>{label}</div></div>",
-                            unsafe_allow_html=True,
-                        )
-            except Exception as e:
-                st.error(f"Stats error: {e}")
+                    st.markdown(
+                        f"<span class='spill {pill}'>{status}</span>&nbsp;"
+                        f"<span class='spill' style='background:#f3f4f6;color:#374151'>Risk: {risk}</span>",
+                        unsafe_allow_html=True,
+                    )
+                    st.markdown(
+                        f"**Requester:** {r.get('requester','–')} &nbsp;|&nbsp; "
+                        f"**Dept:** {r.get('department','–')} &nbsp;|&nbsp; "
+                        f"**Type:** {r.get('request_type','–')} &nbsp;|&nbsp; "
+                        f"**Submitted:** {fmt}"
+                    )
+                    st.markdown(
+                        f"<div style='background:#f5f3ff;border-left:4px solid #7c3aed;"
+                        f"border-radius:10px;padding:12px;margin:10px 0;font-size:14px'>"
+                        f"{r.get('description','–')}</div>",
+                        unsafe_allow_html=True,
+                    )
 
-            st.markdown("---")
-            sf   = st.selectbox("Show", ["All","Escalated","Approved","Rejected"], key="exec_sf")
-            rows = _fetch_requests(sf if sf != "All" else None)
-
-            if not rows:
-                st.info("No requests found.", icon="📭")
-            else:
-                st.markdown(f"**{len(rows)} request(s)**")
-                for r in rows:
-                    rid    = r["id"]
-                    status = r.get("status","Escalated")
-                    risk   = r.get("risk_level","High")
-                    pill   = {"Escalated":"pill-escalated","Approved":"pill-approved",
-                              "Rejected":"pill-rejected"}.get(status,"pill-escalated")
+                    # Replay agent decisions
                     try:
-                        dt  = datetime.fromisoformat(r["created_at"].replace("Z","+00:00"))
-                        fmt = dt.strftime("%d %b %Y, %I:%M %p")
+                        sr = json.loads(r.get("stage_results") or "{}")
+                        if sr:
+                            st.markdown("**🤖 Agent Decisions:**")
+                            _render_hierarchy(sr, high_risk=True)
                     except Exception:
-                        fmt = r.get("created_at","")
+                        pass
 
-                    with st.expander(
-                        f"#{rid} — {r.get('title','?')} | {r.get('requester','?')} | {status} | Risk: {risk}"
-                    ):
+                    if status == "Escalated":
+                        st.markdown("---")
+                        rc1, rc2 = st.columns(2)
+                        with rc1:
+                            reviewer = st.text_input("Your Name", key=f"rev_{rid}",
+                                                     placeholder="Executive name")
+                        with rc2:
+                            note = st.text_area("Decision Note", key=f"note_{rid}",
+                                                height=80, placeholder="Reason…")
+                        b1, b2, b3, _ = st.columns([1,1,1,3])
+                        with b1:
+                            if st.button("✅ Approve", key=f"app_{rid}", use_container_width=True):
+                                try:
+                                    _exec_update(rid, True, reviewer, note)
+                                    st.success("✅ Approved — document released.")
+                                    st.rerun()
+                                except Exception as ex: st.error(str(ex))
+                        with b2:
+                            if st.button("❌ Reject", key=f"rej_{rid}", use_container_width=True):
+                                try:
+                                    _exec_update(rid, False, reviewer, note)
+                                    st.warning("❌ Rejected.")
+                                    st.rerun()
+                                except Exception as ex: st.error(str(ex))
+                        with b3:
+                            if st.button("🗑️ Delete", key=f"del_{rid}", use_container_width=True):
+                                try:
+                                    _delete(rid); st.rerun()
+                                except Exception as ex: st.error(str(ex))
+                    else:
+                        note_val = r.get("reviewer_note","")
+                        rev_val  = r.get("reviewer","")
                         st.markdown(
-                            f"<span class='status-pill {pill}'>{status}</span>&nbsp;"
-                            f"<span class='status-pill' style='background:#f3f4f6;color:#374151'>Risk: {risk}</span>",
+                            f"<div style='color:#6b7280;font-size:13px;margin-top:6px'>"
+                            f"Status: <strong>{status}</strong>"
+                            + (f" — Reviewed by {rev_val}" if rev_val else "")
+                            + "</div>",
                             unsafe_allow_html=True,
                         )
-                        st.markdown(
-                            f"**Requester:** {r.get('requester','–')} &nbsp;|&nbsp; "
-                            f"**Dept:** {r.get('department','–')} &nbsp;|&nbsp; "
-                            f"**Type:** {r.get('request_type','–')} &nbsp;|&nbsp; "
-                            f"**Submitted:** {fmt}"
-                        )
-                        st.markdown(
-                            f"<div style='background:#f5f3ff;border-left:4px solid #7c3aed;"
-                            f"border-radius:10px;padding:12px 16px;margin:10px 0;font-size:14px'>"
-                            f"{r.get('description','–')}</div>",
-                            unsafe_allow_html=True,
-                        )
-
-                        # Agent decisions replay
-                        try:
-                            sr = json.loads(r.get("stage_results") or "{}")
-                            if sr:
-                                st.markdown("**🤖 Agent Decisions:**")
-                                _render_flow(sr, high_risk=(risk=="High"))
-                        except Exception:
-                            pass
-
-                        if status == "Escalated":
-                            st.markdown("---")
-                            rc1, rc2 = st.columns(2)
-                            with rc1:
-                                reviewer = st.text_input("Your Name", key=f"rev_{rid}",
-                                                         placeholder="Executive name")
-                            with rc2:
-                                rev_note = st.text_area("Decision Note", key=f"rnote_{rid}",
-                                                        height=80,
-                                                        placeholder="Reason for approval or rejection…")
-                            bc1, bc2, bc3, _ = st.columns([1,1,1,3])
-                            with bc1:
-                                if st.button("✅ Approve", key=f"app_{rid}", use_container_width=True):
-                                    try:
-                                        _executive_decision(rid,"Approve",rev_note,reviewer)
-                                        st.success("✅ Approved — document released.")
-                                        st.rerun()
-                                    except Exception as ex: st.error(str(ex))
-                            with bc2:
-                                if st.button("❌ Reject", key=f"rej_{rid}", use_container_width=True):
-                                    try:
-                                        _executive_decision(rid,"Reject",rev_note,reviewer)
-                                        st.warning("❌ Rejected.")
-                                        st.rerun()
-                                    except Exception as ex: st.error(str(ex))
-                            with bc3:
-                                if st.button("🗑️ Delete", key=f"del_{rid}", use_container_width=True):
-                                    try:
-                                        _delete_request(rid); st.rerun()
-                                    except Exception as ex: st.error(str(ex))
-                        else:
+                        if note_val:
                             st.markdown(
-                                f"<div style='color:#6b7280;font-size:13px;margin-top:8px'>"
-                                f"This request is <strong>{status}</strong>."
-                                + (f" Reviewed by: {r.get('reviewer','–')}" if r.get("reviewer") else "")
-                                + "</div>",
+                                f"<div style='background:#f0fdf4;border-left:4px solid #059669;"
+                                f"border-radius:8px;padding:10px;font-size:13px;margin-top:6px'>"
+                                f"💬 {note_val}</div>",
                                 unsafe_allow_html=True,
                             )
-                            if r.get("reviewer_note"):
-                                st.markdown(
-                                    f"<div style='background:#f0fdf4;border-left:4px solid #059669;"
-                                    f"border-radius:8px;padding:10px 14px;font-size:13px;margin-top:6px'>"
-                                    f"💬 {r['reviewer_note']}</div>",
-                                    unsafe_allow_html=True,
-                                )
-                            if st.button("🗑️ Delete", key=f"del2_{rid}"):
-                                try:
-                                    _delete_request(rid); st.rerun()
-                                except Exception as ex: st.error(str(ex))
+                        if st.button("🗑️ Delete", key=f"del2_{rid}"):
+                            try:
+                                _delete(rid); st.rerun()
+                            except Exception as ex: st.error(str(ex))
 
-        with st.expander("📄 Required Supabase Table SQL (run once if not done)"):
+        with st.expander("📄 Supabase SQL — run this once if columns are missing"):
             st.code("""
-CREATE TABLE IF NOT EXISTS approval_requests (
-    id            BIGSERIAL PRIMARY KEY,
-    title         TEXT NOT NULL,
-    requester     TEXT NOT NULL,
-    department    TEXT NOT NULL,
-    request_type  TEXT NOT NULL,
-    description   TEXT NOT NULL,
-    priority      TEXT NOT NULL DEFAULT 'Medium',
-    stage         TEXT NOT NULL DEFAULT 'Submitted',
-    status        TEXT NOT NULL DEFAULT 'Pending',
-    reviewer      TEXT,
-    reviewer_note TEXT,
-    stage_results TEXT,
-    risk_level    TEXT DEFAULT 'Low',
-    created_at    TIMESTAMPTZ DEFAULT NOW(),
-    updated_at    TIMESTAMPTZ DEFAULT NOW()
-);
-ALTER TABLE approval_requests DISABLE ROW LEVEL SECURITY;
+-- Add missing columns (safe to run even if table exists)
+ALTER TABLE approval_requests ADD COLUMN IF NOT EXISTS stage_results TEXT;
+ALTER TABLE approval_requests ADD COLUMN IF NOT EXISTS risk_level    TEXT DEFAULT 'Low';
             """, language="sql")
