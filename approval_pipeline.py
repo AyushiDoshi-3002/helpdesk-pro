@@ -132,6 +132,16 @@ _CSS = """
 .spill { display:inline-block; padding:2px 10px; border-radius:20px;
          font-size:11px; font-weight:700; margin-right:4px; }
 
+/* Filter tab pills — override Streamlit default button style */
+div[data-testid="stHorizontalBlock"] button[kind="secondary"] {
+    border-radius: 20px !important;
+    padding: 4px 8px !important;
+    font-size: 12px !important;
+    font-weight: 400 !important;
+    min-height: 0 !important;
+    line-height: 1.4 !important;
+}
+
 /* Heartbeat */
 .hbbar { display:flex; align-items:center; gap:10px; background:#f5f3ff;
          border-radius:10px; padding:8px 14px; font-size:13px; color:#4c1d95;
@@ -814,12 +824,57 @@ def page_approval_pipeline():
             pass
 
         st.markdown("")
-        sf_col, _ = st.columns([1.5, 3])
-        with sf_col:
-            sf = st.selectbox("Filter", [
-                "All", "Classifying", "Senior Review", "TechLead Review",
-                "CTO Review", "CEO Review", "Awaiting Approval", "Approved", "Rejected",
-            ], key="dash_sf")
+
+        # ── Tab-style filter pills ──────────────────────────────────────────
+        FILTER_TABS = [
+            ("All",               "⬡", "#f1f5f9", "#475569"),
+            ("Classifying",       "🔍", "#ede9fe", "#5b21b6"),
+            ("Senior Review",     "👨‍💼", "#dbeafe", "#1e40af"),
+            ("TechLead Review",   "🧑‍🔧", "#ede9fe", "#5b21b6"),
+            ("CTO Review",        "🏛️", "#fef3c7", "#92400e"),
+            ("CEO Review",        "🏛️", "#fce7f3", "#9d174d"),
+            ("Awaiting Approval", "🔔", "#fff3cd", "#7a5000"),
+            ("Approved",          "✅", "#d1fae5", "#065f46"),
+            ("Rejected",          "❌", "#fee2e2", "#991b1b"),
+        ]
+
+        if "pipeline_filter" not in st.session_state:
+            st.session_state["pipeline_filter"] = "All"
+
+        # Build pill row
+        pill_html = "<div style='display:flex;flex-wrap:wrap;gap:6px;margin-bottom:18px'>"
+        for label, icon, bg, fg in FILTER_TABS:
+            active = st.session_state["pipeline_filter"] == label
+            border = f"2px solid {fg}" if active else f"1px solid #e2e8f0"
+            font_w = "700" if active else "400"
+            shadow = f"box-shadow:0 0 0 3px {bg};" if active else ""
+            pill_html += (
+                f"<span style='background:{bg if active else 'white'};color:{fg};"
+                f"border:{border};border-radius:20px;padding:5px 13px;font-size:12px;"
+                f"font-weight:{font_w};cursor:pointer;{shadow}white-space:nowrap'>"
+                f"{icon} {label}</span>"
+            )
+        pill_html += "</div>"
+
+        # Render pills as display only, use buttons underneath for interaction
+        cols = st.columns(len(FILTER_TABS))
+        for i, (label, icon, bg, fg) in enumerate(FILTER_TABS):
+            with cols[i]:
+                active = st.session_state["pipeline_filter"] == label
+                btn_style = (
+                    f"background:{bg};color:{fg};border:2px solid {fg};"
+                    if active else
+                    "background:white;color:#6b7280;border:1px solid #e2e8f0;"
+                )
+                if st.button(
+                    f"{icon} {label}",
+                    key=f"ftab_{label}",
+                    use_container_width=True,
+                ):
+                    st.session_state["pipeline_filter"] = label
+                    st.rerun()
+
+        sf = st.session_state["pipeline_filter"]
 
         tasks = _get_all_tasks(sf if sf != "All" else None)
         if not tasks:
