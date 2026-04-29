@@ -89,7 +89,8 @@ ALTER TABLE failed_queries DISABLE ROW LEVEL SECURITY;
 
 @st.cache_resource(show_spinner=False)
 def get_db():
-    if not SUPABASE_OK: return None
+    if not SUPABASE_OK:
+        return None
     url = st.secrets.get("SUPABASE_URL", "")
     key = st.secrets.get("SUPABASE_KEY", "")
     if url and key:
@@ -98,7 +99,8 @@ def get_db():
 
 def db_create_ticket(user_id, job_role, query, priority):
     db = get_db()
-    if db is None: raise ConnectionError("Supabase not configured.")
+    if db is None:
+        raise ConnectionError("Supabase not configured.")
     row = {"user_id": user_id, "job_role": job_role, "query": query, "priority": priority, "status": "Open"}
     try:
         result = db.table("tickets").insert(row).execute()
@@ -110,10 +112,12 @@ def db_create_ticket(user_id, job_role, query, priority):
 
 def db_get_tickets(status_filter=None):
     db = get_db()
-    if db is None: return []
+    if db is None:
+        return []
     try:
         q = db.table("tickets").select("*").order("created_at", desc=True)
-        if status_filter and status_filter != "All": q = q.eq("status", status_filter)
+        if status_filter and status_filter != "All":
+            q = q.eq("status", status_filter)
         return q.execute().data or []
     except Exception as e:
         st.error(f"Fetch error: {e}")
@@ -121,7 +125,8 @@ def db_get_tickets(status_filter=None):
 
 def db_update_ticket(tid, status, note):
     db = get_db()
-    if db is None: raise ConnectionError("Supabase not configured.")
+    if db is None:
+        raise ConnectionError("Supabase not configured.")
     try:
         db.table("tickets").update({"status": status, "admin_note": note}).eq("id", tid).execute()
     except Exception as e:
@@ -136,7 +141,6 @@ def db_delete_ticket(tid):
             raise Exception(f"Delete failed: {e}")
 
 def db_log_failed_query(query: str):
-    """Save a question that got no answer — for the Knowledge Gap Report."""
     db = get_db()
     if db:
         try:
@@ -188,24 +192,28 @@ def _content_words(text: str) -> set:
 def _keyword_score(query: str, stored_query: str) -> float:
     q_norm = _normalize(query)
     s_norm = _normalize(stored_query)
-    if q_norm == s_norm: return 1.0
+    if q_norm == s_norm:
+        return 1.0
     q_words = _content_words(query)
     s_words = _content_words(stored_query)
-    if not q_words or not s_words: return 0.0
+    if not q_words or not s_words:
+        return 0.0
     return len(q_words & s_words) / len(q_words | s_words)
 
 _LEARNED_THRESHOLD = 0.55
 
 def check_learned_answers(query: str):
     db = get_db()
-    if db is None: return None
+    if db is None:
+        return None
     best_score, best_solution, best_matched = 0.0, None, None
     try:
         resp = db.table("tickets").select("query, admin_note").not_.is_("admin_note", "null").execute()
         for row in (resp.data or []):
             note = (row.get("admin_note") or "").strip()
             q = (row.get("query") or "").strip()
-            if not note or not q: continue
+            if not note or not q:
+                continue
             score = _keyword_score(query, q)
             if score > best_score:
                 best_score, best_solution, best_matched = score, note, q
@@ -216,7 +224,8 @@ def check_learned_answers(query: str):
         for row in (resp2.data or []):
             sol = (row.get("solution") or "").strip()
             q = (row.get("query") or "").strip()
-            if not sol or not q: continue
+            if not sol or not q:
+                continue
             score = _keyword_score(query, q)
             if score > best_score:
                 best_score, best_solution, best_matched = score, sol, q
@@ -228,7 +237,7 @@ def check_learned_answers(query: str):
 
 
 # ════════════════════════════════════════════════════════
-#  PDF DOWNLOAD — direct public URL with auth header
+#  PDF DOWNLOAD
 # ════════════════════════════════════════════════════════
 _PDF_PUBLIC_URL = "https://jvulbphmksdebkkkhgvh.supabase.co/storage/v1/object/public/Documents/questions.pdf"
 
@@ -251,7 +260,8 @@ def get_pdf_bytes(_v=3):
 @st.cache_resource(show_spinner="📄 Extracting Q&A from PDF…")
 def load_qa_pairs():
     pdf_bytes = get_pdf_bytes()
-    if not pdf_bytes: return []
+    if not pdf_bytes:
+        return []
     try:
         import pdfplumber
         text = ""
@@ -266,13 +276,16 @@ def load_qa_pairs():
     text = text.lower()
     qa_pairs = []
     for part in re.split(r'q\.', text):
-        if "answer" not in part: continue
+        if "answer" not in part:
+            continue
         try:
             q_part, a_part = part.split("answer", 1)
             question = q_part.strip()
             answer = a_part.strip()
-            if "enroll" in answer or "course" in answer: continue
-            if len(answer) < 30 or len(question) < 5: continue
+            if "enroll" in answer or "course" in answer:
+                continue
+            if len(answer) < 30 or len(question) < 5:
+                continue
             qa_pairs.append((question, answer))
         except Exception:
             continue
@@ -291,7 +304,8 @@ def load_model_and_embeddings():
     try:
         from sentence_transformers import SentenceTransformer, util
         pairs = load_qa_pairs()
-        if not pairs: return None, None, None, None, None
+        if not pairs:
+            return None, None, None, None, None
         model = SentenceTransformer('multi-qa-mpnet-base-dot-v1')
         questions = [q for q, _ in pairs]
         answers   = [a for _, a in pairs]
@@ -324,17 +338,24 @@ def answer_question(query: str) -> dict:
                 else:
                     chosen_idx, chosen_score, match_source = best_a_idx, best_a_score, "answer"
                 question, answer = pairs[chosen_idx]
-                return {"found": True, "answer": answer.strip(), "matched": question.strip(),
-                        "score": chosen_score, "match_src": match_source, "pdf_error": False, "source": "pdf"}
+                return {
+                    "found": True, "answer": answer.strip(), "matched": question.strip(),
+                    "score": chosen_score, "match_src": match_source,
+                    "pdf_error": False, "source": "pdf"
+                }
         except Exception:
             pass
     learned = check_learned_answers(query)
     if learned:
-        return {"found": True, "answer": learned["solution"], "matched": learned["matched_query"],
-                "score": learned["score"], "match_src": "learned", "pdf_error": False, "source": "learned"}
+        return {
+            "found": True, "answer": learned["solution"], "matched": learned["matched_query"],
+            "score": learned["score"], "match_src": "learned", "pdf_error": False, "source": "learned"
+        }
     pdf_unavailable = (model is None or q_embeddings is None)
-    return {"found": False, "answer": "", "matched": "", "score": 0,
-            "match_src": "none", "pdf_error": pdf_unavailable, "source": "none"}
+    return {
+        "found": False, "answer": "", "matched": "", "score": 0,
+        "match_src": "none", "pdf_error": pdf_unavailable, "source": "none"
+    }
 
 
 # ════════════════════════════════════════════════════════
@@ -446,10 +467,14 @@ def page_employee():
 
         if submit_clicked:
             errors = []
-            if not user_id.strip(): errors.append("Employee ID required.")
-            if job_role == "Select…": errors.append("Select your job role.")
-            if not original_question and not query_text.strip(): errors.append("Problem description required.")
-            for e in errors: st.error(e)
+            if not user_id.strip():
+                errors.append("Employee ID required.")
+            if job_role == "Select…":
+                errors.append("Select your job role.")
+            if not original_question and not query_text.strip():
+                errors.append("Problem description required.")
+            for e in errors:
+                st.error(e)
             if not errors:
                 final_query = original_question if original_question else query_text.strip()
                 try:
@@ -484,13 +509,14 @@ def page_admin():
         return
 
     c1, c2 = st.columns([5, 1])
-    with c1: st.markdown("# 🛡️ Admin Dashboard")
+    with c1:
+        st.markdown("# 🛡️ Admin Dashboard")
     with c2:
         if st.button("Logout"):
             st.session_state["admin_logged_in"] = False
             st.rerun()
 
-    # ── Stats ─────────────────────────────────────────────────────────────────
+    # ── Stats ──────────────────────────────────────────────────────────────────
     try:
         stats = db_stats()
         cols = st.columns(5)
@@ -512,11 +538,14 @@ def page_admin():
 
     st.markdown("---")
 
-    # ── Filters + Export ──────────────────────────────────────────────────────
+    # ── Filters + Export ───────────────────────────────────────────────────────
     c1, c2, c3, c4 = st.columns([1.5, 1.5, 1.5, 1])
-    with c1: sf = st.selectbox("Status", ["All", "Open", "In Progress", "Resolved", "Overdue"])
-    with c2: pf = st.selectbox("Priority", ["All", "High", "Medium", "Low"])
-    with c3: search_term = st.text_input("🔍 Search tickets", placeholder="keyword / employee ID")
+    with c1:
+        sf = st.selectbox("Status", ["All", "Open", "In Progress", "Resolved", "Overdue"])
+    with c2:
+        pf = st.selectbox("Priority", ["All", "High", "Medium", "Low"])
+    with c3:
+        search_term = st.text_input("🔍 Search tickets", placeholder="keyword / employee ID")
     with c4:
         st.markdown("<br>", unsafe_allow_html=True)
         export_btn = st.button("📥 Export CSV", use_container_width=True)
@@ -527,7 +556,6 @@ def page_admin():
         st.error(f"DB error: {e}")
         return
 
-    # Apply filters
     if sf == "Overdue":
         tickets = [t for t in tickets if t.get("status") == "Open" and is_overdue(t.get("created_at", ""))]
     if pf != "All":
@@ -536,7 +564,6 @@ def page_admin():
         kw = search_term.strip().lower()
         tickets = [t for t in tickets if kw in t.get("query", "").lower() or kw in t.get("user_id", "").lower()]
 
-    # CSV Export
     if export_btn:
         all_tickets = db_get_tickets()
         csv_bytes = tickets_to_csv(all_tickets)
@@ -569,7 +596,6 @@ def page_admin():
             st.markdown(f"<span class='{badge_class}'>{display_status}</span>&nbsp;<span class='{prio_class}'>{priority}</span>", unsafe_allow_html=True)
             st.markdown(f"**Employee:** {t.get('user_id', '–')} &nbsp;|&nbsp; **Role:** {t.get('job_role', '–')} &nbsp;|&nbsp; **Submitted:** {created_fmt}")
 
-            # Timeline
             st.markdown("**📅 Ticket Timeline:**")
             st.markdown(f"<span class='timeline-dot' style='background:#7c3aed'></span> **Opened** — {created_fmt}", unsafe_allow_html=True)
             if status == "In Progress":
@@ -641,7 +667,6 @@ def page_admin():
 #  PAGE: ANALYTICS DASHBOARD
 # ════════════════════════════════════════════════════════
 def page_analytics():
-    ADMIN_PWD = st.secrets.get("ADMIN_PASSWORD", "admin123")
     if not st.session_state.get("admin_logged_in"):
         st.warning("Please log in via the Admin Panel first.")
         return
@@ -663,13 +688,12 @@ def page_analytics():
 
     df = pd.DataFrame(tickets)
     df["created_at"] = pd.to_datetime(df["created_at"], utc=True)
-    df["date"] = df["created_at"].dt.date
+    df["date"] = df["created_at"].dt.strftime("%d %b %Y")   # e.g. "29 Apr 2025"
 
-    # ── Row 1: summary metrics ────────────────────────────────────────────────
+    # ── Row 1: summary metrics ─────────────────────────────────────────────────
     col1, col2, col3, col4 = st.columns(4)
     resolved = df[df["status"] == "Resolved"]
     resolution_rate = round(len(resolved) / len(df) * 100, 1) if len(df) else 0
-    avg_days = 0.0
 
     with col1:
         st.markdown(f"<div class='metric-card'><div class='metric-number'>{len(df)}</div><div class='metric-label'>Total Tickets</div></div>", unsafe_allow_html=True)
@@ -690,27 +714,50 @@ def page_analytics():
     with col_a:
         st.markdown("### 📅 Tickets Per Day")
         daily = df.groupby("date").size().reset_index(name="count")
-        fig1 = px.bar(daily, x="date", y="count", color_discrete_sequence=["#7c3aed"])
-fig1.update_layout(
-    xaxis_title="Date", yaxis_title="Tickets",
-    plot_bgcolor="white", paper_bgcolor="white",
-    margin=dict(t=20),
-    xaxis=dict(
-        tickformat="%d %b",       # e.g. "29 Apr"
-        tickangle=-45,
-        type="category",          # treats each date as discrete → thin bars
-    ),
-    bargap=0.4,                   # gap between bars
-)
-fig1.update_traces(marker_line_width=0, width=0.5)
-st.plotly_chart(fig1, use_container_width=True)
+        fig1 = px.bar(
+            daily, x="date", y="count",
+            color_discrete_sequence=["#7c3aed"],
+            text="count",
+        )
+        fig1.update_layout(
+            xaxis_title="Date",
+            yaxis_title="Number of Tickets",
+            plot_bgcolor="white",
+            paper_bgcolor="white",
+            margin=dict(t=20, b=80),
+            bargap=0.4,
+            xaxis=dict(
+                tickangle=-35,
+                type="category",
+                tickfont=dict(size=11),
+            ),
+            yaxis=dict(tickformat="d", dtick=1),
+        )
+        fig1.update_traces(
+            textposition="outside",
+            marker_line_width=0,
+            marker_color="#7c3aed",
+        )
+        st.plotly_chart(fig1, use_container_width=True)
+
     with col_b:
         st.markdown("### 🥧 Ticket Status Breakdown")
         status_counts = df["status"].value_counts().reset_index()
         status_counts.columns = ["status", "count"]
-        fig2 = px.pie(status_counts, names="status", values="count",
-                      color_discrete_map={"Open": "#f59e0b", "In Progress": "#3b82f6", "Resolved": "#10b981"})
-        fig2.update_layout(margin=dict(t=20))
+        fig2 = px.pie(
+            status_counts, names="status", values="count",
+            color="status",
+            color_discrete_map={"Open": "#f59e0b", "In Progress": "#3b82f6", "Resolved": "#10b981"},
+            hole=0.35,
+        )
+        fig2.update_traces(
+            textinfo="label+percent",
+            textfont_size=13,
+        )
+        fig2.update_layout(
+            margin=dict(t=20),
+            legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5),
+        )
         st.plotly_chart(fig2, use_container_width=True)
 
     # ── Row 3: Priority bar + Role bar ────────────────────────────────────────
@@ -718,23 +765,51 @@ st.plotly_chart(fig1, use_container_width=True)
 
     with col_c:
         st.markdown("### 🚨 Tickets by Priority")
-        prio_counts = df["priority"].value_counts().reset_index()
+        prio_order = ["High", "Medium", "Low"]
+        prio_counts = df["priority"].value_counts().reindex(prio_order, fill_value=0).reset_index()
         prio_counts.columns = ["priority", "count"]
-        fig3 = px.bar(prio_counts, x="priority", y="count",
-                      color="priority",
-                      color_discrete_map={"High": "#ef4444", "Medium": "#f59e0b", "Low": "#10b981"})
-        fig3.update_layout(showlegend=False, plot_bgcolor="white", paper_bgcolor="white", margin=dict(t=20))
+        fig3 = px.bar(
+            prio_counts, x="priority", y="count",
+            color="priority",
+            color_discrete_map={"High": "#ef4444", "Medium": "#f59e0b", "Low": "#10b981"},
+            text="count",
+            category_orders={"priority": prio_order},
+        )
+        fig3.update_layout(
+            showlegend=False,
+            plot_bgcolor="white",
+            paper_bgcolor="white",
+            margin=dict(t=20),
+            bargap=0.45,
+            xaxis_title="Priority Level",
+            yaxis=dict(title="Count", tickformat="d", dtick=1),
+        )
+        fig3.update_traces(textposition="outside", marker_line_width=0)
         st.plotly_chart(fig3, use_container_width=True)
 
     with col_d:
         st.markdown("### 💼 Tickets by Job Role")
         role_counts = df["job_role"].value_counts().reset_index()
         role_counts.columns = ["role", "count"]
-        fig4 = px.bar(role_counts, x="count", y="role", orientation="h", color_discrete_sequence=["#7c3aed"])
-        fig4.update_layout(xaxis_title="Count", yaxis_title="", plot_bgcolor="white", paper_bgcolor="white", margin=dict(t=20))
+        fig4 = px.bar(
+            role_counts, x="count", y="role",
+            orientation="h",
+            color_discrete_sequence=["#7c3aed"],
+            text="count",
+        )
+        fig4.update_layout(
+            xaxis=dict(title="Number of Tickets", tickformat="d", dtick=1),
+            yaxis_title="",
+            plot_bgcolor="white",
+            paper_bgcolor="white",
+            margin=dict(t=20, l=140),
+            bargap=0.35,
+            height=max(300, len(role_counts) * 50),
+        )
+        fig4.update_traces(textposition="outside", marker_line_width=0)
         st.plotly_chart(fig4, use_container_width=True)
 
-    # ── Export ────────────────────────────────────────────────────────────────
+    # ── Export ─────────────────────────────────────────────────────────────────
     st.markdown("---")
     st.markdown("### 📥 Export Data")
     csv_bytes = tickets_to_csv(tickets)
@@ -745,7 +820,6 @@ st.plotly_chart(fig1, use_container_width=True)
 #  PAGE: KNOWLEDGE GAP REPORT
 # ════════════════════════════════════════════════════════
 def page_knowledge_gap():
-    ADMIN_PWD = st.secrets.get("ADMIN_PASSWORD", "admin123")
     if not st.session_state.get("admin_logged_in"):
         st.warning("Please log in via the Admin Panel first.")
         return
@@ -781,7 +855,7 @@ def page_knowledge_gap():
 
     st.markdown("---")
 
-    # ── Keyword frequency — what topics are missing ───────────────────────────
+    # ── Keyword frequency ─────────────────────────────────────────────────────
     st.markdown("### 🔑 Most Requested Missing Topics")
     all_words = []
     for q in queries:
@@ -793,12 +867,26 @@ def page_knowledge_gap():
             import plotly.express as px
             import pandas as pd
             wdf = pd.DataFrame(word_freq, columns=["keyword", "count"])
-            fig = px.bar(wdf, x="count", y="keyword", orientation="h",
-                         color_discrete_sequence=["#f97316"])
-            fig.update_layout(xaxis_title="Times Asked", yaxis_title="",
-                              plot_bgcolor="white", paper_bgcolor="white",
-                              margin=dict(t=10), height=400)
-            fig.update_yaxes(autorange="reversed")
+            fig = px.bar(
+                wdf, x="count", y="keyword",
+                orientation="h",
+                color_discrete_sequence=["#f97316"],
+                text="count",
+            )
+            fig.update_layout(
+                xaxis=dict(title="Times Asked", tickformat="d", dtick=1),
+                yaxis_title="",
+                plot_bgcolor="white",
+                paper_bgcolor="white",
+                margin=dict(t=10, l=120),
+                height=max(300, len(wdf) * 40),
+                bargap=0.35,
+            )
+            fig.update_traces(
+                textposition="outside",
+                marker_line_width=0,
+            )
+            fig.update_yaxes(autorange="reversed", tickfont=dict(size=12))
             st.plotly_chart(fig, use_container_width=True)
         except ImportError:
             for word, count in word_freq:
@@ -853,21 +941,27 @@ def page_setup():
     st.markdown("### 🔌 Connection Status")
     c1, c2 = st.columns(2)
     with c1:
-        if st.secrets.get("SUPABASE_URL", ""): st.success("✅ Supabase URL configured")
-        else: st.error("❌ Supabase URL missing")
+        if st.secrets.get("SUPABASE_URL", ""):
+            st.success("✅ Supabase URL configured")
+        else:
+            st.error("❌ Supabase URL missing")
     with c2:
-        if st.secrets.get("SUPABASE_KEY", ""): st.success("✅ Supabase Key configured")
-        else: st.error("❌ Supabase Key missing")
+        if st.secrets.get("SUPABASE_KEY", ""):
+            st.success("✅ Supabase Key configured")
+        else:
+            st.error("❌ Supabase Key missing")
 
     st.markdown("---")
     if st.button("🧪 Test Database"):
         try:
             db = get_db()
-            if db is None: st.error("Not configured.")
+            if db is None:
+                st.error("Not configured.")
             else:
                 db.table("tickets").select("id").limit(1).execute()
                 st.success("✅ Database connected!")
-        except Exception as e: st.error(f"Failed: {e}")
+        except Exception as e:
+            st.error(f"Failed: {e}")
 
     if st.button("📄 Test PDF + Q&A Extraction"):
         pdf_bytes = get_pdf_bytes()
