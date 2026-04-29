@@ -201,53 +201,16 @@ def check_learned_answers(query: str):
 
 
 # ════════════════════════════════════════════════════════
-#  PDF DOWNLOAD FROM SUPABASE STORAGE
+#  PDF DOWNLOAD — direct public URL (no signing needed)
 # ════════════════════════════════════════════════════════
-_SUPABASE_PDF_FILENAME = "questions.pdf"
-_SUPABASE_BUCKET_NAME  = "Documents"
+_PDF_PUBLIC_URL = "https://jvulbphmksdebkkkhgvh.supabase.co/storage/v1/object/public/Documents/questions.pdf"
 
 @st.cache_resource(show_spinner="📄 Downloading PDF from Supabase…")
 def get_pdf_bytes():
     try:
-        supabase_url = st.secrets.get("SUPABASE_URL", "")
-        supabase_key = st.secrets.get("SUPABASE_KEY", "")
-
-        if not supabase_url or not supabase_key:
-            st.warning("Supabase URL or Key not configured in secrets.")
-            return None
-
-        public_url = (
-            f"{supabase_url}/storage/v1/object/public"
-            f"/{_SUPABASE_BUCKET_NAME}/{_SUPABASE_PDF_FILENAME}"
-        )
-        resp = requests.get(public_url, timeout=30)
-
-        if resp.status_code != 200:
-            signed_url_endpoint = (
-                f"{supabase_url}/storage/v1/object/sign"
-                f"/{_SUPABASE_BUCKET_NAME}/{_SUPABASE_PDF_FILENAME}"
-            )
-            sign_resp = requests.post(
-                signed_url_endpoint,
-                headers={
-                    "apikey": supabase_key,
-                    "Authorization": f"Bearer {supabase_key}",
-                    "Content-Type": "application/json",
-                },
-                json={"expiresIn": 3600},
-                timeout=15,
-            )
-            sign_resp.raise_for_status()
-            signed_path = sign_resp.json().get("signedURL", "")
-            if not signed_path:
-                st.warning("Could not generate signed URL for PDF.")
-                return None
-            full_signed_url = f"{supabase_url}/storage/v1{signed_path}"
-            resp = requests.get(full_signed_url, timeout=30)
-
+        resp = requests.get(_PDF_PUBLIC_URL, timeout=30)
         resp.raise_for_status()
         return resp.content
-
     except Exception as e:
         st.warning(f"PDF download failed: {e}")
         return None
@@ -293,40 +256,13 @@ def load_qa_pairs():
 
 # ════════════════════════════════════════════════════════
 #  IMPROVED SEMANTIC SEARCH — LOCAL, NO API
-#
-#  Changes from original:
-#  1. Upgraded model: multi-qa-mpnet-base-dot-v1
-#     → Specifically trained on question-answer pairs.
-#     → Much better at matching employee questions to PDF answers
-#       than the generic all-MiniLM-L6-v2.
-#
-#  2. Dual embedding: embeds BOTH questions AND answers separately,
-#     then scores the user query against each and takes the best.
-#     → Helps when the user's phrasing matches the answer text
-#       more than the question text.
-#
-#  3. Combined score: max(question_score, answer_score * 0.85)
-#     → Answers are slightly down-weighted so a direct question
-#       match still wins, but a strong answer match can still surface.
-#
-#  All computation is 100% local — no external API, no costs.
 # ════════════════════════════════════════════════════════
-
-# ── Thresholds (tune if needed) ──────────────────────────────────────────────
-_Q_THRESHOLD      = 0.40   # min cosine similarity vs question embedding
-_A_THRESHOLD      = 0.45   # slightly higher bar for answer-only matches
-_ANSWER_WEIGHT    = 0.85   # answer score is multiplied by this before comparison
+_Q_THRESHOLD   = 0.40
+_A_THRESHOLD   = 0.45
+_ANSWER_WEIGHT = 0.85
 
 @st.cache_resource(show_spinner="🧠 Loading semantic search model…")
 def load_model_and_embeddings():
-    """
-    Returns (model, q_embeddings, a_embeddings, pairs, util)
-    or (None, None, None, None, None) on failure.
-
-    Uses multi-qa-mpnet-base-dot-v1 which is trained specifically on
-    question–answer retrieval tasks and significantly outperforms
-    general-purpose sentence transformers for helpdesk-style queries.
-    """
     try:
         from sentence_transformers import SentenceTransformer, util
 
@@ -334,13 +270,11 @@ def load_model_and_embeddings():
         if not pairs:
             return None, None, None, None, None
 
-        # ── Upgraded model ────────────────────────────────────────────────────
         model = SentenceTransformer('multi-qa-mpnet-base-dot-v1')
 
         questions = [q for q, _ in pairs]
         answers   = [a for _, a in pairs]
 
-        # ── Embed questions AND answers separately ────────────────────────────
         q_embeddings = model.encode(questions, convert_to_tensor=True, show_progress_bar=False)
         a_embeddings = model.encode(answers,   convert_to_tensor=True, show_progress_bar=False)
 
@@ -356,7 +290,6 @@ def load_model_and_embeddings():
 # ════════════════════════════════════════════════════════
 def answer_question(query: str) -> dict:
 
-    # ── Step 1: PDF semantic search (PRIMARY) ────────────────────────────────
     model, q_embeddings, a_embeddings, pairs, util = load_model_and_embeddings()
 
     if (
@@ -369,44 +302,39 @@ def answer_question(query: str) -> dict:
         try:
             query_embedding = model.encode(query.lower(), convert_to_tensor=True)
 
-            # Score against questions
             q_scores = util.cos_sim(query_embedding, q_embeddings)[0]
             best_q_idx   = int(q_scores.argmax())
             best_q_score = float(q_scores[best_q_idx])
 
-            # Score against answers
             a_scores = util.cos_sim(query_embedding, a_embeddings)[0]
             best_a_idx   = int(a_scores.argmax())
             best_a_score = float(a_scores[best_a_idx])
 
-            # Combined decision: prefer question match; allow answer match as fallback
             weighted_a_score = best_a_score * _ANSWER_WEIGHT
 
             if best_q_score >= _Q_THRESHOLD or (best_a_score >= _A_THRESHOLD):
-                # Pick whichever gives the stronger signal
                 if best_q_score >= weighted_a_score:
-                    chosen_idx    = best_q_idx
-                    chosen_score  = best_q_score
-                    match_source  = "question"
+                    chosen_idx   = best_q_idx
+                    chosen_score = best_q_score
+                    match_source = "question"
                 else:
-                    chosen_idx    = best_a_idx
-                    chosen_score  = best_a_score
-                    match_source  = "answer"
+                    chosen_idx   = best_a_idx
+                    chosen_score = best_a_score
+                    match_source = "answer"
 
                 question, answer = pairs[chosen_idx]
                 return {
-                    "found":      True,
-                    "answer":     answer.strip(),
-                    "matched":    question.strip(),
-                    "score":      chosen_score,
-                    "match_src":  match_source,   # "question" or "answer"
-                    "pdf_error":  False,
-                    "source":     "pdf"
+                    "found":     True,
+                    "answer":    answer.strip(),
+                    "matched":   question.strip(),
+                    "score":     chosen_score,
+                    "match_src": match_source,
+                    "pdf_error": False,
+                    "source":    "pdf"
                 }
         except Exception:
             pass
 
-    # ── Step 2: Supabase learned answers (FALLBACK) ──────────────────────────
     learned = check_learned_answers(query)
     if learned:
         return {
@@ -419,7 +347,6 @@ def answer_question(query: str) -> dict:
             "source":    "learned"
         }
 
-    # ── Step 3: Nothing found ────────────────────────────────────────────────
     pdf_unavailable = (model is None or q_embeddings is None)
     return {
         "found":     False,
@@ -480,7 +407,6 @@ def page_employee():
                 st.markdown(f"<div class='learned-box'>{result['answer']}</div>", unsafe_allow_html=True)
             else:
                 st.markdown("#### ✅ Answer Found")
-                # Show which embedding type produced the match (helpful for debugging)
                 match_label = "matched via question" if match_src == "question" else "matched via answer content"
                 st.markdown(
                     f"<small style='color:#7c3aed'>📚 <strong>Source: PDF Knowledge Base</strong> "
@@ -733,7 +659,7 @@ def page_setup():
     if st.button("📄 Test PDF + Q&A Extraction"):
         pdf_bytes = get_pdf_bytes()
         if not pdf_bytes:
-            st.error("❌ Could not download PDF from Supabase Storage.")
+            st.error("❌ Could not download PDF.")
         else:
             st.success(f"✅ PDF downloaded ({len(pdf_bytes) // 1024} KB)")
             pairs = load_qa_pairs()
@@ -752,7 +678,7 @@ def page_setup():
         if model is None:
             st.error("❌ Model failed to load.")
         else:
-            st.success(f"✅ Model loaded: multi-qa-mpnet-base-dot-v1")
+            st.success("✅ Model loaded: multi-qa-mpnet-base-dot-v1")
             st.info(f"📊 {len(pairs)} Q embeddings + {len(pairs)} A embeddings ready.")
 
     st.markdown("---")
