@@ -691,9 +691,19 @@ def page_analytics():
         st.markdown("### 📅 Tickets Per Day")
         daily = df.groupby("date").size().reset_index(name="count")
         fig1 = px.bar(daily, x="date", y="count", color_discrete_sequence=["#7c3aed"])
-        fig1.update_layout(xaxis_title="Date", yaxis_title="Tickets", plot_bgcolor="white", paper_bgcolor="white", margin=dict(t=20))
-        st.plotly_chart(fig1, use_container_width=True)
-
+fig1.update_layout(
+    xaxis_title="Date", yaxis_title="Tickets",
+    plot_bgcolor="white", paper_bgcolor="white",
+    margin=dict(t=20),
+    xaxis=dict(
+        tickformat="%d %b",       # e.g. "29 Apr"
+        tickangle=-45,
+        type="category",          # treats each date as discrete → thin bars
+    ),
+    bargap=0.4,                   # gap between bars
+)
+fig1.update_traces(marker_line_width=0, width=0.5)
+st.plotly_chart(fig1, use_container_width=True)
     with col_b:
         st.markdown("### 🥧 Ticket Status Breakdown")
         status_counts = df["status"].value_counts().reset_index()
