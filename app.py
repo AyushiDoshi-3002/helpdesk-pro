@@ -203,8 +203,8 @@ def check_learned_answers(query: str):
 # ════════════════════════════════════════════════════════
 #  PDF DOWNLOAD FROM SUPABASE STORAGE
 # ════════════════════════════════════════════════════════
-_SUPABASE_PDF_FILENAME = "questions"   # ← CHANGE THIS
-_SUPABASE_BUCKET_NAME  = "documents"   # ← change if your bucket name differs
+_SUPABASE_PDF_FILENAME = "questions.pdf"
+_SUPABASE_BUCKET_NAME  = "Documents"
 
 @st.cache_resource(show_spinner="📄 Downloading PDF from Supabase…")
 def get_pdf_bytes():
