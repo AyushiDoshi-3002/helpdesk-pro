@@ -205,10 +205,14 @@ def check_learned_answers(query: str):
 # ════════════════════════════════════════════════════════
 _PDF_PUBLIC_URL = "https://jvulbphmksdebkkkhgvh.supabase.co/storage/v1/object/public/Documents/questions.pdf"
 
+_PDF_PUBLIC_URL = "https://jvulbphmksdebkkkhgvh.supabase.co/storage/v1/object/public/Documents/questions.pdf"
+
 @st.cache_resource(show_spinner="📄 Downloading PDF from Supabase…")
 def get_pdf_bytes():
     try:
-        resp = requests.get(_PDF_PUBLIC_URL, timeout=30)
+        supabase_key = st.secrets.get("SUPABASE_KEY", "")
+        headers = {"apikey": supabase_key, "Authorization": f"Bearer {supabase_key}"}
+        resp = requests.get(_PDF_PUBLIC_URL, headers=headers, timeout=30)
         resp.raise_for_status()
         return resp.content
     except Exception as e:
