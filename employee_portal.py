@@ -2,7 +2,7 @@
 Employee Portal – search Q&A, raise tickets.
 """
 import streamlit as st
-from qa_engine import answer_question
+from qa_engine import answer_question, load_qa_pairs
 import db
 
 
@@ -10,9 +10,26 @@ def show():
     st.markdown("# 🔍 Employee Help Portal")
     st.markdown(
         "<p style='color:#6b7280;font-size:15px;margin-top:-10px'>"
-        "Ask any Python-related question. If we don't have an answer, raise a support ticket.</p>",
+        "Ask any question. If we don't have an answer, raise a support ticket.</p>",
         unsafe_allow_html=True,
     )
+
+    # ── PDF status banner ─────────────────────────────────────────────────────
+    error = st.session_state.get("pdf_load_error")
+    if error:
+        st.error(error, icon="🔒")
+        st.info(
+            "Until the PDF is accessible, all searches will return 'No Answer Found' "
+            "and employees can still raise support tickets below.",
+            icon="ℹ️",
+        )
+    else:
+        pair_count = st.session_state.get("pdf_pair_count")
+        if pair_count:
+            st.success(
+                f"📚 PDF Knowledge Base: {pair_count} Q&A pairs loaded from Supabase Storage.",
+                icon="✅",
+            )
 
     # ── Search Section ────────────────────────────────────────────────────────
     st.markdown("---")
@@ -31,33 +48,44 @@ def show():
 
     # Handle search
     if search_btn and question.strip():
-        with st.spinner("🔍 Searching knowledge base…"):
-            result = answer_question(question.strip())
 
-        if result["found"]:
-            st.markdown("#### ✅ Answer Found")
-            st.markdown(
-                f"<small style='color:#7c3aed'>📌 Matched: <em>{result['matched_question']}</em></small>",
-                unsafe_allow_html=True,
+        # If PDF failed to load, skip search entirely
+        if st.session_state.get("pdf_load_error"):
+            st.warning(
+                "⚠️ Knowledge base is unavailable (PDF failed to load). "
+                "Please raise a support ticket below.",
+                icon="📭",
             )
-            st.markdown(
-                f"<div class='answer-box'>{result['answer']}</div>",
-                unsafe_allow_html=True,
-            )
-            st.success("This answer came from our Python Knowledge Base.", icon="📚")
-
-        else:
-            st.markdown("#### ❌ No Answer Found")
-            st.markdown(
-                "<div class='no-answer-box'>"
-                "⚠️ We couldn't find an answer for your query in our knowledge base. "
-                "Please raise a support ticket below and our team will get back to you."
-                "</div>",
-                unsafe_allow_html=True,
-            )
-            # Auto-scroll hint
             st.session_state["prefill_query"] = question.strip()
             st.session_state["show_ticket"] = True
+
+        else:
+            with st.spinner("🔍 Searching knowledge base…"):
+                result = answer_question(question.strip())
+
+            if result["found"]:
+                st.markdown("#### ✅ Answer Found")
+                st.markdown(
+                    f"<small style='color:#7c3aed'>📌 Matched: <em>{result['matched_question']}</em></small>",
+                    unsafe_allow_html=True,
+                )
+                st.markdown(
+                    f"<div class='answer-box'>{result['answer']}</div>",
+                    unsafe_allow_html=True,
+                )
+                st.success("This answer came from our Knowledge Base.", icon="📚")
+
+            else:
+                st.markdown("#### ❌ No Answer Found")
+                st.markdown(
+                    "<div class='no-answer-box'>"
+                    "⚠️ We couldn't find an answer for your query in our knowledge base. "
+                    "Please raise a support ticket below and our team will get back to you."
+                    "</div>",
+                    unsafe_allow_html=True,
+                )
+                st.session_state["prefill_query"] = question.strip()
+                st.session_state["show_ticket"] = True
 
     elif search_btn and not question.strip():
         st.warning("Please enter a question before searching.")
@@ -126,7 +154,6 @@ def _ticket_form():
         submit = st.button("🚀 Submit Ticket", use_container_width=True)
 
     if submit:
-        # Validation
         errors = []
         if not user_id.strip():
             errors.append("Employee ID is required.")
@@ -152,7 +179,6 @@ def _ticket_form():
                     "Our admin team will review it shortly.",
                     icon="🎉",
                 )
-                # Clear prefill
                 st.session_state.pop("prefill_query", None)
                 st.session_state["show_ticket"] = False
 
