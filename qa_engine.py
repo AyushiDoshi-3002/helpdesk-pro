@@ -28,27 +28,61 @@ STOP_WORDS = {
 
 @st.cache_resource(show_spinner="📄 Loading knowledge base…")
 def load_qa_pairs() -> list:
-    """Download PDF from Supabase Storage, extract text, parse into Q&A pairs."""
-    text = _fetch_pdf_text()
+    """
+    Download PDF from Supabase Storage, extract text, parse into Q&A pairs.
+    Returns empty list (NOT a fallback) if PDF cannot be loaded —
+    so the app clearly shows 'no answer' instead of wrong answers from hardcoded data.
+    """
+    text, error = _fetch_pdf_text()
+
+    if error:
+        # Store error in session so the UI can show it prominently
+        st.session_state["pdf_load_error"] = error
+        return []  # ← empty, no silent fallback
+
+    st.session_state.pop("pdf_load_error", None)
     pairs = _parse_qa(text)
-    st.toast(f"✅ Loaded {len(pairs)} Q&A pairs from Supabase Storage", icon="📄")
+    st.session_state["pdf_pair_count"] = len(pairs)
     return pairs
 
 
-def _fetch_pdf_text() -> str:
+def _fetch_pdf_text() -> tuple:
+    """
+    Returns (text, None) on success or ("", error_message) on failure.
+    Does NOT fall back to hardcoded data — caller decides what to do.
+    """
     try:
         import PyPDF2
+
         resp = requests.get(PDF_URL, timeout=30)
-        resp.raise_for_status()
+
+        # Catch HTTP errors explicitly so we can show a clear message
+        if resp.status_code == 403:
+            return "", (
+                f"🔒 **PDF access blocked (403 Forbidden).**\n\n"
+                f"Your Supabase Storage bucket is not publicly accessible.\n\n"
+                f"**Fix:** Go to Supabase → Storage → Documents bucket → "
+                f"Edit bucket → enable **Public bucket** → save. "
+                f"Then add a SELECT policy for the `anon` role."
+            )
+        if resp.status_code != 200:
+            return "", f"❌ PDF fetch failed with HTTP {resp.status_code}."
+
         reader = PyPDF2.PdfReader(io.BytesIO(resp.content))
         pages = [p.extract_text() or "" for p in reader.pages]
         full_text = "\n".join(pages)
+
         if not full_text.strip():
-            raise ValueError("PDF extracted no text — may be scanned/image-based.")
-        return full_text
+            return "", (
+                "⚠️ PDF loaded but no text could be extracted. "
+                "The file may be scanned/image-based. "
+                "Try re-uploading a text-based PDF."
+            )
+
+        return full_text, None
+
     except Exception as e:
-        st.warning(f"Could not load PDF from Supabase Storage ({e}). Using built-in fallback Q&A.")
-        return _fallback_text()
+        return "", f"❌ Unexpected error loading PDF: {type(e).__name__}: {e}"
 
 
 def _parse_qa(text: str) -> list:
@@ -93,7 +127,7 @@ def _parse_qa(text: str) -> list:
 
         pairs.append({"num": num, "question": question, "answer": answer})
 
-    return pairs if pairs else _fallback_pairs()
+    return pairs
 
 
 def _meaningful_words(text: str) -> set:
@@ -105,20 +139,17 @@ def _meaningful_words(text: str) -> set:
 def answer_question(query: str) -> dict:
     """
     Search loaded Q&A pairs for the best keyword match.
-
-    Scoring (stop words ignored throughout):
-      +15  exact query phrase found inside the question
-      +5   each meaningful query word found in the question
-      +2   each meaningful query word found in the answer
-      +8   bonus per tech-domain term matched in the question
-
-    Only returns a result if score >= MATCH_THRESHOLD (10).
+    Returns found=False immediately if no pairs are loaded (PDF failed).
     """
     qa_pairs = load_qa_pairs()
+
+    # No pairs = PDF didn't load = don't guess, just return not found
+    if not qa_pairs:
+        return {"found": False, "answer": "", "matched_question": "", "score": 0}
+
     query_lower = query.lower()
     query_words = _meaningful_words(query_lower)
 
-    # If query has no meaningful words after stop-word removal, reject immediately
     if not query_words:
         return {"found": False, "answer": "", "matched_question": "", "score": 0}
 
@@ -132,7 +163,7 @@ def answer_question(query: str) -> dict:
         'recursion', 'stack', 'heap', 'memory', 'garbage', 'collection',
         'type', 'string', 'integer', 'boolean', 'float', 'array', 'index',
         'slice', 'map', 'filter', 'zip', 'enumerate', 'format', 'file',
-        'context', 'manager', 'yield', 'async', 'await', 'coroutine',
+        'context', 'manager', 'yield', 'await', 'coroutine',
     }
 
     best_score = 0
@@ -143,7 +174,6 @@ def answer_question(query: str) -> dict:
         a_lower = pair["answer"].lower()
         score = 0
 
-        # Exact phrase match in question (strong signal)
         if query_lower in q_lower:
             score += 15
 
@@ -156,11 +186,9 @@ def answer_question(query: str) -> dict:
         score += len(q_overlap) * 5
         score += len(a_overlap) * 2
 
-        # Tech term bonus (only when matched in the question)
         tech_overlap = (query_words & tech_terms) & q_words
         score += len(tech_overlap) * 8
 
-        # Reject weak matches where fewer than 30% of query words matched
         if q_overlap and len(q_overlap) / max(len(query_words), 1) < 0.3 and score < 15:
             score = 0
 
@@ -181,56 +209,3 @@ def answer_question(query: str) -> dict:
 
 def get_all_questions() -> list:
     return [p["question"] for p in load_qa_pairs()]
-
-
-def _fallback_text() -> str:
-    return """
-1. What is Python?
-Python is a high-level, interpreted, general-purpose programming language known for its simplicity, readability, and vast ecosystem.
-
-2. What are Python's key features?
-Python features dynamic typing, interpreted execution, object-oriented design, a large standard library, and cross-platform support.
-
-3. What is PEP 8?
-PEP 8 is Python's official style guide that defines conventions for writing clean and readable Python code.
-
-4. What is the difference between a list and a tuple?
-Lists are mutable ordered collections defined with square brackets. Tuples are immutable ordered collections defined with parentheses.
-
-5. What is a dictionary in Python?
-A dictionary is an unordered key-value mapping. Keys must be unique and hashable. Defined with curly braces.
-
-6. What is a lambda function?
-A lambda is an anonymous single-expression function: lambda x: x * 2. Used for short throwaway functions.
-
-7. What is a decorator?
-A decorator wraps a function to extend its behavior without modifying its code. Applied with @decorator syntax.
-
-8. What is the GIL?
-The Global Interpreter Lock prevents multiple native threads from executing Python bytecode simultaneously in CPython.
-
-9. What is a class in Python?
-A class is a blueprint for creating objects. It defines attributes and methods shared by all instances.
-
-10. What is inheritance?
-Inheritance lets a child class acquire attributes and methods from a parent class using class Child(Parent).
-
-11. What is a generator?
-A generator is a function that yields values lazily using the yield keyword instead of returning all at once.
-
-12. What is list comprehension?
-List comprehension creates lists concisely: [x*2 for x in range(10) if x % 2 == 0].
-
-13. What is the difference between append and extend?
-append() adds a single element to a list. extend() adds all elements from an iterable.
-
-14. What are Python built-in data types?
-Python built-in types include int, float, str, bool, list, tuple, dict, set, and NoneType.
-
-15. What is object-oriented programming?
-OOP organizes code into classes and objects. Supports inheritance, encapsulation, polymorphism, and abstraction.
-"""
-
-
-def _fallback_pairs() -> list:
-    return _parse_qa(_fallback_text())
