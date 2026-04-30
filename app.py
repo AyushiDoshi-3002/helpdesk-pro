@@ -44,7 +44,6 @@ section[data-testid="stSidebar"] * { color: white !important; }
 .answer-box { background: linear-gradient(135deg, #ede9fe, #ddd6fe); border-radius: 12px; padding: 20px; border-left: 4px solid #7c3aed; font-size: 15px; line-height: 1.7; color: #1e1b4b; }
 .no-answer-box { background: #fff7ed; border-radius: 12px; padding: 16px 20px; border-left: 4px solid #f97316; color: #7c2d12; font-size: 14px; }
 .learned-box { background: linear-gradient(135deg, #d1fae5, #a7f3d0); border-radius: 12px; padding: 20px; border-left: 4px solid #059669; font-size: 15px; line-height: 1.7; color: #064e3b; }
-.similar-ticket-card { background: #f5f3ff; border-radius: 10px; padding: 14px 16px; border-left: 3px solid #7c3aed; margin-bottom: 10px; }
 .badge-open { background:#fef3c7;color:#92400e;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600; }
 .badge-inprogress { background:#dbeafe;color:#1e40af;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600; }
 .badge-resolved { background:#d1fae5;color:#065f46;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600; }
@@ -214,48 +213,6 @@ def auto_save_note_to_resolved(ticket_query: str, note: str):
         return True
     except Exception:
         return False
-
-
-# ════════════════════════════════════════════════════════
-#  SIMILAR TICKETS SUGGESTION (for Admin)
-# ════════════════════════════════════════════════════════
-def find_similar_resolved_tickets(query: str, top_n: int = 3) -> list:
-    db = get_db()
-    if db is None:
-        return []
-    results = []
-    try:
-        resp = db.table("resolved_issues").select("query, solution").execute()
-        for row in (resp.data or []):
-            q = (row.get("query") or "").strip()
-            sol = (row.get("solution") or "").strip()
-            if not q or not sol:
-                continue
-            score = _keyword_score(query, q)
-            if score > 0.3:
-                results.append({"query": q, "solution": sol, "score": score})
-    except Exception:
-        pass
-    try:
-        resp2 = db.table("tickets").select("query, admin_note").not_.is_("admin_note", "null").execute()
-        for row in (resp2.data or []):
-            q = (row.get("query") or "").strip()
-            note = (row.get("admin_note") or "").strip()
-            if not q or not note:
-                continue
-            score = _keyword_score(query, q)
-            if score > 0.3:
-                results.append({"query": q, "solution": note, "score": score})
-    except Exception:
-        pass
-    # Deduplicate by solution text, keep highest score
-    seen = {}
-    for r in results:
-        key = r["solution"][:80]
-        if key not in seen or r["score"] > seen[key]["score"]:
-            seen[key] = r
-    sorted_results = sorted(seen.values(), key=lambda x: x["score"], reverse=True)
-    return sorted_results[:top_n]
 
 
 # ════════════════════════════════════════════════════════
@@ -700,26 +657,6 @@ def page_admin():
 
             st.markdown("**Problem:**")
             st.markdown(f"<div class='answer-box'>{ticket_query}</div>", unsafe_allow_html=True)
-
-            # Similar tickets panel
-            if ticket_query.strip():
-                similar = find_similar_resolved_tickets(ticket_query)
-                if similar:
-                    st.markdown("---")
-                    st.markdown("**🔍 Similar Resolved Tickets — click to use a solution:**")
-                    for idx, sim in enumerate(similar):
-                        with st.container():
-                            st.markdown(
-                                f"<div class='similar-ticket-card'>"
-                                f"<small style='color:#7c3aed;font-weight:600'>Match: {sim['score']:.0%}</small><br>"
-                                f"<strong>Q:</strong> {sim['query'][:120]}<br>"
-                                f"<strong>A:</strong> {sim['solution'][:200]}…"
-                                f"</div>",
-                                unsafe_allow_html=True
-                            )
-                            if st.button(f"✅ Use This Solution", key=f"use_sol_{tid}_{idx}"):
-                                st.session_state[f"prefill_note_{tid}"] = sim["solution"]
-                                st.rerun()
 
             st.markdown("---")
 
