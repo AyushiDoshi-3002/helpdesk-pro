@@ -10,10 +10,24 @@ from collections import Counter
 IST = timezone(timedelta(hours=5, minutes=30))
 
 def _to_ist(dt_str: str) -> str:
-    """Convert a UTC ISO string → formatted IST display string."""
+    """Convert a UTC ISO string → formatted IST display string.
+    Handles all Supabase timestamp formats:
+      - '2024-01-15T10:30:00+00:00'
+      - '2024-01-15T10:30:00Z'
+      - '2024-01-15T10:30:00.123456+00:00'
+      - '2024-01-15 10:30:00+00:00'
+    """
     try:
-        dt = datetime.fromisoformat(dt_str.replace("Z", "+00:00"))
-        return dt.astimezone(IST).strftime("%d %b %Y, %I:%M %p")
+        # Normalise: replace space separator, replace Z suffix
+        normalised = dt_str.strip().replace(" ", "T").replace("Z", "+00:00")
+        # If no timezone info at all, assume UTC
+        if "+" not in normalised[10:] and normalised[-6] != "+":
+            normalised += "+00:00"
+        dt = datetime.fromisoformat(normalised)
+        # Force UTC if tz-naive somehow slipped through
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(IST).strftime("%d %b %Y, %I:%M %p IST")
     except Exception:
         return dt_str
 
@@ -781,7 +795,9 @@ def page_analytics():
 
     df = pd.DataFrame(tickets)
     df["created_at"] = pd.to_datetime(df["created_at"], utc=True)
-    df["date"] = df["created_at"].dt.tz_convert("Asia/Kolkata").dt.strftime("%d %b %Y")
+    # Convert to IST (UTC+5:30) without relying on pytz/zoneinfo
+    df["created_at_ist"] = df["created_at"] + pd.Timedelta(hours=5, minutes=30)
+    df["date"] = df["created_at_ist"].dt.strftime("%d %b %Y")
 
     col1, col2, col3, col4 = st.columns(4)
     resolved = df[df["status"] == "Resolved"]
@@ -1010,7 +1026,7 @@ def page_setup():
                         with st.expander(f"🟢 {row['query'][:100]}"):
                             st.markdown(f"**Original question:** {row['query']}")
                             st.markdown(f"**Admin solution:** {row['solution']}")
-                            st.markdown(f"<small style='color:#6b7280'>Saved: {row.get('created_at', '')[:10]}</small>", unsafe_allow_html=True)
+                            st.markdown(f"<small style='color:#6b7280'>Saved: {_to_ist(row.get('created_at', ''))}</small>", unsafe_allow_html=True)
                 else:
                     st.info("No learned answers yet.")
             except Exception as e:
