@@ -3,10 +3,22 @@ Admin Panel – view, update, and resolve support tickets.
 """
 import streamlit as st
 import db
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 
 ADMIN_PASSWORD = "admin123"   # Change in production / move to st.secrets
+
+# ── IST Timezone (UTC+5:30) ───────────────────────────────────────────────────
+IST = timezone(timedelta(hours=5, minutes=30))
+
+def _to_ist(dt_str: str) -> str:
+    """Convert a UTC ISO string → formatted IST string."""
+    try:
+        dt = datetime.fromisoformat(dt_str.replace("Z", "+00:00"))
+        dt_ist = dt.astimezone(IST)
+        return dt_ist.strftime("%d %b %Y, %I:%M %p IST")
+    except Exception:
+        return dt_str
 
 
 def show():
@@ -111,12 +123,8 @@ def _ticket_card(ticket):
     priority = ticket.get("priority", "Medium")
     created = ticket.get("created_at", "")
 
-    # Format date
-    try:
-        dt = datetime.fromisoformat(created.replace("Z", "+00:00"))
-        created_fmt = dt.strftime("%d %b %Y, %I:%M %p")
-    except Exception:
-        created_fmt = created
+    # ✅ Format date in IST
+    created_fmt = _to_ist(created)
 
     # Status badge
     badge_cls = {
