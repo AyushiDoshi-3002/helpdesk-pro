@@ -10,21 +10,12 @@ from collections import Counter
 IST = timezone(timedelta(hours=5, minutes=30))
 
 def _to_ist(dt_str: str) -> str:
-    """Convert a UTC ISO string → formatted IST display string.
-    Handles all Supabase timestamp formats:
-      - '2024-01-15T10:30:00+00:00'
-      - '2024-01-15T10:30:00Z'
-      - '2024-01-15T10:30:00.123456+00:00'
-      - '2024-01-15 10:30:00+00:00'
-    """
+    """Convert a UTC ISO string → formatted IST display string."""
     try:
-        # Normalise: replace space separator, replace Z suffix
         normalised = dt_str.strip().replace(" ", "T").replace("Z", "+00:00")
-        # If no timezone info at all, assume UTC
         if "+" not in normalised[10:] and normalised[-6] != "+":
             normalised += "+00:00"
         dt = datetime.fromisoformat(normalised)
-        # Force UTC if tz-naive somehow slipped through
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=timezone.utc)
         return dt.astimezone(IST).strftime("%d %b %Y, %I:%M %p IST")
@@ -470,10 +461,10 @@ def page_employee():
             st.markdown("---")
             col_a, col_b, _ = st.columns([1, 1, 4])
             with col_a:
-                if st.button("👍 Helpful"):
+                if st.button("👍 Helpful", key="emp_helpful"):
                     st.success("Great! Glad it helped.")
             with col_b:
-                if st.button("👎 Not helpful"):
+                if st.button("👎 Not helpful", key="emp_not_helpful"):
                     db_log_failed_query(question.strip())
                     st.session_state["show_ticket"] = True
                     st.session_state["ticket_query"] = question.strip()
@@ -495,24 +486,24 @@ def page_employee():
         st.markdown("### 📝 Support Ticket")
         c1, c2 = st.columns(2)
         with c1:
-            user_id = st.text_input("👤 Employee ID *", placeholder="e.g. EMP-1042")
-            job_role = st.selectbox("💼 Job Role *", ["Select…", "Software Engineer", "Data Analyst", "QA Engineer", "DevOps Engineer", "Product Manager", "HR / Operations", "Other"])
+            user_id = st.text_input("👤 Employee ID *", placeholder="e.g. EMP-1042", key="emp_user_id")
+            job_role = st.selectbox("💼 Job Role *", ["Select…", "Software Engineer", "Data Analyst", "QA Engineer", "DevOps Engineer", "Product Manager", "HR / Operations", "Other"], key="emp_job_role")
         with c2:
-            priority = st.selectbox("🚨 Priority *", ["Medium", "High", "Low"])
+            priority = st.selectbox("🚨 Priority *", ["Medium", "High", "Low"], key="emp_priority")
 
         original_question = st.session_state.get("ticket_query", "")
         if original_question:
             st.markdown(f"<small style='color:#7c3aed'>🔍 Your search question: <strong>{original_question}</strong></small>", unsafe_allow_html=True)
-        query_text = st.text_area("📋 Describe your problem in detail *", value="", placeholder="Add more details about your issue…", height=120)
+        query_text = st.text_area("📋 Describe your problem in detail *", value="", placeholder="Add more details about your issue…", height=120, key="emp_query_text")
 
         submit_clicked = False
         cancel_clicked = False
         col_sub, col_cancel, _ = st.columns([1, 1, 4])
         with col_sub:
-            if st.button("🚀 Submit Ticket", use_container_width=True):
+            if st.button("🚀 Submit Ticket", use_container_width=True, key="emp_submit"):
                 submit_clicked = True
         with col_cancel:
-            if st.button("✖ Cancel", use_container_width=True):
+            if st.button("✖ Cancel", use_container_width=True, key="emp_cancel"):
                 cancel_clicked = True
 
         if submit_clicked:
@@ -549,8 +540,8 @@ def page_admin():
         st.markdown("---")
         col, _ = st.columns([1.5, 2.5])
         with col:
-            pwd = st.text_input("Password", type="password")
-            if st.button("Login →", use_container_width=True):
+            pwd = st.text_input("Password", type="password", key="admin_pwd_input")
+            if st.button("Login →", use_container_width=True, key="admin_login_btn"):
                 if pwd == ADMIN_PWD:
                     st.session_state["admin_logged_in"] = True
                     st.rerun()
@@ -562,7 +553,7 @@ def page_admin():
     with c1:
         st.markdown("# 🛡️ Admin Dashboard")
     with c2:
-        if st.button("Logout"):
+        if st.button("Logout", key="admin_logout_btn"):
             st.session_state["admin_logged_in"] = False
             st.rerun()
 
@@ -591,14 +582,14 @@ def page_admin():
     # ── Filters + Export ───────────────────────────────────────────────────────
     c1, c2, c3, c4 = st.columns([1.5, 1.5, 1.5, 1])
     with c1:
-        sf = st.selectbox("Status", ["All", "Open", "In Progress", "Resolved", "Overdue"])
+        sf = st.selectbox("Status", ["All", "Open", "In Progress", "Resolved", "Overdue"], key="admin_filter_status")
     with c2:
-        pf = st.selectbox("Priority", ["All", "High", "Medium", "Low"])
+        pf = st.selectbox("Priority", ["All", "High", "Medium", "Low"], key="admin_filter_priority")
     with c3:
-        search_term = st.text_input("🔍 Search tickets", placeholder="keyword / employee ID")
+        search_term = st.text_input("🔍 Search tickets", placeholder="keyword / employee ID", key="admin_search_term")
     with c4:
         st.markdown("<br>", unsafe_allow_html=True)
-        export_btn = st.button("📥 Export CSV", use_container_width=True)
+        export_btn = st.button("📥 Export CSV", use_container_width=True, key="admin_export_btn")
 
     try:
         tickets = db_get_tickets(sf if sf not in ["All", "Overdue"] else None)
@@ -617,7 +608,7 @@ def page_admin():
     if export_btn:
         all_tickets = db_get_tickets()
         csv_bytes = tickets_to_csv(all_tickets)
-        st.download_button("⬇️ Download CSV", data=csv_bytes, file_name="helpdesk_tickets.csv", mime="text/csv")
+        st.download_button("⬇️ Download CSV", data=csv_bytes, file_name="helpdesk_tickets.csv", mime="text/csv", key="admin_download_csv")
 
     if not tickets:
         st.info("No tickets found.", icon="📭")
@@ -665,15 +656,15 @@ def page_admin():
                 new_status = st.selectbox(
                     "Update Status", ["Open", "In Progress", "Resolved"],
                     index=["Open", "In Progress", "Resolved"].index(status),
-                    key=f"s_{tid}"
+                    key=f"admin_s_{tid}"
                 )
             with nc2:
-                prefill_note = st.session_state.pop(f"prefill_note_{tid}", None)
+                prefill_note = st.session_state.pop(f"admin_prefill_{tid}", None)
                 default_note = prefill_note if prefill_note is not None else (t.get("admin_note") or "")
                 note = st.text_area(
                     "Admin Note / Solution",
                     value=default_note,
-                    key=f"n_{tid}",
+                    key=f"admin_n_{tid}",
                     height=100,
                     placeholder="Write solution here…"
                 )
@@ -682,10 +673,10 @@ def page_admin():
             delete_clicked = False
             bc1, bc2, _, _ = st.columns([1, 1, 1.5, 1])
             with bc1:
-                if st.button("💾 Save", key=f"save_{tid}", use_container_width=True):
+                if st.button("💾 Save", key=f"admin_save_{tid}", use_container_width=True):
                     save_clicked = True
             with bc2:
-                if st.button("🗑️ Delete", key=f"del_{tid}", use_container_width=True):
+                if st.button("🗑️ Delete", key=f"admin_del_{tid}", use_container_width=True):
                     delete_clicked = True
 
             if save_clicked:
@@ -732,7 +723,6 @@ def page_analytics():
 
     df = pd.DataFrame(tickets)
     df["created_at"] = pd.to_datetime(df["created_at"], utc=True)
-    # Convert to IST (UTC+5:30) without relying on pytz/zoneinfo
     df["created_at_ist"] = df["created_at"] + pd.Timedelta(hours=5, minutes=30)
     df["date"] = df["created_at_ist"].dt.strftime("%d %b %Y")
 
@@ -796,7 +786,7 @@ def page_analytics():
     st.markdown("---")
     st.markdown("### 📥 Export Data")
     csv_bytes = tickets_to_csv(tickets)
-    st.download_button("⬇️ Download All Tickets as CSV", data=csv_bytes, file_name="helpdesk_tickets.csv", mime="text/csv")
+    st.download_button("⬇️ Download All Tickets as CSV", data=csv_bytes, file_name="helpdesk_tickets.csv", mime="text/csv", key="analytics_download_csv")
 
 
 # ════════════════════════════════════════════════════════
@@ -876,7 +866,7 @@ def page_knowledge_gap():
                 st.markdown(f"**{word}** — asked {count} time(s)")
 
     st.markdown("---")
-    if st.button("🗑️ Clear All Failed Queries (after fixing KB)"):
+    if st.button("🗑️ Clear All Failed Queries (after fixing KB)", key="gap_clear_btn"):
         try:
             db.table("failed_queries").delete().neq("id", 0).execute()
             st.success("Cleared!")
@@ -912,7 +902,7 @@ def page_setup():
             st.error("❌ Supabase Key missing")
 
     st.markdown("---")
-    if st.button("🧪 Test Database"):
+    if st.button("🧪 Test Database", key="setup_test_db"):
         try:
             db = get_db()
             if db is None:
@@ -923,7 +913,7 @@ def page_setup():
         except Exception as e:
             st.error(f"Failed: {e}")
 
-    if st.button("📄 Test PDF + Q&A Extraction"):
+    if st.button("📄 Test PDF + Q&A Extraction", key="setup_test_pdf"):
         pdf_bytes = get_pdf_bytes()
         if not pdf_bytes:
             st.error("❌ Could not download PDF.")
@@ -940,7 +930,7 @@ def page_setup():
             else:
                 st.error("❌ No Q&A pairs found.")
 
-    if st.button("🧠 Test Semantic Search Model"):
+    if st.button("🧠 Test Semantic Search Model", key="setup_test_model"):
         model, q_emb, a_emb, pairs, util = load_model_and_embeddings()
         if model is None:
             st.error("❌ Model failed to load.")
@@ -950,7 +940,7 @@ def page_setup():
 
     st.markdown("---")
     st.markdown("### 🧠 Learned Answers (from resolved tickets)")
-    if st.button("📋 View All Learned Answers"):
+    if st.button("📋 View All Learned Answers", key="setup_view_learned"):
         db = get_db()
         if db is None:
             st.error("Supabase not configured.")
