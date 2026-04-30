@@ -28,6 +28,9 @@ import streamlit as st
 from datetime import datetime, timedelta, timezone
 from supabase import create_client, Client
 
+# ── IST Timezone (UTC+5:30) ───────────────────────────────────────────────────
+IST = timezone(timedelta(hours=5, minutes=30))
+
 # ── Supabase config ───────────────────────────────────────────────────────────
 SUPABASE_URL = "https://jvulbphmksdebkkkhgvh.supabase.co"
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp2dWxicGhta3NkZWJra2toZ3ZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcxOTg4ODQsImV4cCI6MjA5Mjc3NDg4NH0.REhaZ0M8pg_9hkaIJxYNmErIsy6UARTYyzYkQbr0pT4"
@@ -101,6 +104,7 @@ def _get_sb() -> Client:
 
 def _dt_to_str(dt):
     if isinstance(dt, datetime):
+        # Always store as UTC in DB for consistency
         return dt.astimezone(timezone.utc).isoformat()
     return dt
 
@@ -186,13 +190,15 @@ def _db_load_all() -> list:
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _now():
-    return datetime.now(timezone.utc)
+    return datetime.now(IST)
 
 def _fmt(dt):
     try:
         if isinstance(dt, str):
             dt = _str_to_dt(dt)
-        return dt.strftime("%d %b %Y, %I:%M %p")
+        # Convert to IST for display
+        dt_ist = dt.astimezone(IST)
+        return dt_ist.strftime("%d %b %Y, %I:%M %p IST")
     except Exception:
         return str(dt)
 
