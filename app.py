@@ -13,7 +13,7 @@ def _to_ist(dt_str: str) -> str:
     """Convert a UTC ISO string → formatted IST display string."""
     try:
         dt = datetime.fromisoformat(dt_str.replace("Z", "+00:00"))
-        return dt.astimezone(IST).strftime("%d %b %Y, %I:%M %p IST")
+        return dt.astimezone(IST).strftime("%d %b %Y, %I:%M %p")
     except Exception:
         return dt_str
 
