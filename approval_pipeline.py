@@ -100,13 +100,11 @@ def _get_sb() -> Client:
 # ── DB helpers ────────────────────────────────────────────────────────────────
 
 def _dt_to_str(dt):
-    """Convert datetime → ISO string for storage."""
     if isinstance(dt, datetime):
         return dt.astimezone(timezone.utc).isoformat()
     return dt
 
 def _str_to_dt(s):
-    """Convert ISO string → aware datetime."""
     if isinstance(s, datetime):
         return s if s.tzinfo else s.replace(tzinfo=timezone.utc)
     if isinstance(s, str):
@@ -118,11 +116,9 @@ def _str_to_dt(s):
     return s
 
 def _serialize(req: dict) -> dict:
-    """Prepare a request dict for Supabase (datetimes → strings, lists → json)."""
     row = dict(req)
     row["created_at"] = _dt_to_str(row.get("created_at"))
     row["expires_at"] = _dt_to_str(row.get("expires_at"))
-    # history entries have a "time" key that must also be serialized
     history = []
     for entry in row.get("history", []):
         e = dict(entry)
@@ -132,7 +128,6 @@ def _serialize(req: dict) -> dict:
     return row
 
 def _deserialize(row: dict) -> dict:
-    """Convert a Supabase row back into a request dict."""
     req = dict(row)
     req["created_at"] = _str_to_dt(req.get("created_at"))
     req["expires_at"] = _str_to_dt(req.get("expires_at"))
@@ -142,13 +137,11 @@ def _deserialize(row: dict) -> dict:
         e["time"] = _str_to_dt(e.get("time"))
         history.append(e)
     req["history"] = history
-    # jsonb comes back as list already; ensure chain is a list
     if not isinstance(req.get("chain"), list):
         req["chain"] = json.loads(req["chain"]) if req.get("chain") else []
     return req
 
 def _db_insert(req: dict):
-    """Insert a new request row into Supabase."""
     try:
         row = _serialize(req)
         res = _get_sb().table(TABLE).insert(row).execute()
@@ -160,7 +153,6 @@ def _db_insert(req: dict):
         st.error(f"❌ DB insert error for {req.get('id')}: {type(e).__name__}: {e}")
 
 def _db_update(req: dict):
-    """Upsert the full request row (called after every approve/reject/expire)."""
     try:
         row = _serialize(req)
         res = _get_sb().table(TABLE).upsert(row).execute()
@@ -171,8 +163,16 @@ def _db_update(req: dict):
     except Exception as e:
         st.error(f"❌ DB update error for {req.get('id')}: {type(e).__name__}: {e}")
 
+# ── ✅ NEW: Delete from Supabase ──────────────────────────────────────────────
+def _db_delete(rid: str):
+    """Delete a request row from Supabase by id."""
+    try:
+        _get_sb().table(TABLE).delete().eq("id", rid).execute()
+        st.toast(f"🗑️ Deleted {rid} from Supabase", icon="🗄️")
+    except Exception as e:
+        st.error(f"❌ DB delete error for {rid}: {type(e).__name__}: {e}")
+
 def _db_load_all() -> list:
-    """Fetch all rows ordered by created_at asc."""
     try:
         res = _get_sb().table(TABLE).select("*").order("created_at", desc=False).execute()
         rows = res.data or []
@@ -212,18 +212,17 @@ def _time_left(expires_at):
 
 def _init():
     defaults = {
-        "ap_role_auth":    {},
-        "ap_loaded":       False,   # have we fetched from DB this session?
+        "ap_role_auth":         {},
+        "ap_loaded":            False,
+        "ap_confirm_delete":    {},   # ✅ NEW: tracks which request IDs have delete confirmation pending
     }
     for k, v in defaults.items():
         if k not in st.session_state:
             st.session_state[k] = v
 
 def _load_requests():
-    """Load from Supabase once per session (refresh button available)."""
     rows = _db_load_all()
     st.session_state.ap_requests = rows
-    # derive next_id from highest existing REQ number
     ids = [int(r["id"].split("-")[1]) for r in rows if r.get("id", "").startswith("REQ-")]
     st.session_state.ap_next_id = (max(ids) + 1) if ids else 1
     st.session_state.ap_loaded  = True
@@ -263,7 +262,7 @@ def _create(title, category, subtype, description, urgency, requester):
         }
 
     st.session_state.ap_requests.append(req)
-    _db_insert(req)          # ← persist to Supabase
+    _db_insert(req)
     return req
 
 def _approve(req, note):
@@ -280,14 +279,14 @@ def _approve(req, note):
         req["expires_at"] = _now() + timedelta(hours=TIMEOUT_HOURS)
         req["history"].append({"time": _now(), "by": "System",
                                 "action": f"Forwarded to {req['chain'][next_idx]}"})
-    _db_update(req)          # ← persist to Supabase
+    _db_update(req)
 
 def _reject(req, note):
     stage = req["chain"][req["stage_idx"]]
     req["status"] = "Rejected"
     req["done"]   = True
     req["history"].append({"time": _now(), "by": stage, "action": "Rejected", "note": note})
-    _db_update(req)          # ← persist to Supabase
+    _db_update(req)
 
 def _check_expiry(req):
     if not req["done"] and _now() > req["expires_at"]:
@@ -296,7 +295,17 @@ def _check_expiry(req):
         req["done"]   = True
         req["history"].append({"time": _now(), "by": "System",
                                 "action": f"Expired — no response from {stage}"})
-        _db_update(req)      # ← persist to Supabase
+        _db_update(req)
+
+# ── ✅ NEW: Delete action ─────────────────────────────────────────────────────
+def _delete_request(rid: str):
+    """Remove request from session state and Supabase."""
+    st.session_state.ap_requests = [
+        r for r in st.session_state.ap_requests if r["id"] != rid
+    ]
+    # Clear any pending confirm state
+    st.session_state.ap_confirm_delete.pop(rid, None)
+    _db_delete(rid)
 
 
 # ── Main entry ────────────────────────────────────────────────────────────────
@@ -304,7 +313,6 @@ def _check_expiry(req):
 def page_approval_pipeline():
     _init()
 
-    # ── Supabase connection test ──────────────────────────────────────────────
     try:
         test = _get_sb().table(TABLE).select("id").limit(1).execute()
         st.success(f"🟢 Supabase connected — table `{TABLE}` is reachable.")
@@ -312,15 +320,12 @@ def page_approval_pipeline():
         st.error(f"🔴 Supabase connection FAILED: {type(e).__name__}: {e}")
         st.stop()
 
-    # Load from DB once per session; offer manual refresh
     if not st.session_state.ap_loaded:
         _load_requests()
 
-    # Run expiry checks (and push any changes to DB)
     for r in st.session_state.ap_requests:
         _check_expiry(r)
 
-    # Header row with refresh button
     hcol, rcol = st.columns([5, 1])
     with hcol:
         st.title("Document Approval Pipeline")
@@ -407,6 +412,8 @@ def _view_submit():
         return
 
     st.divider()
+
+    # ── Summary metrics ───────────────────────────────────────────────────────
     counts = {"Pending": 0, "Approved": 0, "Rejected": 0, "Expired": 0}
     for r in all_reqs:
         counts[r["status"]] = counts.get(r["status"], 0) + 1
@@ -415,9 +422,121 @@ def _view_submit():
     c2.metric("Approved", counts["Approved"])
     c3.metric("Rejected", counts["Rejected"])
     c4.metric("Expired",  counts["Expired"])
+
+    # ── ✅ NEW: Bulk delete controls ──────────────────────────────────────────
     st.divider()
+    st.markdown("### 📋 All Requests")
+
+    bulk_col1, bulk_col2, bulk_col3 = st.columns([2, 2, 4])
+    with bulk_col1:
+        if st.button("🗑️ Delete All Rejected", use_container_width=True):
+            rejected_ids = [r["id"] for r in all_reqs if r["status"] == "Rejected"]
+            for rid in rejected_ids:
+                _delete_request(rid)
+            if rejected_ids:
+                st.success(f"Deleted {len(rejected_ids)} rejected request(s).")
+                st.rerun()
+            else:
+                st.info("No rejected requests to delete.")
+    with bulk_col2:
+        if st.button("🗑️ Delete All Expired", use_container_width=True):
+            expired_ids = [r["id"] for r in all_reqs if r["status"] == "Expired"]
+            for rid in expired_ids:
+                _delete_request(rid)
+            if expired_ids:
+                st.success(f"Deleted {len(expired_ids)} expired request(s).")
+                st.rerun()
+            else:
+                st.info("No expired requests to delete.")
+
+    st.divider()
+
+    # ── Request cards with individual delete ──────────────────────────────────
     for req in all_reqs:
-        _request_card(req, show_actions=False, ctx="sub")
+        _request_card_with_delete(req, ctx="sub")
+
+
+# ── ✅ NEW: Request card with delete button (for Submit tab only) ─────────────
+def _request_card_with_delete(req: dict, ctx: str = "sub"):
+    """Same as _request_card but with a delete button added."""
+    stage    = req["chain"][req["stage_idx"]] if not req["done"] else "—"
+    timer    = _time_left(req["expires_at"]) if not req["done"] else ""
+    urg_icon = {"URGENT": "🟡", "CRITICAL": "🔴"}.get(req["urgency"], "")
+    rid = req["id"]
+    k   = f"{ctx}_{rid}"
+
+    # Status colour indicator
+    status_icon = {
+        "Pending":  "🟡",
+        "Approved": "🟢",
+        "Rejected": "🔴",
+        "Expired":  "⏰",
+    }.get(req["status"], "⚪")
+
+    label = f"{status_icon} {rid}  ·  {req['title']}  {urg_icon}"
+    if timer:
+        label += f"  ·  ⏳ {timer}"
+
+    with st.expander(label, expanded=False):
+
+        # ── Request details ───────────────────────────────────────────────────
+        c1, c2, c3, c4 = st.columns(4)
+        c1.markdown(f"**Requester**  \n{req['requester']}")
+        c2.markdown(f"**Category**  \n{req.get('category','—')} › {req.get('subtype','—')}")
+        c3.markdown(f"**Stage**  \n{stage}")
+        c4.markdown(f"**Status**  \n{req['status']}")
+
+        st.markdown(f"> {req['description']}")
+
+        # Approval chain progress
+        if req["chain"]:
+            parts = []
+            for i, s in enumerate(req["chain"]):
+                if req["status"] == "Approved" or i < req["stage_idx"]:
+                    parts.append(f"~~{s}~~ ✅")
+                elif i == req["stage_idx"] and not req["done"]:
+                    parts.append(f"**{s} ⏳**")
+                elif req["done"] and i == req["stage_idx"]:
+                    parts.append(f"**{s} {'❌' if req['status'] == 'Rejected' else '⏰'}**")
+                else:
+                    parts.append(s)
+            st.markdown("  →  ".join(parts))
+        else:
+            st.caption("Auto-approved — no chain required.")
+
+        # History
+        with st.expander("History", key=f"hist_{k}"):
+            for entry in req["history"]:
+                t    = _fmt(entry.get("time", ""))
+                note = f" — {entry['note']}" if entry.get("note") else ""
+                st.markdown(f"`{t}`  **{entry['by']}**: {entry['action']}{note}")
+
+        st.divider()
+
+        # ── ✅ NEW: Delete section ─────────────────────────────────────────────
+        confirm_key = f"confirm_del_{rid}"
+        is_pending_confirm = st.session_state.ap_confirm_delete.get(rid, False)
+
+        if not is_pending_confirm:
+            # First click — show delete button
+            del_col, _ = st.columns([1, 5])
+            with del_col:
+                if st.button("🗑️ Delete", key=f"del_btn_{k}", use_container_width=True):
+                    st.session_state.ap_confirm_delete[rid] = True
+                    st.rerun()
+        else:
+            # Second click — show confirmation row
+            st.warning(f"⚠️ Are you sure you want to delete **{rid} — {req['title']}**? This cannot be undone.")
+            conf_col1, conf_col2, _ = st.columns([1, 1, 4])
+            with conf_col1:
+                if st.button("✅ Yes, Delete", key=f"confirm_yes_{k}", use_container_width=True):
+                    _delete_request(rid)
+                    st.success(f"🗑️ {rid} deleted.")
+                    st.rerun()
+            with conf_col2:
+                if st.button("✖ Cancel", key=f"confirm_no_{k}", use_container_width=True):
+                    st.session_state.ap_confirm_delete[rid] = False
+                    st.rerun()
 
 
 # ── Role tab ──────────────────────────────────────────────────────────────────
@@ -472,7 +591,7 @@ def _view_role(role: str):
                 _request_card(req, show_actions=False, ctx=f"{ctx}_done")
 
 
-# ── Request card (shared) ─────────────────────────────────────────────────────
+# ── Original request card (used in role tabs — no delete) ─────────────────────
 
 def _request_card(req: dict, show_actions: bool, ctx: str = ""):
     stage    = req["chain"][req["stage_idx"]] if not req["done"] else "—"
