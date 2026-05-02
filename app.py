@@ -64,74 +64,6 @@ except ImportError:
 
 
 # ════════════════════════════════════════════════════════
-#  STORAGE INFO DIALOG
-#  Must be defined at top level (not inside a function)
-#  so @st.dialog works correctly
-# ════════════════════════════════════════════════════════
-@st.dialog("🗄️ Where is your data saved?", width="large")
-def _storage_dialog():
-    st.markdown("""
-    <style>
-    .storage-section { border-radius: 10px; padding: 14px 18px; margin-bottom: 12px; }
-    .storage-supabase { background: #e6f4ea; border-left: 4px solid #1e8c45; }
-    .storage-cache    { background: #ede7f6; border-left: 4px solid #6c3fc5; }
-    .storage-session  { background: #fff8e1; border-left: 4px solid #f5a623; }
-    .storage-never    { background: #fce8e8; border-left: 4px solid #d93025; }
-    .storage-section h4 { margin: 0 0 6px 0; font-size: 15px; }
-    .storage-section ul { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.8; }
-    </style>
-    """, unsafe_allow_html=True)
-
-    st.markdown("""
-    <div class="storage-section storage-supabase">
-      <h4>☁️ Supabase — permanent cloud database</h4>
-      <ul>
-        <li><b>tickets</b> table → every support ticket submitted via the Employee Portal</li>
-        <li><b>resolved_issues</b> table → admin notes saved as learned answers</li>
-        <li><b>failed_queries</b> table → questions that couldn't be answered</li>
-        <li><b>ap_requests</b> table → every approval pipeline request</li>
-      </ul>
-      <small>✅ Survives app restarts and redeploys.</small>
-    </div>
-    """, unsafe_allow_html=True)
-
-    st.markdown("""
-    <div class="storage-section storage-cache">
-      <h4>⚡ Streamlit @st.cache_resource — RAM only</h4>
-      <ul>
-        <li><b>Q&amp;A pairs</b> parsed from the PDF knowledge base</li>
-        <li><b>Sentence-transformer model</b> and embeddings</li>
-      </ul>
-      <small>⚠️ Wiped on every app restart. Re-loaded on next cold start.</small>
-    </div>
-    """, unsafe_allow_html=True)
-
-    st.markdown("""
-    <div class="storage-section storage-session">
-      <h4>🧠 st.session_state — browser tab memory</h4>
-      <ul>
-        <li><code>admin_logged_in</code> — admin login status</li>
-        <li><code>ap_role_auth</code> — which role tabs are authenticated</li>
-        <li><code>ap_requests</code> — local mirror of Supabase approval requests</li>
-        <li><code>show_ticket</code> — controls ticket form visibility</li>
-        <li><code>ticket_query</code> — carries unanswered question to ticket form</li>
-      </ul>
-      <small>⚠️ Gone when the browser tab closes or app restarts.</small>
-    </div>
-    """, unsafe_allow_html=True)
-
-    st.markdown("""
-    <div class="storage-section storage-never">
-      <h4>🚫 Never saved anywhere</h4>
-      <ul>
-        <li><b>Passwords</b> — never stored in DB or logs</li>
-        <li><b>Raw PDF bytes</b> — downloaded, parsed, then discarded</li>
-      </ul>
-    </div>
-    """, unsafe_allow_html=True)
-
-
-# ════════════════════════════════════════════════════════
 #  DATABASE
 # ════════════════════════════════════════════════════════
 try:
@@ -188,7 +120,10 @@ def db_create_ticket(user_id, job_role, query, priority):
     try:
         result = db.table("tickets").insert(row).execute()
         if result.data:
-            return result.data[0]
+            ticket = result.data[0]
+            # ── POPUP: ticket saved to DB ─────────────────────────────────────
+            st.toast(f"🎫 Ticket #{ticket.get('id')} saved to `tickets` table in Supabase!", icon="☁️")
+            return ticket
         raise Exception("No data returned from insert")
     except Exception as e:
         raise Exception(f"Insert failed: {e}")
@@ -212,6 +147,8 @@ def db_update_ticket(tid, status, note):
         raise ConnectionError("Supabase not configured.")
     try:
         db.table("tickets").update({"status": status, "admin_note": note}).eq("id", tid).execute()
+        # ── POPUP: ticket updated in DB ───────────────────────────────────────
+        st.toast(f"✏️ Ticket #{tid} updated in `tickets` table → status: {status}", icon="☁️")
     except Exception as e:
         raise Exception(f"Update failed: {e}")
 
@@ -220,6 +157,8 @@ def db_delete_ticket(tid):
     if db:
         try:
             db.table("tickets").delete().eq("id", tid).execute()
+            # ── POPUP: ticket deleted from DB ─────────────────────────────────
+            st.toast(f"🗑️ Ticket #{tid} deleted from `tickets` table in Supabase", icon="☁️")
         except Exception as e:
             raise Exception(f"Delete failed: {e}")
 
@@ -228,6 +167,8 @@ def db_log_failed_query(query: str):
     if db:
         try:
             db.table("failed_queries").insert({"query": query}).execute()
+            # ── POPUP: failed query logged ────────────────────────────────────
+            st.toast("📋 Unanswered question logged to `failed_queries` table in Supabase", icon="☁️")
         except Exception:
             pass
 
@@ -266,8 +207,12 @@ def auto_save_note_to_resolved(ticket_query: str, note: str):
         existing = db.table("resolved_issues").select("id").eq("query", ticket_query).execute()
         if not existing.data:
             db.table("resolved_issues").insert({"query": ticket_query, "solution": note.strip()}).execute()
+            # ── POPUP: new learned answer saved ───────────────────────────────
+            st.toast("🧠 Admin note saved as new learned answer in `resolved_issues` table!", icon="☁️")
         else:
             db.table("resolved_issues").update({"solution": note.strip()}).eq("query", ticket_query).execute()
+            # ── POPUP: existing learned answer updated ────────────────────────
+            st.toast("🧠 Learned answer updated in `resolved_issues` table in Supabase", icon="☁️")
         return True
     except Exception:
         return False
@@ -575,6 +520,8 @@ def page_employee():
                     final_query = original_question if original_question else query_text.strip()
                     try:
                         t = db_create_ticket(user_id.strip(), job_role, final_query, priority)
+                        # ── POPUP: ticket submitted ───────────────────────────
+                        st.toast(f"🎉 Ticket #{t.get('id')} submitted & stored in Supabase `tickets` table!", icon="✅")
                         st.success(f"✅ Ticket #{t.get('id', '–')} submitted! Our team will respond shortly.", icon="🎉")
                         st.session_state["show_ticket"] = False
                     except Exception as ex:
@@ -599,6 +546,8 @@ def page_admin():
             if st.button("Login →", use_container_width=True, key="admin_login_btn"):
                 if pwd == ADMIN_PWD:
                     st.session_state["admin_logged_in"] = True
+                    # ── POPUP: admin logged in ────────────────────────────────
+                    st.toast("🛡️ Admin logged in successfully", icon="✅")
                     st.rerun()
                 else:
                     st.error("Incorrect password.")
@@ -610,6 +559,7 @@ def page_admin():
     with c2:
         if st.button("Logout", key="admin_logout_btn"):
             st.session_state["admin_logged_in"] = False
+            st.toast("👋 Admin logged out", icon="🔒")
             st.rerun()
 
     try:
@@ -662,6 +612,7 @@ def page_admin():
         all_tickets = db_get_tickets()
         csv_bytes = tickets_to_csv(all_tickets)
         st.download_button("⬇️ Download CSV", data=csv_bytes, file_name="helpdesk_tickets.csv", mime="text/csv", key="admin_download_csv")
+        st.toast("📥 CSV exported from `tickets` table", icon="✅")
 
     if not tickets:
         st.info("No tickets found.", icon="📭")
@@ -911,6 +862,7 @@ def page_knowledge_gap():
     if st.button("🗑️ Clear All Failed Queries (after fixing KB)", key="gap_clear_btn"):
         try:
             db.table("failed_queries").delete().neq("id", 0).execute()
+            st.toast("🗑️ All failed queries cleared from `failed_queries` table", icon="✅")
             st.success("Cleared!")
             st.rerun()
         except Exception as e:
@@ -952,6 +904,7 @@ def page_setup():
             else:
                 db.table("tickets").select("id").limit(1).execute()
                 st.success("✅ Database connected!")
+                st.toast("✅ Successfully connected to Supabase!", icon="☁️")
         except Exception as e:
             st.error(f"Failed: {e}")
 
@@ -964,6 +917,7 @@ def page_setup():
             pairs = load_qa_pairs()
             if pairs:
                 st.success(f"✅ {len(pairs)} Q&A pairs extracted!")
+                st.toast(f"📄 {len(pairs)} Q&A pairs loaded from PDF into memory", icon="📚")
                 with st.expander("Preview first 5 pairs"):
                     for q, a in pairs[:5]:
                         st.markdown(f"**Q:** {q[:200]}")
@@ -978,6 +932,7 @@ def page_setup():
             st.error("❌ Model failed to load.")
         else:
             st.success("✅ Model loaded: multi-qa-mpnet-base-dot-v1")
+            st.toast("🧠 Semantic model loaded into RAM cache", icon="⚡")
             st.info(f"📊 {len(pairs)} Q embeddings + {len(pairs)} A embeddings ready.")
 
     st.markdown("---")
@@ -991,6 +946,7 @@ def page_setup():
                 rows = db.table("resolved_issues").select("*").order("created_at", desc=True).execute().data or []
                 if rows:
                     st.success(f"{len(rows)} learned answer(s) in database.")
+                    st.toast(f"🧠 Fetched {len(rows)} learned answers from `resolved_issues` table", icon="☁️")
                     for row in rows:
                         with st.expander(f"🟢 {row['query'][:100]}"):
                             st.markdown(f"**Original question:** {row['query']}")
@@ -1019,12 +975,6 @@ with st.sidebar:
     ])
 
     st.markdown("---")
-
-    # ── THIS IS THE KEY FIX: call _storage_dialog() directly inside if block ──
-    if st.button("🗄️ Where is data saved?", use_container_width=True, key="storage_info_btn"):
-        _storage_dialog()
-    # ──────────────────────────────────────────────────────────────────────────
-
     if not PIPELINE_AVAILABLE:
         st.warning("⚠️ approval_pipeline.py not found.", icon="⚠️")
     st.markdown("<small style='opacity:0.6'>Powered by Supabase + pdfplumber</small>", unsafe_allow_html=True)
