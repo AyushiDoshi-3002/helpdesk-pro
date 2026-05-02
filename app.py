@@ -10,7 +10,6 @@ from collections import Counter
 IST = timezone(timedelta(hours=5, minutes=30))
 
 def _to_ist(dt_str: str) -> str:
-    """Convert a UTC ISO string → formatted IST display string."""
     try:
         normalised = dt_str.strip().replace(" ", "T").replace("Z", "+00:00")
         if "+" not in normalised[10:] and normalised[-6] != "+":
@@ -62,6 +61,74 @@ try:
     PIPELINE_AVAILABLE = True
 except ImportError:
     PIPELINE_AVAILABLE = False
+
+
+# ════════════════════════════════════════════════════════
+#  STORAGE INFO DIALOG
+#  Must be defined at top level (not inside a function)
+#  so @st.dialog works correctly
+# ════════════════════════════════════════════════════════
+@st.dialog("🗄️ Where is your data saved?", width="large")
+def _storage_dialog():
+    st.markdown("""
+    <style>
+    .storage-section { border-radius: 10px; padding: 14px 18px; margin-bottom: 12px; }
+    .storage-supabase { background: #e6f4ea; border-left: 4px solid #1e8c45; }
+    .storage-cache    { background: #ede7f6; border-left: 4px solid #6c3fc5; }
+    .storage-session  { background: #fff8e1; border-left: 4px solid #f5a623; }
+    .storage-never    { background: #fce8e8; border-left: 4px solid #d93025; }
+    .storage-section h4 { margin: 0 0 6px 0; font-size: 15px; }
+    .storage-section ul { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.8; }
+    </style>
+    """, unsafe_allow_html=True)
+
+    st.markdown("""
+    <div class="storage-section storage-supabase">
+      <h4>☁️ Supabase — permanent cloud database</h4>
+      <ul>
+        <li><b>tickets</b> table → every support ticket submitted via the Employee Portal</li>
+        <li><b>resolved_issues</b> table → admin notes saved as learned answers</li>
+        <li><b>failed_queries</b> table → questions that couldn't be answered</li>
+        <li><b>ap_requests</b> table → every approval pipeline request</li>
+      </ul>
+      <small>✅ Survives app restarts and redeploys.</small>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("""
+    <div class="storage-section storage-cache">
+      <h4>⚡ Streamlit @st.cache_resource — RAM only</h4>
+      <ul>
+        <li><b>Q&amp;A pairs</b> parsed from the PDF knowledge base</li>
+        <li><b>Sentence-transformer model</b> and embeddings</li>
+      </ul>
+      <small>⚠️ Wiped on every app restart. Re-loaded on next cold start.</small>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("""
+    <div class="storage-section storage-session">
+      <h4>🧠 st.session_state — browser tab memory</h4>
+      <ul>
+        <li><code>admin_logged_in</code> — admin login status</li>
+        <li><code>ap_role_auth</code> — which role tabs are authenticated</li>
+        <li><code>ap_requests</code> — local mirror of Supabase approval requests</li>
+        <li><code>show_ticket</code> — controls ticket form visibility</li>
+        <li><code>ticket_query</code> — carries unanswered question to ticket form</li>
+      </ul>
+      <small>⚠️ Gone when the browser tab closes or app restarts.</small>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("""
+    <div class="storage-section storage-never">
+      <h4>🚫 Never saved anywhere</h4>
+      <ul>
+        <li><b>Passwords</b> — never stored in DB or logs</li>
+        <li><b>Raw PDF bytes</b> — downloaded, parsed, then discarded</li>
+      </ul>
+    </div>
+    """, unsafe_allow_html=True)
 
 
 # ════════════════════════════════════════════════════════
@@ -241,7 +308,6 @@ def check_learned_answers(query: str):
     if db is None:
         return None
     best_score, best_solution, best_matched = 0.0, None, None
-
     try:
         resp = db.table("tickets").select("query, admin_note").not_.is_("admin_note", "null").execute()
         for row in (resp.data or []):
@@ -356,7 +422,6 @@ def load_model_and_embeddings():
 #  ANSWER LOOKUP  (PDF → Learned)
 # ════════════════════════════════════════════════════════
 def answer_question(query: str) -> dict:
-    # Step 1: Check PDF via semantic model
     model, q_embeddings, a_embeddings, pairs, util = load_model_and_embeddings()
     if model is not None and q_embeddings is not None and a_embeddings is not None and pairs is not None and util is not None:
         try:
@@ -382,7 +447,6 @@ def answer_question(query: str) -> dict:
         except Exception:
             pass
 
-    # Step 2: Check learned answers (resolved tickets + admin notes)
     learned = check_learned_answers(query)
     if learned:
         return {
@@ -450,7 +514,6 @@ def page_employee():
                 st.markdown("<small style='color:#059669'>💡 <strong>Source: Previously resolved support ticket</strong></small>", unsafe_allow_html=True)
                 st.markdown(f"<small style='color:#6b7280'>📌 Similar question: <em>{result['matched'][:160]}</em> (similarity: {result['score']:.0%})</small>", unsafe_allow_html=True)
                 st.markdown(f"<div class='learned-box'>{result['answer']}</div>", unsafe_allow_html=True)
-
             else:
                 st.markdown("#### ✅ Answer Found")
                 match_label = "matched via question" if match_src == "question" else "matched via answer content"
@@ -496,38 +559,30 @@ def page_employee():
             st.markdown(f"<small style='color:#7c3aed'>🔍 Your search question: <strong>{original_question}</strong></small>", unsafe_allow_html=True)
         query_text = st.text_area("📋 Describe your problem in detail *", value="", placeholder="Add more details about your issue…", height=120, key="emp_query_text")
 
-        submit_clicked = False
-        cancel_clicked = False
         col_sub, col_cancel, _ = st.columns([1, 1, 4])
         with col_sub:
             if st.button("🚀 Submit Ticket", use_container_width=True, key="emp_submit"):
-                submit_clicked = True
+                errors = []
+                if not user_id.strip():
+                    errors.append("Employee ID required.")
+                if job_role == "Select…":
+                    errors.append("Select your job role.")
+                if not original_question and not query_text.strip():
+                    errors.append("Problem description required.")
+                for e in errors:
+                    st.error(e)
+                if not errors:
+                    final_query = original_question if original_question else query_text.strip()
+                    try:
+                        t = db_create_ticket(user_id.strip(), job_role, final_query, priority)
+                        st.success(f"✅ Ticket #{t.get('id', '–')} submitted! Our team will respond shortly.", icon="🎉")
+                        st.session_state["show_ticket"] = False
+                    except Exception as ex:
+                        st.error(f"Failed: {ex}")
         with col_cancel:
             if st.button("✖ Cancel", use_container_width=True, key="emp_cancel"):
-                cancel_clicked = True
-
-        if submit_clicked:
-            errors = []
-            if not user_id.strip():
-                errors.append("Employee ID required.")
-            if job_role == "Select…":
-                errors.append("Select your job role.")
-            if not original_question and not query_text.strip():
-                errors.append("Problem description required.")
-            for e in errors:
-                st.error(e)
-            if not errors:
-                final_query = original_question if original_question else query_text.strip()
-                try:
-                    t = db_create_ticket(user_id.strip(), job_role, final_query, priority)
-                    st.success(f"✅ Ticket #{t.get('id', '–')} submitted! Our team will respond shortly.", icon="🎉")
-                    st.session_state["show_ticket"] = False
-                except Exception as ex:
-                    st.error(f"Failed: {ex}")
-
-        if cancel_clicked:
-            st.session_state["show_ticket"] = False
-            st.rerun()
+                st.session_state["show_ticket"] = False
+                st.rerun()
 
 
 # ════════════════════════════════════════════════════════
@@ -557,7 +612,6 @@ def page_admin():
             st.session_state["admin_logged_in"] = False
             st.rerun()
 
-    # ── Stats ──────────────────────────────────────────────────────────────────
     try:
         stats = db_stats()
         cols = st.columns(5)
@@ -579,7 +633,6 @@ def page_admin():
 
     st.markdown("---")
 
-    # ── Filters + Export ───────────────────────────────────────────────────────
     c1, c2, c3, c4 = st.columns([1.5, 1.5, 1.5, 1])
     with c1:
         sf = st.selectbox("Status", ["All", "Open", "In Progress", "Resolved", "Overdue"], key="admin_filter_status")
@@ -648,7 +701,6 @@ def page_admin():
 
             st.markdown("**Problem:**")
             st.markdown(f"<div class='answer-box'>{ticket_query}</div>", unsafe_allow_html=True)
-
             st.markdown("---")
 
             nc1, nc2 = st.columns(2)
@@ -669,33 +721,25 @@ def page_admin():
                     placeholder="Write solution here…"
                 )
 
-            save_clicked = False
-            delete_clicked = False
             bc1, bc2, _, _ = st.columns([1, 1, 1.5, 1])
             with bc1:
                 if st.button("💾 Save", key=f"admin_save_{tid}", use_container_width=True):
-                    save_clicked = True
+                    try:
+                        db_update_ticket(tid, new_status, note)
+                        if note.strip():
+                            auto_save_note_to_resolved(ticket_query, note)
+                        st.success("✅ Ticket updated!")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(str(e))
             with bc2:
                 if st.button("🗑️ Delete", key=f"admin_del_{tid}", use_container_width=True):
-                    delete_clicked = True
-
-            if save_clicked:
-                try:
-                    db_update_ticket(tid, new_status, note)
-                    if note.strip():
-                        auto_save_note_to_resolved(ticket_query, note)
-                    st.success("✅ Ticket updated!")
-                    st.rerun()
-                except Exception as e:
-                    st.error(str(e))
-
-            if delete_clicked:
-                try:
-                    db_delete_ticket(tid)
-                    st.warning("Deleted.")
-                    st.rerun()
-                except Exception as e:
-                    st.error(str(e))
+                    try:
+                        db_delete_ticket(tid)
+                        st.warning("Deleted.")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(str(e))
 
 
 # ════════════════════════════════════════════════════════
@@ -713,7 +757,7 @@ def page_analytics():
         import plotly.express as px
         import pandas as pd
     except ImportError:
-        st.error("Please install plotly and pandas: `pip install plotly pandas`")
+        st.error("Please install plotly and pandas.")
         return
 
     tickets = db_get_tickets()
@@ -742,7 +786,6 @@ def page_analytics():
         st.markdown(f"<div class='metric-card'><div class='metric-number'>{high_prio}</div><div class='metric-label'>High Priority</div></div>", unsafe_allow_html=True)
 
     st.markdown("---")
-
     col_a, col_b = st.columns(2)
 
     with col_a:
@@ -798,7 +841,7 @@ def page_knowledge_gap():
         return
 
     st.markdown("# 🕳️ Knowledge Gap Report")
-    st.markdown("<p style='color:#6b7280'>Questions employees asked that the system couldn't answer. Use this to improve your PDF knowledge base.</p>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#6b7280'>Questions employees asked that the system couldn't answer.</p>", unsafe_allow_html=True)
     st.markdown("---")
 
     db = get_db()
@@ -834,7 +877,6 @@ def page_knowledge_gap():
             date_fmt = _to_ist(created)
         except Exception:
             date_fmt = created
-
         st.markdown(
             f"<div class='gap-card'>"
             f"<span class='gap-count'>#{i}</span> &nbsp;"
@@ -977,6 +1019,12 @@ with st.sidebar:
     ])
 
     st.markdown("---")
+
+    # ── THIS IS THE KEY FIX: call _storage_dialog() directly inside if block ──
+    if st.button("🗄️ Where is data saved?", use_container_width=True, key="storage_info_btn"):
+        _storage_dialog()
+    # ──────────────────────────────────────────────────────────────────────────
+
     if not PIPELINE_AVAILABLE:
         st.warning("⚠️ approval_pipeline.py not found.", icon="⚠️")
     st.markdown("<small style='opacity:0.6'>Powered by Supabase + pdfplumber</small>", unsafe_allow_html=True)
