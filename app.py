@@ -1250,9 +1250,15 @@ def page_analytics():
                       color_discrete_sequence=["#0077b6"])
         fig1.update_traces(textposition="outside", marker_line_width=0,
                            marker_color="#0077b6", opacity=0.85)
-        fig1.update_layout(**plot_layout, bargap=0.4,
-                           xaxis=dict(**plot_layout["xaxis"], tickangle=-35, type="category", tickfont=dict(size=10)),
-                           yaxis=dict(**plot_layout["yaxis"], tickformat="d", dtick=1))
+        fig1.update_layout(
+            paper_bgcolor=plot_layout["paper_bgcolor"],
+            plot_bgcolor=plot_layout["plot_bgcolor"],
+            font=plot_layout["font"],
+            margin=plot_layout["margin"],
+            bargap=0.4,
+            xaxis=dict(**plot_layout["xaxis"], tickangle=-35, type="category", tickfont=dict(size=10)),
+            yaxis=dict(**plot_layout["yaxis"], tickformat="d", dtick=1),
+        )
         st.plotly_chart(fig1, use_container_width=True)
 
     with col_b:
@@ -1282,8 +1288,15 @@ def page_analytics():
                       color_discrete_map={"High":"#dc2626","Medium":"#d97706","Low":"#059669"},
                       category_orders={"priority": prio_order})
         fig3.update_traces(textposition="outside", marker_line_width=0, opacity=0.85)
-        fig3.update_layout(**plot_layout, showlegend=False, bargap=0.45,
-                           yaxis=dict(**plot_layout["yaxis"], tickformat="d", dtick=1))
+        fig3.update_layout(
+            paper_bgcolor=plot_layout["paper_bgcolor"],
+            plot_bgcolor=plot_layout["plot_bgcolor"],
+            font=plot_layout["font"],
+            margin=plot_layout["margin"],
+            showlegend=False, bargap=0.45,
+            xaxis=plot_layout["xaxis"],
+            yaxis=dict(**plot_layout["yaxis"], tickformat="d", dtick=1),
+        )
         st.plotly_chart(fig3, use_container_width=True)
 
     with col_d:
@@ -1293,12 +1306,16 @@ def page_analytics():
         fig4 = px.bar(role_counts, x="count", y="role", orientation="h", text="count",
                       color_discrete_sequence=["#0284c7"])
         fig4.update_traces(textposition="outside", marker_line_width=0, opacity=0.85)
-        fig4.update_layout(**plot_layout,
-                           xaxis=dict(**plot_layout["xaxis"], tickformat="d", dtick=1),
-                           yaxis=dict(**plot_layout["yaxis"]),
-                           bargap=0.35,
-                           height=max(280, len(role_counts)*50),
-                           margin=dict(t=20, b=20, l=140, r=20))
+        fig4.update_layout(
+            paper_bgcolor=plot_layout["paper_bgcolor"],
+            plot_bgcolor=plot_layout["plot_bgcolor"],
+            font=plot_layout["font"],
+            xaxis=dict(**plot_layout["xaxis"], tickformat="d", dtick=1),
+            yaxis=dict(**plot_layout["yaxis"]),
+            bargap=0.35,
+            height=max(280, len(role_counts)*50),
+            margin=dict(t=20, b=20, l=140, r=20),
+        )
         st.plotly_chart(fig4, use_container_width=True)
 
     st.markdown("<hr>", unsafe_allow_html=True)
