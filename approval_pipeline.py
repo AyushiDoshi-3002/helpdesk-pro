@@ -1,26 +1,6 @@
 """
 approval_pipeline.py  –  role-based tabs + Supabase persistence
-────────────────────────────────────────────────────────────────
-Install dependency:  pip install supabase
-
-Run this SQL once in your Supabase SQL editor to create the table:
-──────────────────────────────────────────────────────────────────
-create table if not exists ap_requests (
-    id          text primary key,
-    title       text,
-    category    text,
-    subtype     text,
-    description text,
-    urgency     text,
-    requester   text,
-    chain       jsonb,
-    stage_idx   integer default 0,
-    status      text,
-    created_at  timestamptz,
-    expires_at  timestamptz,
-    history     jsonb,
-    done        boolean default false
-);
+Dark-theme redesign matching app.py aesthetic.
 """
 
 import json
@@ -28,15 +8,12 @@ import streamlit as st
 from datetime import datetime, timedelta, timezone
 from supabase import create_client, Client
 
-# ── IST Timezone (UTC+5:30) ───────────────────────────────────────────────────
 IST = timezone(timedelta(hours=5, minutes=30))
 
-# ── Supabase config ───────────────────────────────────────────────────────────
 SUPABASE_URL = "https://jvulbphmksdebkkkhgvh.supabase.co"
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp2dWxicGhta3NkZWJra2toZ3ZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcxOTg4ODQsImV4cCI6MjA5Mjc3NDg4NH0.REhaZ0M8pg_9hkaIJxYNmErIsy6UARTYyzYkQbr0pT4"
 TABLE = "ap_requests"
 
-# ── Role passwords ────────────────────────────────────────────────────────────
 ROLE_PASSWORDS = {
     "Team Lead":    "Lead123",
     "Tech Manager": "Manager123",
@@ -46,54 +23,53 @@ ROLE_PASSWORDS = {
 
 TIMEOUT_HOURS = 2
 
-# ── Document taxonomy ─────────────────────────────────────────────────────────
 DOC_CATEGORIES = {
     "Security": {
         "label":    "🔒 Security",
-        "subtypes": ["Legal", "Compliance", "Public API", "Financial"],
+        "subtypes": ["Legal","Compliance","Public API","Financial"],
         "approver": "CEO",
         "auto":     False,
     },
     "Technical": {
         "label":    "⚙️ Technical",
-        "subtypes": ["Architecture", "Database", "Tech Stack", "Infrastructure", "Code Standards"],
+        "subtypes": ["Architecture","Database","Tech Stack","Infrastructure","Code Standards"],
         "approver": "CTO",
         "auto":     False,
     },
     "Operations": {
         "label":    "🔧 Operations",
-        "subtypes": ["Runbooks", "Deployment", "Monitoring", "Setup Guides"],
+        "subtypes": ["Runbooks","Deployment","Monitoring","Setup Guides"],
         "approver": "Tech Manager",
         "auto":     False,
     },
     "Team": {
         "label":    "👥 Team",
-        "subtypes": ["Internal Processes", "Troubleshooting", "Setup Guides"],
+        "subtypes": ["Internal Processes","Troubleshooting","Setup Guides"],
         "approver": "Team Lead",
         "auto":     False,
     },
     "General": {
         "label":    "📄 General",
-        "subtypes": ["FAQs", "Onboarding", "General Info"],
+        "subtypes": ["FAQs","Onboarding","General Info"],
         "approver": "Admin",
         "auto":     True,
     },
 }
 
 _CHAINS = {
-    "CEO":          ["Team Lead", "Tech Manager", "CTO", "CEO"],
-    "CTO":          ["Team Lead", "Tech Manager", "CTO"],
-    "Tech Manager": ["Team Lead", "Tech Manager"],
+    "CEO":          ["Team Lead","Tech Manager","CTO","CEO"],
+    "CTO":          ["Team Lead","Tech Manager","CTO"],
+    "Tech Manager": ["Team Lead","Tech Manager"],
     "Team Lead":    ["Team Lead"],
     "Admin":        [],
 }
 
 def _build_chain(category: str) -> list:
     cfg = DOC_CATEGORIES.get(category, {})
-    return list(_CHAINS.get(cfg.get("approver", "Team Lead"), ["Team Lead"]))
+    return list(_CHAINS.get(cfg.get("approver","Team Lead"), ["Team Lead"]))
 
 
-# ── Supabase client (cached) ──────────────────────────────────────────────────
+# ── Supabase client ───────────────────────────────────────────────────────────
 
 @st.cache_resource
 def _get_sb() -> Client:
@@ -104,7 +80,6 @@ def _get_sb() -> Client:
 
 def _dt_to_str(dt):
     if isinstance(dt, datetime):
-        # Always store as UTC in DB for consistency
         return dt.astimezone(timezone.utc).isoformat()
     return dt
 
@@ -113,7 +88,7 @@ def _str_to_dt(s):
         return s if s.tzinfo else s.replace(tzinfo=timezone.utc)
     if isinstance(s, str):
         try:
-            dt = datetime.fromisoformat(s.replace("Z", "+00:00"))
+            dt = datetime.fromisoformat(s.replace("Z","+00:00"))
             return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
         except Exception:
             pass
@@ -124,7 +99,7 @@ def _serialize(req: dict) -> dict:
     row["created_at"] = _dt_to_str(row.get("created_at"))
     row["expires_at"] = _dt_to_str(row.get("expires_at"))
     history = []
-    for entry in row.get("history", []):
+    for entry in row.get("history",[]):
         e = dict(entry)
         e["time"] = _dt_to_str(e.get("time"))
         history.append(e)
@@ -149,10 +124,10 @@ def _db_insert(req: dict):
     try:
         row = _serialize(req)
         res = _get_sb().table(TABLE).insert(row).execute()
-        if hasattr(res, "data") and res.data:
-            st.toast(f"✅ Saved to Supabase: {req['id']}", icon="🗄️")
+        if hasattr(res,"data") and res.data:
+            st.toast(f"✅ Saved: {req['id']}", icon="🗄️")
         else:
-            st.warning(f"⚠️ Insert returned no data. Response: {res}")
+            st.warning(f"⚠️ Insert returned no data.")
     except Exception as e:
         st.error(f"❌ DB insert error for {req.get('id')}: {type(e).__name__}: {e}")
 
@@ -160,19 +135,17 @@ def _db_update(req: dict):
     try:
         row = _serialize(req)
         res = _get_sb().table(TABLE).upsert(row).execute()
-        if hasattr(res, "data") and res.data:
-            st.toast(f"✅ Updated in Supabase: {req['id']}", icon="🗄️")
+        if hasattr(res,"data") and res.data:
+            st.toast(f"✅ Updated: {req['id']}", icon="🗄️")
         else:
-            st.warning(f"⚠️ Upsert returned no data. Response: {res}")
+            st.warning(f"⚠️ Upsert returned no data.")
     except Exception as e:
         st.error(f"❌ DB update error for {req.get('id')}: {type(e).__name__}: {e}")
 
-# ── ✅ NEW: Delete from Supabase ──────────────────────────────────────────────
 def _db_delete(rid: str):
-    """Delete a request row from Supabase by id."""
     try:
         _get_sb().table(TABLE).delete().eq("id", rid).execute()
-        st.toast(f"🗑️ Deleted {rid} from Supabase", icon="🗄️")
+        st.toast(f"🗑️ Deleted {rid}", icon="🗄️")
     except Exception as e:
         st.error(f"❌ DB delete error for {rid}: {type(e).__name__}: {e}")
 
@@ -180,7 +153,6 @@ def _db_load_all() -> list:
     try:
         res = _get_sb().table(TABLE).select("*").order("created_at", desc=False).execute()
         rows = res.data or []
-        st.caption(f"🗄️ Loaded {len(rows)} record(s) from Supabase.")
         return [_deserialize(row) for row in rows]
     except Exception as e:
         st.error(f"❌ DB load error: {type(e).__name__}: {e}")
@@ -196,9 +168,7 @@ def _fmt(dt):
     try:
         if isinstance(dt, str):
             dt = _str_to_dt(dt)
-        # Convert to IST for display
-        dt_ist = dt.astimezone(IST)
-        return dt_ist.strftime("%d %b %Y, %I:%M %p IST")
+        return dt.astimezone(IST).strftime("%d %b %Y, %I:%M %p IST")
     except Exception:
         return str(dt)
 
@@ -218,9 +188,9 @@ def _time_left(expires_at):
 
 def _init():
     defaults = {
-        "ap_role_auth":         {},
-        "ap_loaded":            False,
-        "ap_confirm_delete":    {},   # ✅ NEW: tracks which request IDs have delete confirmation pending
+        "ap_role_auth":      {},
+        "ap_loaded":         False,
+        "ap_confirm_delete": {},
     }
     for k, v in defaults.items():
         if k not in st.session_state:
@@ -229,8 +199,8 @@ def _init():
 def _load_requests():
     rows = _db_load_all()
     st.session_state.ap_requests = rows
-    ids = [int(r["id"].split("-")[1]) for r in rows if r.get("id", "").startswith("REQ-")]
-    st.session_state.ap_next_id = (max(ids) + 1) if ids else 1
+    ids = [int(r["id"].split("-")[1]) for r in rows if r.get("id","").startswith("REQ-")]
+    st.session_state.ap_next_id = (max(ids)+1) if ids else 1
     st.session_state.ap_loaded  = True
 
 
@@ -278,8 +248,7 @@ def _approve(req, note):
     if next_idx >= len(req["chain"]):
         req["status"] = "Approved"
         req["done"]   = True
-        req["history"].append({"time": _now(), "by": "System",
-                                "action": "All levels approved — COMPLETE ✅"})
+        req["history"].append({"time": _now(), "by": "System", "action": "All levels approved — COMPLETE ✅"})
     else:
         req["stage_idx"]  = next_idx
         req["expires_at"] = _now() + timedelta(hours=TIMEOUT_HOURS)
@@ -303,15 +272,30 @@ def _check_expiry(req):
                                 "action": f"Expired — no response from {stage}"})
         _db_update(req)
 
-# ── ✅ NEW: Delete action ─────────────────────────────────────────────────────
 def _delete_request(rid: str):
-    """Remove request from session state and Supabase."""
-    st.session_state.ap_requests = [
-        r for r in st.session_state.ap_requests if r["id"] != rid
-    ]
-    # Clear any pending confirm state
+    st.session_state.ap_requests = [r for r in st.session_state.ap_requests if r["id"] != rid]
     st.session_state.ap_confirm_delete.pop(rid, None)
     _db_delete(rid)
+
+
+# ── Status badge helper ───────────────────────────────────────────────────────
+
+def _status_badge(status: str) -> str:
+    mapping = {
+        "Pending":  ("badge-open",       "Pending"),
+        "Approved": ("badge-resolved",   "Approved"),
+        "Rejected": ("badge-overdue",    "Rejected"),
+        "Expired":  ("badge-inprogress", "Expired"),
+    }
+    cls, label = mapping.get(status, ("badge-open", status))
+    return f'<span class="badge {cls}">{label}</span>'
+
+def _urgency_badge(urgency: str) -> str:
+    if urgency == "CRITICAL":
+        return '<span class="badge" style="background:rgba(239,68,68,0.15);color:#f87171;border:1px solid rgba(239,68,68,0.3);">CRITICAL</span>'
+    if urgency == "URGENT":
+        return '<span class="badge" style="background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.3);">URGENT</span>'
+    return '<span class="badge" style="background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.4);border:1px solid rgba(255,255,255,0.1);">Normal</span>'
 
 
 # ── Main entry ────────────────────────────────────────────────────────────────
@@ -319,9 +303,9 @@ def _delete_request(rid: str):
 def page_approval_pipeline():
     _init()
 
+    # ── Connection check ──────────────────────────────────────────────────────
     try:
-        test = _get_sb().table(TABLE).select("id").limit(1).execute()
-        st.success(f"🟢 Supabase connected — table `{TABLE}` is reachable.")
+        _get_sb().table(TABLE).select("id").limit(1).execute()
     except Exception as e:
         st.error(f"🔴 Supabase connection FAILED: {type(e).__name__}: {e}")
         st.stop()
@@ -332,11 +316,17 @@ def page_approval_pipeline():
     for r in st.session_state.ap_requests:
         _check_expiry(r)
 
+    # ── Page header ───────────────────────────────────────────────────────────
     hcol, rcol = st.columns([5, 1])
     with hcol:
-        st.title("Document Approval Pipeline")
+        st.markdown("""
+        <div class="page-header">
+            <div class="page-title">Document Approval Pipeline</div>
+            <div class="page-subtitle">Submit documents for role-based approval · 2h timeout per level</div>
+        </div>
+        """, unsafe_allow_html=True)
     with rcol:
-        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown("<div style='height:24px'></div>", unsafe_allow_html=True)
         if st.button("🔄 Refresh", use_container_width=True):
             _load_requests()
             st.rerun()
@@ -362,40 +352,35 @@ def page_approval_pipeline():
     with tabs[4]: _view_role("CEO")
 
 
-# ── Submit + tracker (public) ─────────────────────────────────────────────────
+# ── Submit Tab ────────────────────────────────────────────────────────────────
 
 def _view_submit():
+    st.markdown("<div class='section-label'>New Request</div>", unsafe_allow_html=True)
+
     with st.form("ap_form", clear_on_submit=True):
         col1, col2 = st.columns(2)
         with col1:
-            requester = st.text_input("Your Name / Employee ID",
-                                      placeholder="e.g. Priya K · EMP-042")
-            category  = st.selectbox(
-                "Document Category",
-                list(DOC_CATEGORIES.keys()),
-                format_func=lambda c: DOC_CATEGORIES[c]["label"],
-            )
+            requester = st.text_input("Your Name / Employee ID", placeholder="e.g. Priya K · EMP-042")
+            category  = st.selectbox("Document Category", list(DOC_CATEGORIES.keys()),
+                                     format_func=lambda c: DOC_CATEGORIES[c]["label"])
         with col2:
-            title   = st.text_input("Document Title",
-                                    placeholder="e.g. Database Backup Procedure")
-            urgency = st.selectbox("Urgency", ["Normal", "URGENT", "CRITICAL"])
+            title   = st.text_input("Document Title", placeholder="e.g. Database Backup Procedure")
+            urgency = st.selectbox("Urgency", ["Normal","URGENT","CRITICAL"])
 
-        subtype = st.selectbox("Document Subtype", DOC_CATEGORIES[category]["subtypes"])
-
+        subtype     = st.selectbox("Document Subtype", DOC_CATEGORIES[category]["subtypes"])
         description = st.text_area("What does this document need to cover?",
                                    placeholder="Describe the purpose and scope…", height=90)
 
         cfg       = DOC_CATEGORIES[category]
         chain     = _build_chain(category)
         route_str = (
-            "Auto-approved instantly"
+            "Auto-approved instantly (General)"
             if cfg["auto"]
             else "  →  ".join(chain) + f"  ·  {TIMEOUT_HOURS}h per level"
         )
-        st.caption(f"Approval route: {route_str}")
+        st.markdown(f"<small style='color:rgba(139,92,246,0.7)'>Approval route: {route_str}</small>", unsafe_allow_html=True)
 
-        submitted = st.form_submit_button("Submit Request", type="primary",
-                                          use_container_width=True)
+        submitted = st.form_submit_button("Submit Request", type="primary", use_container_width=True)
 
     if submitted:
         errors = []
@@ -405,141 +390,162 @@ def _view_submit():
         for e in errors:
             st.error(e)
         if not errors:
-            req = _create(title.strip(), category, subtype,
-                          description.strip(), urgency, requester.strip())
+            req = _create(title.strip(), category, subtype, description.strip(), urgency, requester.strip())
             if req["done"]:
-                st.success(f"**{req['id']}** auto-approved instantly. ✅")
+                st.success(f"**{req['id']}** auto-approved instantly ✅")
             else:
                 st.success(f"**{req['id']}** submitted — first stop: **{req['chain'][0]}**")
 
     all_reqs = list(reversed(st.session_state.ap_requests))
     if not all_reqs:
-        st.info("No requests yet.")
+        st.markdown("""
+        <div class="hd-card" style="text-align:center; padding:32px; margin-top:16px;">
+            <div style="font-size:28px; margin-bottom:10px;">📭</div>
+            <div style="color:rgba(255,255,255,0.4); font-size:13.5px;">No requests yet. Submit your first document above.</div>
+        </div>
+        """, unsafe_allow_html=True)
         return
 
-    st.divider()
+    st.markdown("<hr>", unsafe_allow_html=True)
 
-    # ── Summary metrics ───────────────────────────────────────────────────────
-    counts = {"Pending": 0, "Approved": 0, "Rejected": 0, "Expired": 0}
+    # Summary metrics
+    counts = {"Pending":0,"Approved":0,"Rejected":0,"Expired":0}
     for r in all_reqs:
-        counts[r["status"]] = counts.get(r["status"], 0) + 1
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Pending",  counts["Pending"])
-    c2.metric("Approved", counts["Approved"])
-    c3.metric("Rejected", counts["Rejected"])
-    c4.metric("Expired",  counts["Expired"])
+        counts[r["status"]] = counts.get(r["status"],0) + 1
 
-    # ── ✅ NEW: Bulk delete controls ──────────────────────────────────────────
-    st.divider()
-    st.markdown("### 📋 All Requests")
+    metric_map = [
+        ("Pending",  counts["Pending"],  "metric-number metric-number-amber"),
+        ("Approved", counts["Approved"], "metric-number metric-number-green"),
+        ("Rejected", counts["Rejected"], "metric-number metric-number-red"),
+        ("Expired",  counts["Expired"],  "metric-number metric-number-blue"),
+    ]
+    cols = st.columns(4)
+    for col, (label, val, cls) in zip(cols, metric_map):
+        with col:
+            st.markdown(f"""
+            <div class="metric-card">
+                <div class="{cls}">{val}</div>
+                <div class="metric-label">{label}</div>
+            </div>
+            """, unsafe_allow_html=True)
 
-    bulk_col1, bulk_col2, bulk_col3 = st.columns([2, 2, 4])
-    with bulk_col1:
+    st.markdown("<hr>", unsafe_allow_html=True)
+
+    # Bulk delete
+    st.markdown("<div class='section-label'>All Requests</div>", unsafe_allow_html=True)
+    bulk1, bulk2, _ = st.columns([1.5, 1.5, 4])
+    with bulk1:
         if st.button("🗑️ Delete All Rejected", use_container_width=True):
-            rejected_ids = [r["id"] for r in all_reqs if r["status"] == "Rejected"]
-            for rid in rejected_ids:
-                _delete_request(rid)
-            if rejected_ids:
-                st.success(f"Deleted {len(rejected_ids)} rejected request(s).")
-                st.rerun()
-            else:
-                st.info("No rejected requests to delete.")
-    with bulk_col2:
+            ids = [r["id"] for r in all_reqs if r["status"] == "Rejected"]
+            for rid in ids: _delete_request(rid)
+            st.success(f"Deleted {len(ids)} rejected.") if ids else st.info("None to delete.")
+            if ids: st.rerun()
+    with bulk2:
         if st.button("🗑️ Delete All Expired", use_container_width=True):
-            expired_ids = [r["id"] for r in all_reqs if r["status"] == "Expired"]
-            for rid in expired_ids:
-                _delete_request(rid)
-            if expired_ids:
-                st.success(f"Deleted {len(expired_ids)} expired request(s).")
-                st.rerun()
-            else:
-                st.info("No expired requests to delete.")
+            ids = [r["id"] for r in all_reqs if r["status"] == "Expired"]
+            for rid in ids: _delete_request(rid)
+            st.success(f"Deleted {len(ids)} expired.") if ids else st.info("None to delete.")
+            if ids: st.rerun()
 
-    st.divider()
+    st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
 
-    # ── Request cards with individual delete ──────────────────────────────────
     for req in all_reqs:
         _request_card_with_delete(req, ctx="sub")
 
 
-# ── ✅ NEW: Request card with delete button (for Submit tab only) ─────────────
+# ── Request card (Submit tab, with delete) ────────────────────────────────────
+
 def _request_card_with_delete(req: dict, ctx: str = "sub"):
-    """Same as _request_card but with a delete button added."""
     stage    = req["chain"][req["stage_idx"]] if not req["done"] else "—"
     timer    = _time_left(req["expires_at"]) if not req["done"] else ""
-    urg_icon = {"URGENT": "🟡", "CRITICAL": "🔴"}.get(req["urgency"], "")
-    rid = req["id"]
-    k   = f"{ctx}_{rid}"
+    rid      = req["id"]
+    k        = f"{ctx}_{rid}"
 
-    # Status colour indicator
-    status_icon = {
-        "Pending":  "🟡",
-        "Approved": "🟢",
-        "Rejected": "🔴",
-        "Expired":  "⏰",
-    }.get(req["status"], "⚪")
+    header_parts = [f"**{rid}**  ·  {req['title']}"]
+    if timer and timer != "Expired":
+        header_parts.append(f"⏳ {timer}")
 
-    label = f"{status_icon} {rid}  ·  {req['title']}  {urg_icon}"
-    if timer:
-        label += f"  ·  ⏳ {timer}"
+    with st.expander("  ".join(header_parts), expanded=False):
+        # Status row
+        st.markdown(f"""
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px; flex-wrap:wrap;">
+            {_status_badge(req['status'])}
+            {_urgency_badge(req['urgency'])}
+            <span style="font-size:12px; color:rgba(255,255,255,0.35);">{req.get('category','—')} › {req.get('subtype','—')}</span>
+            <span style="margin-left:auto; font-size:11px; color:rgba(255,255,255,0.3);">Stage: {stage}</span>
+        </div>
+        """, unsafe_allow_html=True)
 
-    with st.expander(label, expanded=False):
+        # Details grid
+        st.markdown(f"""
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px;">
+            <div class="hd-card" style="padding:10px 14px;">
+                <div style="font-size:10px; text-transform:uppercase; letter-spacing:0.8px; color:rgba(255,255,255,0.3); margin-bottom:4px;">Requester</div>
+                <div style="font-size:13.5px; font-weight:500; color:rgba(255,255,255,0.85);">{req['requester']}</div>
+            </div>
+            <div class="hd-card" style="padding:10px 14px;">
+                <div style="font-size:10px; text-transform:uppercase; letter-spacing:0.8px; color:rgba(255,255,255,0.3); margin-bottom:4px;">Submitted</div>
+                <div style="font-size:13px; color:rgba(255,255,255,0.7);">{_fmt(req['created_at'])}</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
-        # ── Request details ───────────────────────────────────────────────────
-        c1, c2, c3, c4 = st.columns(4)
-        c1.markdown(f"**Requester**  \n{req['requester']}")
-        c2.markdown(f"**Category**  \n{req.get('category','—')} › {req.get('subtype','—')}")
-        c3.markdown(f"**Stage**  \n{stage}")
-        c4.markdown(f"**Status**  \n{req['status']}")
+        # Description
+        st.markdown(f"""
+        <div class="answer-box" style="margin-bottom:14px; font-size:13.5px;">{req['description']}</div>
+        """, unsafe_allow_html=True)
 
-        st.markdown(f"> {req['description']}")
-
-        # Approval chain progress
+        # Approval chain
         if req["chain"]:
-            parts = []
+            chain_parts = []
             for i, s in enumerate(req["chain"]):
                 if req["status"] == "Approved" or i < req["stage_idx"]:
-                    parts.append(f"~~{s}~~ ✅")
+                    chain_parts.append(f'<span style="color:rgba(52,211,153,0.7); text-decoration:line-through;">{s} ✅</span>')
                 elif i == req["stage_idx"] and not req["done"]:
-                    parts.append(f"**{s} ⏳**")
+                    chain_parts.append(f'<span style="color:#a78bfa; font-weight:600;">{s} ⏳</span>')
                 elif req["done"] and i == req["stage_idx"]:
-                    parts.append(f"**{s} {'❌' if req['status'] == 'Rejected' else '⏰'}**")
+                    icon = "❌" if req["status"] == "Rejected" else "⏰"
+                    chain_parts.append(f'<span style="color:#f87171; font-weight:600;">{s} {icon}</span>')
                 else:
-                    parts.append(s)
-            st.markdown("  →  ".join(parts))
-        else:
-            st.caption("Auto-approved — no chain required.")
+                    chain_parts.append(f'<span style="color:rgba(255,255,255,0.3);">{s}</span>')
+            chain_html = ' <span style="color:rgba(255,255,255,0.2);">→</span> '.join(chain_parts)
+            st.markdown(f'<div style="font-size:13px; margin-bottom:14px;">{chain_html}</div>', unsafe_allow_html=True)
 
         # History
         with st.expander("History", key=f"hist_{k}"):
             for entry in req["history"]:
-                t    = _fmt(entry.get("time", ""))
+                t    = _fmt(entry.get("time",""))
                 note = f" — {entry['note']}" if entry.get("note") else ""
-                st.markdown(f"`{t}`  **{entry['by']}**: {entry['action']}{note}")
+                st.markdown(f"""
+                <div style="font-size:12.5px; color:rgba(255,255,255,0.6); margin-bottom:6px; padding:6px 10px; background:rgba(255,255,255,0.025); border-radius:8px;">
+                    <span style="font-family:'JetBrains Mono',monospace; font-size:11px; color:rgba(255,255,255,0.3);">{t}</span>
+                    &nbsp; <strong style="color:rgba(255,255,255,0.75);">{entry['by']}</strong>: {entry['action']}{note}
+                </div>
+                """, unsafe_allow_html=True)
 
-        st.divider()
+        st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
 
-        # ── ✅ NEW: Delete section ─────────────────────────────────────────────
-        confirm_key = f"confirm_del_{rid}"
+        # Delete controls
         is_pending_confirm = st.session_state.ap_confirm_delete.get(rid, False)
-
         if not is_pending_confirm:
-            # First click — show delete button
             del_col, _ = st.columns([1, 5])
             with del_col:
                 if st.button("🗑️ Delete", key=f"del_btn_{k}", use_container_width=True):
                     st.session_state.ap_confirm_delete[rid] = True
                     st.rerun()
         else:
-            # Second click — show confirmation row
-            st.warning(f"⚠️ Are you sure you want to delete **{rid} — {req['title']}**? This cannot be undone.")
-            conf_col1, conf_col2, _ = st.columns([1, 1, 4])
-            with conf_col1:
+            st.markdown(f"""
+            <div class="no-answer-box" style="margin-bottom:10px;">
+                ⚠️ Are you sure you want to delete <strong>{rid} — {req['title']}</strong>? This cannot be undone.
+            </div>
+            """, unsafe_allow_html=True)
+            conf1, conf2, _ = st.columns([1, 1, 4])
+            with conf1:
                 if st.button("✅ Yes, Delete", key=f"confirm_yes_{k}", use_container_width=True):
                     _delete_request(rid)
                     st.success(f"🗑️ {rid} deleted.")
                     st.rerun()
-            with conf_col2:
+            with conf2:
                 if st.button("✖ Cancel", key=f"confirm_no_{k}", use_container_width=True):
                     st.session_state.ap_confirm_delete[rid] = False
                     st.rerun()
@@ -551,13 +557,17 @@ def _view_role(role: str):
     authed = st.session_state.ap_role_auth.get(role, False)
 
     if not authed:
-        st.subheader(f"🔐 {role} Login")
+        st.markdown(f"""
+        <div class="page-header" style="margin-top:8px;">
+            <div class="page-title" style="font-size:22px;">🔐 {role} Login</div>
+            <div class="page-subtitle">Enter your role password to access the inbox</div>
+        </div>
+        """, unsafe_allow_html=True)
         col, _ = st.columns([1.5, 3])
         with col:
             pwd = st.text_input("Password", type="password", key=f"pwd_{role}")
-            if st.button("Log in", type="primary", use_container_width=True,
-                         key=f"login_{role}"):
-                if pwd == ROLE_PASSWORDS.get(role, ""):
+            if st.button("Log in →", type="primary", use_container_width=True, key=f"login_{role}"):
+                if pwd == ROLE_PASSWORDS.get(role,""):
                     st.session_state.ap_role_auth[role] = True
                     st.rerun()
                 else:
@@ -566,13 +576,17 @@ def _view_role(role: str):
 
     hcol, lcol = st.columns([6, 1])
     with hcol:
-        st.subheader(f"Inbox — {role}")
+        st.markdown(f"""
+        <div class="page-header" style="margin-top:8px;">
+            <div class="page-title" style="font-size:22px;">Inbox — {role}</div>
+        </div>
+        """, unsafe_allow_html=True)
     with lcol:
         if st.button("Log out", key=f"logout_{role}"):
             st.session_state.ap_role_auth[role] = False
             st.rerun()
 
-    ctx = role.replace(" ", "_").lower()
+    ctx = role.replace(" ","_").lower()
 
     mine = [
         r for r in reversed(st.session_state.ap_requests)
@@ -584,70 +598,93 @@ def _view_role(role: str):
     ]
 
     if not mine:
-        st.success("Nothing waiting for your approval right now.")
+        st.markdown("""
+        <div class="hd-card" style="text-align:center; padding:28px;">
+            <div style="font-size:24px; margin-bottom:8px;">✅</div>
+            <div style="color:rgba(52,211,153,0.8); font-size:14px; font-weight:500;">Nothing waiting for your approval right now.</div>
+        </div>
+        """, unsafe_allow_html=True)
     else:
-        st.markdown(f"**{len(mine)} request(s) awaiting your decision**")
+        st.markdown(f"<div class='section-label'>{len(mine)} awaiting decision</div>", unsafe_allow_html=True)
         for req in mine:
-            _request_card(req, show_actions=True, ctx=ctx)
+            _request_card_role(req, show_actions=True, ctx=ctx)
 
     if handled:
-        st.divider()
+        st.markdown("<hr>", unsafe_allow_html=True)
         with st.expander(f"Previously handled ({len(handled)})"):
             for req in handled:
-                _request_card(req, show_actions=False, ctx=f"{ctx}_done")
+                _request_card_role(req, show_actions=False, ctx=f"{ctx}_done")
 
 
-# ── Original request card (used in role tabs — no delete) ─────────────────────
+# ── Request card (role tabs, no delete) ──────────────────────────────────────
 
-def _request_card(req: dict, show_actions: bool, ctx: str = ""):
-    stage    = req["chain"][req["stage_idx"]] if not req["done"] else "—"
-    timer    = _time_left(req["expires_at"]) if not req["done"] else ""
-    urg_icon = {"URGENT": "🟡", "CRITICAL": "🔴"}.get(req["urgency"], "")
-    rid = req["id"]
-    k   = f"{ctx}_{rid}"
+def _request_card_role(req: dict, show_actions: bool, ctx: str = ""):
+    stage = req["chain"][req["stage_idx"]] if not req["done"] else "—"
+    timer = _time_left(req["expires_at"]) if not req["done"] else ""
+    rid   = req["id"]
+    k     = f"{ctx}_{rid}"
 
-    label = f"{rid}  ·  {req['title']}  {urg_icon}"
-    if timer:
-        label += f"  ·  ⏳ {timer}"
+    header = f"**{rid}**  ·  {req['title']}"
+    if timer and timer != "Expired":
+        header += f"  ·  ⏳ {timer}"
 
-    with st.expander(label, expanded=(show_actions and not req["done"])):
+    with st.expander(header, expanded=(show_actions and not req["done"])):
+        st.markdown(f"""
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px; flex-wrap:wrap;">
+            {_status_badge(req['status'])}
+            {_urgency_badge(req['urgency'])}
+            <span style="font-size:12px; color:rgba(255,255,255,0.35);">{req.get('category','—')} › {req.get('subtype','—')}</span>
+            <span style="margin-left:auto; font-size:11px; color:rgba(255,255,255,0.3);">Stage: {stage}</span>
+        </div>
+        """, unsafe_allow_html=True)
 
-        c1, c2, c3, c4 = st.columns(4)
-        c1.markdown(f"**Requester**  \n{req['requester']}")
-        c2.markdown(f"**Category**  \n{req.get('category','—')} › {req.get('subtype','—')}")
-        c3.markdown(f"**Stage**  \n{stage}")
-        c4.markdown(f"**Status**  \n{req['status']}")
+        st.markdown(f"""
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px;">
+            <div class="hd-card" style="padding:10px 14px;">
+                <div style="font-size:10px; text-transform:uppercase; letter-spacing:0.8px; color:rgba(255,255,255,0.3); margin-bottom:4px;">Requester</div>
+                <div style="font-size:13.5px; font-weight:500; color:rgba(255,255,255,0.85);">{req['requester']}</div>
+            </div>
+            <div class="hd-card" style="padding:10px 14px;">
+                <div style="font-size:10px; text-transform:uppercase; letter-spacing:0.8px; color:rgba(255,255,255,0.3); margin-bottom:4px;">Submitted</div>
+                <div style="font-size:13px; color:rgba(255,255,255,0.7);">{_fmt(req['created_at'])}</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
-        st.markdown(f"> {req['description']}")
+        st.markdown(f'<div class="answer-box" style="margin-bottom:14px; font-size:13.5px;">{req["description"]}</div>', unsafe_allow_html=True)
 
         if req["chain"]:
-            parts = []
+            chain_parts = []
             for i, s in enumerate(req["chain"]):
                 if req["status"] == "Approved" or i < req["stage_idx"]:
-                    parts.append(f"~~{s}~~ ✅")
+                    chain_parts.append(f'<span style="color:rgba(52,211,153,0.7); text-decoration:line-through;">{s} ✅</span>')
                 elif i == req["stage_idx"] and not req["done"]:
-                    parts.append(f"**{s} ⏳**")
+                    chain_parts.append(f'<span style="color:#a78bfa; font-weight:600;">{s} ⏳</span>')
                 elif req["done"] and i == req["stage_idx"]:
-                    parts.append(f"**{s} {'❌' if req['status'] == 'Rejected' else '⏰'}**")
+                    icon = "❌" if req["status"] == "Rejected" else "⏰"
+                    chain_parts.append(f'<span style="color:#f87171; font-weight:600;">{s} {icon}</span>')
                 else:
-                    parts.append(s)
-            st.markdown("  →  ".join(parts))
-        else:
-            st.caption("Auto-approved — no chain required.")
+                    chain_parts.append(f'<span style="color:rgba(255,255,255,0.3);">{s}</span>')
+            chain_html = ' <span style="color:rgba(255,255,255,0.2);">→</span> '.join(chain_parts)
+            st.markdown(f'<div style="font-size:13px; margin-bottom:14px;">{chain_html}</div>', unsafe_allow_html=True)
 
         with st.expander("History", key=f"hist_{k}"):
             for entry in req["history"]:
-                t    = _fmt(entry.get("time", ""))
+                t    = _fmt(entry.get("time",""))
                 note = f" — {entry['note']}" if entry.get("note") else ""
-                st.markdown(f"`{t}`  **{entry['by']}**: {entry['action']}{note}")
+                st.markdown(f"""
+                <div style="font-size:12.5px; color:rgba(255,255,255,0.6); margin-bottom:6px; padding:6px 10px; background:rgba(255,255,255,0.025); border-radius:8px;">
+                    <span style="font-family:'JetBrains Mono',monospace; font-size:11px; color:rgba(255,255,255,0.3);">{t}</span>
+                    &nbsp; <strong style="color:rgba(255,255,255,0.75);">{entry['by']}</strong>: {entry['action']}{note}
+                </div>
+                """, unsafe_allow_html=True)
 
         if show_actions and not req["done"]:
-            note = st.text_input("Note (optional)", key=f"note_{k}",
-                                 placeholder="Reason or comment…")
+            st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
+            note = st.text_input("Note (optional)", key=f"note_{k}", placeholder="Reason or comment…")
             ca, cr, _ = st.columns([1, 1, 4])
             with ca:
-                if st.button("✅ Approve", key=f"ap_{k}", type="primary",
-                             use_container_width=True):
+                if st.button("✅ Approve", key=f"ap_{k}", type="primary", use_container_width=True):
                     _approve(req, note)
                     st.rerun()
             with cr:
