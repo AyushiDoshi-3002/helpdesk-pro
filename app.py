@@ -31,6 +31,9 @@ h1, h2, h3 { font-family: 'Syne', sans-serif !important; }
 section[data-testid="stSidebar"] { background: linear-gradient(180deg, #0f0c29, #302b63, #24243e); }
 section[data-testid="stSidebar"] * { color: white !important; }
 .main { background: #eaf6ff; }
+.stApp { background: #eaf6ff; }
+[data-testid="stAppViewContainer"] { background: #eaf6ff; }
+[data-testid="stMain"] { background: #eaf6ff; }
 .answer-box { background: linear-gradient(135deg, #ede9fe, #ddd6fe); border-radius: 12px; padding: 20px; border-left: 4px solid #7c3aed; font-size: 15px; line-height: 1.7; color: #1e1b4b; }
 .no-answer-box { background: #fff7ed; border-radius: 12px; padding: 16px 20px; border-left: 4px solid #f97316; color: #7c2d12; font-size: 14px; }
 .learned-box { background: linear-gradient(135deg, #d1fae5, #a7f3d0); border-radius: 12px; padding: 20px; border-left: 4px solid #059669; font-size: 15px; line-height: 1.7; color: #064e3b; }
