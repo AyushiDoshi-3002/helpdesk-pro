@@ -39,7 +39,7 @@ section[data-testid="stSidebar"] * { color: white !important; }
 .badge-resolved { background:#d1fae5;color:#065f46;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600; }
 .badge-overdue { background:#fee2e2;color:#991b1b;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600; }
 .prio-high { background:#fee2e2;color:#991b1b;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700; }
-.prio-medium { background:#fef9c3;color:#854d0e;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700; }
+.prio-medium { background: #eaf6ff;color:#854d0e;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700; }
 .prio-low { background:#dcfce7;color:#166534;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700; }
 div.stButton > button { background: linear-gradient(135deg, #7c3aed, #5b21b6); color: white; border: none; border-radius: 10px; padding: 10px 24px; font-weight: 600; font-size: 14px; }
 div.stButton > button:hover { background: linear-gradient(135deg, #6d28d9, #4c1d95); }
