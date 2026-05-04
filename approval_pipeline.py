@@ -1,7 +1,7 @@
 """
-approval_pipeline.py  –  role-based tabs + Supabase persistence
-────────────────────────────────────────────────────────────────
-Install dependency:  pip install supabase
+approval_pipeline.py  –  role-based tabs + Supabase persistence + AI Assistant
+────────────────────────────────────────────────────────────────────────────────
+Install dependency:  pip install supabase anthropic
 
 Run this SQL once in your Supabase SQL editor to create the table:
 ──────────────────────────────────────────────────────────────────
@@ -104,7 +104,6 @@ def _get_sb() -> Client:
 
 def _dt_to_str(dt):
     if isinstance(dt, datetime):
-        # Always store as UTC in DB for consistency
         return dt.astimezone(timezone.utc).isoformat()
     return dt
 
@@ -167,9 +166,7 @@ def _db_update(req: dict):
     except Exception as e:
         st.error(f"❌ DB update error for {req.get('id')}: {type(e).__name__}: {e}")
 
-# ── ✅ NEW: Delete from Supabase ──────────────────────────────────────────────
 def _db_delete(rid: str):
-    """Delete a request row from Supabase by id."""
     try:
         _get_sb().table(TABLE).delete().eq("id", rid).execute()
         st.toast(f"🗑️ Deleted {rid} from Supabase", icon="🗄️")
@@ -196,7 +193,6 @@ def _fmt(dt):
     try:
         if isinstance(dt, str):
             dt = _str_to_dt(dt)
-        # Convert to IST for display
         dt_ist = dt.astimezone(IST)
         return dt_ist.strftime("%d %b %Y, %I:%M %p IST")
     except Exception:
@@ -218,9 +214,14 @@ def _time_left(expires_at):
 
 def _init():
     defaults = {
-        "ap_role_auth":         {},
-        "ap_loaded":            False,
-        "ap_confirm_delete":    {},   # ✅ NEW: tracks which request IDs have delete confirmation pending
+        "ap_role_auth":             {},
+        "ap_loaded":                False,
+        "ap_confirm_delete":        {},
+        # AI Assistant state
+        "ap_ai_chat_history":       [],   # list of {"role": "user"|"assistant", "content": str}
+        "ap_ai_result":             None, # dict with parsed AI suggestion
+        "ap_ai_prefill":            None, # dict to prefill the submit form
+        "ap_show_prefill_form":     False,
     }
     for k, v in defaults.items():
         if k not in st.session_state:
@@ -303,15 +304,388 @@ def _check_expiry(req):
                                 "action": f"Expired — no response from {stage}"})
         _db_update(req)
 
-# ── ✅ NEW: Delete action ─────────────────────────────────────────────────────
 def _delete_request(rid: str):
-    """Remove request from session state and Supabase."""
     st.session_state.ap_requests = [
         r for r in st.session_state.ap_requests if r["id"] != rid
     ]
-    # Clear any pending confirm state
     st.session_state.ap_confirm_delete.pop(rid, None)
     _db_delete(rid)
+
+
+# ════════════════════════════════════════════════════════════════════════════
+#  SMART CLASSIFIER — keyword-based, zero API key needed
+# ════════════════════════════════════════════════════════════════════════════
+
+# Each entry: (keywords_that_must_match, category, subtype, title_template)
+_RULES = [
+    # ── Security ──────────────────────────────────────────────────────────
+    (["security policy", "security doc"],           "Security", "Compliance",  "Security Policy Document"),
+    (["legal", "contract", "nda", "agreement"],     "Security", "Legal",       "Legal Document"),
+    (["compliance", "gdpr", "audit", "regulation"], "Security", "Compliance",  "Compliance Document"),
+    (["public api", "api security", "api access"],  "Security", "Public API",  "Public API Security Document"),
+    (["financial", "budget", "invoice", "payment"], "Security", "Financial",   "Financial Document"),
+
+    # ── Technical ─────────────────────────────────────────────────────────
+    (["java doc", "javadoc", "java documentation"], "Technical", "Code Standards", "Java Documentation"),
+    (["api doc", "api documentation", "swagger", "openapi", "rest api doc"], "Technical", "Code Standards", "API Documentation"),
+    (["code doc", "code documentation", "code standard", "coding standard"],  "Technical", "Code Standards", "Code Standards Document"),
+    (["architecture", "system design", "tech design", "design doc"],          "Technical", "Architecture",   "Architecture Document"),
+    (["database", "db schema", "schema", "data model", "erd"],                "Technical", "Database",       "Database Design Document"),
+    (["tech stack", "technology stack", "framework", "library choice"],       "Technical", "Tech Stack",     "Tech Stack Document"),
+    (["infrastructure", "server", "cloud", "aws", "gcp", "azure setup"],      "Technical", "Infrastructure", "Infrastructure Document"),
+
+    # ── Operations ────────────────────────────────────────────────────────
+    (["runbook", "run book", "incident response"],           "Operations", "Runbooks",    "Runbook"),
+    (["deployment", "deploy guide", "release guide", "ci/cd", "pipeline doc"], "Operations", "Deployment", "Deployment Guide"),
+    (["monitoring", "alerting", "logging", "observability"], "Operations", "Monitoring",  "Monitoring Guide"),
+    (["setup guide", "installation guide", "how to setup", "environment setup"], "Operations", "Setup Guides", "Setup Guide"),
+
+    # ── Team ──────────────────────────────────────────────────────────────
+    (["internal process", "team process", "workflow doc", "sop"],   "Team", "Internal Processes", "Internal Process Document"),
+    (["troubleshoot", "debug guide", "issue guide", "error guide"], "Team", "Troubleshooting",    "Troubleshooting Guide"),
+    (["team setup", "team guide", "team wiki"],                     "Team", "Setup Guides",       "Team Setup Guide"),
+
+    # ── General ───────────────────────────────────────────────────────────
+    (["faq", "faqs", "frequently asked"],           "General", "FAQs",         "FAQ Document"),
+    (["onboarding", "new joinee", "new employee", "induction"], "General", "Onboarding", "Onboarding Document"),
+    (["general info", "general doc", "general document"],       "General", "General Info", "General Information Document"),
+]
+
+# Urgency keywords
+_URGENCY_CRITICAL = ["critical", "emergency", "urgent urgent", "asap", "immediately", "right now"]
+_URGENCY_URGENT   = ["urgent", "priority", "soon", "quickly", "fast", "high priority"]
+
+# Words that indicate NO document is needed
+_NO_DOC_KEYWORDS = [
+    "what is", "how does", "can you explain", "tell me", "who is",
+    "when is", "where is", "define", "meaning of", "help me understand",
+]
+
+
+def _classify_request(text: str) -> dict:
+    """
+    Pure keyword-based classifier. No API key needed.
+    Returns same structure as the old AI call.
+    """
+    lower = text.lower().strip()
+
+    # Check if it's just a question with no document intent
+    doc_intent_words = [
+        "create", "make", "write", "need", "want", "request", "prepare",
+        "document", "doc", "guide", "policy", "documentation", "submit"
+    ]
+    has_doc_intent = any(w in lower for w in doc_intent_words)
+
+    if not has_doc_intent:
+        return {
+            "needs_document": False,
+            "message": (
+                "It looks like you're asking a general question rather than requesting "
+                "a document. If you'd like to request a document to be created, try phrasing "
+                "it like: \"I want to create a Java documentation\" or \"I need a deployment guide\"."
+            ),
+            "suggested_title": "", "category": "", "subtype": "",
+            "urgency": "Normal", "approval_route": "",
+        }
+
+    # Match against rules
+    matched_category = None
+    matched_subtype  = None
+    matched_title    = None
+
+    for keywords, category, subtype, title in _RULES:
+        if any(kw in lower for kw in keywords):
+            matched_category = category
+            matched_subtype  = matched_subtype or subtype
+            matched_title    = title
+            break  # first match wins
+
+    # Fallback: look for broad category hints if no rule matched
+    if not matched_category:
+        if any(w in lower for w in ["security", "legal", "compliance", "financial"]):
+            matched_category, matched_subtype, matched_title = "Security", "Compliance", "Security Document"
+        elif any(w in lower for w in ["technical", "code", "software", "system", "api", "doc"]):
+            matched_category, matched_subtype, matched_title = "Technical", "Code Standards", "Technical Document"
+        elif any(w in lower for w in ["deploy", "monitor", "run", "operation", "infra"]):
+            matched_category, matched_subtype, matched_title = "Operations", "Runbooks", "Operations Document"
+        elif any(w in lower for w in ["team", "internal", "process", "wiki", "sop"]):
+            matched_category, matched_subtype, matched_title = "Team", "Internal Processes", "Team Document"
+        else:
+            matched_category, matched_subtype, matched_title = "General", "General Info", "General Document"
+
+    # Detect urgency
+    if any(w in lower for w in _URGENCY_CRITICAL):
+        urgency = "CRITICAL"
+    elif any(w in lower for w in _URGENCY_URGENT):
+        urgency = "URGENT"
+    else:
+        urgency = "Normal"
+
+    # Build approval route string
+    chain     = _build_chain(matched_category)
+    cfg       = DOC_CATEGORIES[matched_category]
+    if cfg["auto"]:
+        route_str = "Auto-approved instantly ✅"
+    else:
+        route_str = " → ".join(chain)
+
+    # Build friendly message
+    cat_label = DOC_CATEGORIES[matched_category]["label"]
+    message = (
+        f"Got it! This looks like a **{cat_label} › {matched_subtype}** document. "
+        f"Once you submit, it will go through: **{route_str}**. "
+        f"I've pre-filled the form below — just add your name and description and hit Submit!"
+    )
+
+    return {
+        "needs_document": True,
+        "message":        message,
+        "suggested_title": matched_title,
+        "category":        matched_category,
+        "subtype":         matched_subtype,
+        "urgency":         urgency,
+        "approval_route":  route_str,
+    }
+
+
+# ── CSS for the AI chat panel ─────────────────────────────────────────────────
+
+_AI_CHAT_CSS = """
+<style>
+.ai-panel {
+    background: linear-gradient(135deg, #f0f4ff 0%, #e8f0fe 100%);
+    border: 1.5px solid #c7d7fd;
+    border-radius: 16px;
+    padding: 20px 24px 16px 24px;
+    margin-bottom: 24px;
+}
+.ai-panel-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+}
+.ai-panel-title {
+    font-size: 17px;
+    font-weight: 700;
+    color: #1e3a8a;
+    margin: 0;
+}
+.ai-panel-subtitle {
+    font-size: 12.5px;
+    color: #6b7280;
+    margin: 0;
+}
+.chat-bubble-user {
+    background: #1e3a8a;
+    color: white;
+    border-radius: 14px 14px 4px 14px;
+    padding: 10px 15px;
+    margin: 6px 0 6px 60px;
+    font-size: 14px;
+    line-height: 1.5;
+}
+.chat-bubble-ai {
+    background: white;
+    border: 1px solid #dbeafe;
+    color: #1e293b;
+    border-radius: 14px 14px 14px 4px;
+    padding: 10px 15px;
+    margin: 6px 60px 6px 0;
+    font-size: 14px;
+    line-height: 1.6;
+}
+.chat-bubble-ai .route-badge {
+    display: inline-block;
+    background: #eff6ff;
+    border: 1px solid #93c5fd;
+    color: #1d4ed8;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 2px 10px;
+    margin-top: 6px;
+}
+.ai-suggestion-box {
+    background: #f0fdf4;
+    border: 1.5px solid #86efac;
+    border-radius: 12px;
+    padding: 14px 18px;
+    margin: 10px 0 4px 0;
+}
+.ai-suggestion-box .label {
+    font-size: 11px;
+    font-weight: 700;
+    color: #166534;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.ai-suggestion-box .value {
+    font-size: 15px;
+    font-weight: 600;
+    color: #14532d;
+}
+.ai-no-doc-box {
+    background: #fefce8;
+    border: 1.5px solid #fde68a;
+    border-radius: 12px;
+    padding: 12px 16px;
+    margin: 8px 0 0 0;
+    font-size: 14px;
+    color: #713f12;
+}
+</style>
+"""
+
+
+def _render_ai_assistant():
+    """Render the smart document request box at the top of the Submit tab."""
+    st.markdown(_AI_CHAT_CSS, unsafe_allow_html=True)
+
+    st.markdown("""
+    <div class="ai-panel">
+      <div class="ai-panel-header">
+        <span style="font-size:26px">💬</span>
+        <div>
+          <p class="ai-panel-title">Need a Document Created?</p>
+          <p class="ai-panel-subtitle">
+            Just describe what you need in plain English — e.g. <em>"I want to create Java documentation
+            for our new service"</em> or <em>"I need a deployment guide"</em>. The system will
+            automatically figure out the category and approval route for you.
+          </p>
+        </div>
+      </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # ── Render previous request + result if any ───────────────────────────────
+    history = st.session_state.ap_ai_chat_history
+    if history:
+        for turn in history:
+            if turn["role"] == "user":
+                st.markdown(
+                    f"<div class='chat-bubble-user'>🧑 {turn['content']}</div>",
+                    unsafe_allow_html=True,
+                )
+            else:
+                try:
+                    data = json.loads(turn["content"])
+                    _render_ai_bubble(data)
+                except Exception:
+                    st.markdown(
+                        f"<div class='chat-bubble-ai'>🤖 {turn['content']}</div>",
+                        unsafe_allow_html=True,
+                    )
+
+    # ── Pre-fill button after a document is detected ──────────────────────────
+    result = st.session_state.get("ap_ai_result")
+    if result and result.get("needs_document") and not st.session_state.get("ap_show_prefill_form"):
+        col_prefill, col_clear, _ = st.columns([2.2, 1, 3])
+        with col_prefill:
+            if st.button(
+                "📝 Pre-fill the Form Below with This Suggestion",
+                key="ai_prefill_btn",
+                use_container_width=True,
+                type="primary",
+            ):
+                st.session_state.ap_ai_prefill = {
+                    "title":    result.get("suggested_title", ""),
+                    "category": result.get("category", "General"),
+                    "subtype":  result.get("subtype", ""),
+                    "urgency":  result.get("urgency", "Normal"),
+                }
+                st.session_state.ap_show_prefill_form = True
+                st.rerun()
+        with col_clear:
+            if st.button("🗑️ Clear", key="ai_clear_btn", use_container_width=True):
+                st.session_state.ap_ai_chat_history   = []
+                st.session_state.ap_ai_result         = None
+                st.session_state.ap_ai_prefill        = None
+                st.session_state.ap_show_prefill_form = False
+                st.rerun()
+
+    # ── Input form ────────────────────────────────────────────────────────────
+    with st.form("ai_chat_form", clear_on_submit=True):
+        user_input = st.text_area(
+            "Describe what document you need",
+            placeholder=(
+                'e.g. "I want to create Java API documentation for our payment service"\n'
+                'e.g. "We need a security compliance doc for GDPR"\n'
+                'e.g. "Can someone make a deployment guide for our new release?"'
+            ),
+            height=90,
+            label_visibility="collapsed",
+        )
+        col_btn, _ = st.columns([1, 4])
+        with col_btn:
+            submitted = st.form_submit_button(
+                "🔍 Check & Route", use_container_width=True, type="primary"
+            )
+
+    if submitted and user_input.strip():
+        result = _classify_request(user_input.strip())
+        st.session_state.ap_ai_chat_history.append(
+            {"role": "user", "content": user_input.strip()}
+        )
+        st.session_state.ap_ai_chat_history.append(
+            {"role": "assistant", "content": json.dumps(result)}
+        )
+        st.session_state.ap_ai_result = result
+        st.rerun()
+    elif submitted:
+        st.warning("Please describe what document you need.")
+
+    # Clear button when result shows no doc needed
+    if history and result and not result.get("needs_document"):
+        if st.button("🗑️ Clear", key="ai_clear_btn_bottom"):
+            st.session_state.ap_ai_chat_history   = []
+            st.session_state.ap_ai_result         = None
+            st.session_state.ap_ai_prefill        = None
+            st.session_state.ap_show_prefill_form = False
+            st.rerun()
+
+
+def _render_ai_bubble(data: dict):
+    """Render the AI's structured response as a styled chat bubble."""
+    msg = data.get("message", "")
+    needs_doc = data.get("needs_document", False)
+
+    if needs_doc:
+        category      = data.get("category", "")
+        subtype       = data.get("subtype", "")
+        title         = data.get("suggested_title", "")
+        route         = data.get("approval_route", "")
+        urgency       = data.get("urgency", "Normal")
+        cat_cfg       = DOC_CATEGORIES.get(category, {})
+        cat_label     = cat_cfg.get("label", category)
+        urgency_color = {"URGENT": "#f59e0b", "CRITICAL": "#ef4444"}.get(urgency, "#6b7280")
+
+        st.markdown(f"""
+        <div class="chat-bubble-ai">
+          🤖 {msg}
+          <br><br>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;">
+            <span class="route-badge">📁 {cat_label} › {subtype}</span>
+            <span class="route-badge">🔀 {route}</span>
+            <span class="route-badge" style="color:{urgency_color};border-color:{urgency_color};">⚡ {urgency}</span>
+          </div>
+        </div>
+        <div class="ai-suggestion-box">
+          <div class="label">Suggested Document Title</div>
+          <div class="value">📄 {title}</div>
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.markdown(
+            f"<div class='chat-bubble-ai'>🤖 {msg}</div>",
+            unsafe_allow_html=True,
+        )
+        if not msg.startswith("⚠️"):
+            st.markdown(
+                "<div class='ai-no-doc-box'>ℹ️ No document approval needed for this request. "
+                "You can still use the form below to submit one manually if needed.</div>",
+                unsafe_allow_html=True,
+            )
 
 
 # ── Main entry ────────────────────────────────────────────────────────────────
@@ -365,25 +739,69 @@ def page_approval_pipeline():
 # ── Submit + tracker (public) ─────────────────────────────────────────────────
 
 def _view_submit():
+    # ── AI Assistant at the top ───────────────────────────────────────────────
+    _render_ai_assistant()
+
+    st.divider()
+
+    # ── Determine prefill values ──────────────────────────────────────────────
+    prefill = st.session_state.get("ap_ai_prefill") or {}
+    show_prefill = st.session_state.get("ap_show_prefill_form", False)
+
+    if show_prefill and prefill:
+        st.markdown(
+            "### 📝 Submit Request  "
+            "<small style='background:#d1fae5;color:#065f46;border-radius:8px;"
+            "padding:2px 10px;font-size:12px;font-weight:600;'>✨ Pre-filled by AI</small>",
+            unsafe_allow_html=True,
+        )
+    else:
+        st.markdown("### 📝 Submit Request")
+
+    # Resolve prefill category safely
+    prefill_category = prefill.get("category", list(DOC_CATEGORIES.keys())[0])
+    if prefill_category not in DOC_CATEGORIES:
+        prefill_category = list(DOC_CATEGORIES.keys())[0]
+    cat_keys = list(DOC_CATEGORIES.keys())
+    prefill_cat_idx = cat_keys.index(prefill_category) if prefill_category in cat_keys else 0
+
     with st.form("ap_form", clear_on_submit=True):
         col1, col2 = st.columns(2)
         with col1:
-            requester = st.text_input("Your Name / Employee ID",
-                                      placeholder="e.g. Priya K · EMP-042")
-            category  = st.selectbox(
+            requester = st.text_input(
+                "Your Name / Employee ID",
+                placeholder="e.g. Priya K · EMP-042",
+            )
+            category = st.selectbox(
                 "Document Category",
-                list(DOC_CATEGORIES.keys()),
+                cat_keys,
+                index=prefill_cat_idx,
                 format_func=lambda c: DOC_CATEGORIES[c]["label"],
             )
         with col2:
-            title   = st.text_input("Document Title",
-                                    placeholder="e.g. Database Backup Procedure")
-            urgency = st.selectbox("Urgency", ["Normal", "URGENT", "CRITICAL"])
+            title = st.text_input(
+                "Document Title",
+                value=prefill.get("title", ""),
+                placeholder="e.g. Database Backup Procedure",
+            )
+            urgency_opts = ["Normal", "URGENT", "CRITICAL"]
+            prefill_urgency = prefill.get("urgency", "Normal")
+            urgency_idx = urgency_opts.index(prefill_urgency) if prefill_urgency in urgency_opts else 0
+            urgency = st.selectbox("Urgency", urgency_opts, index=urgency_idx)
 
-        subtype = st.selectbox("Document Subtype", DOC_CATEGORIES[category]["subtypes"])
+        # Subtype — try to match AI suggestion
+        available_subtypes = DOC_CATEGORIES[category]["subtypes"]
+        prefill_subtype    = prefill.get("subtype", "")
+        subtype_idx        = 0
+        if prefill_subtype in available_subtypes:
+            subtype_idx = available_subtypes.index(prefill_subtype)
+        subtype = st.selectbox("Document Subtype", available_subtypes, index=subtype_idx)
 
-        description = st.text_area("What does this document need to cover?",
-                                   placeholder="Describe the purpose and scope…", height=90)
+        description = st.text_area(
+            "What does this document need to cover?",
+            placeholder="Describe the purpose and scope…",
+            height=90,
+        )
 
         cfg       = DOC_CATEGORIES[category]
         chain     = _build_chain(category)
@@ -394,8 +812,23 @@ def _view_submit():
         )
         st.caption(f"Approval route: {route_str}")
 
-        submitted = st.form_submit_button("Submit Request", type="primary",
-                                          use_container_width=True)
+        btn_cols = st.columns([2, 1, 3])
+        with btn_cols[0]:
+            submitted = st.form_submit_button(
+                "Submit Request", type="primary", use_container_width=True
+            )
+        with btn_cols[1]:
+            if show_prefill:
+                cancel_prefill = st.form_submit_button(
+                    "✖ Clear Prefill", use_container_width=True
+                )
+            else:
+                cancel_prefill = False
+
+    if cancel_prefill:
+        st.session_state.ap_ai_prefill        = None
+        st.session_state.ap_show_prefill_form = False
+        st.rerun()
 
     if submitted:
         errors = []
@@ -405,12 +838,19 @@ def _view_submit():
         for e in errors:
             st.error(e)
         if not errors:
-            req = _create(title.strip(), category, subtype,
-                          description.strip(), urgency, requester.strip())
+            req = _create(
+                title.strip(), category, subtype,
+                description.strip(), urgency, requester.strip()
+            )
+            # Clear prefill state after successful submit
+            st.session_state.ap_ai_prefill        = None
+            st.session_state.ap_show_prefill_form = False
             if req["done"]:
                 st.success(f"**{req['id']}** auto-approved instantly. ✅")
             else:
-                st.success(f"**{req['id']}** submitted — first stop: **{req['chain'][0]}**")
+                st.success(
+                    f"**{req['id']}** submitted — first stop: **{req['chain'][0]}**"
+                )
 
     all_reqs = list(reversed(st.session_state.ap_requests))
     if not all_reqs:
@@ -429,7 +869,7 @@ def _view_submit():
     c3.metric("Rejected", counts["Rejected"])
     c4.metric("Expired",  counts["Expired"])
 
-    # ── ✅ NEW: Bulk delete controls ──────────────────────────────────────────
+    # ── Bulk delete controls ──────────────────────────────────────────────────
     st.divider()
     st.markdown("### 📋 All Requests")
 
@@ -457,21 +897,19 @@ def _view_submit():
 
     st.divider()
 
-    # ── Request cards with individual delete ──────────────────────────────────
     for req in all_reqs:
         _request_card_with_delete(req, ctx="sub")
 
 
-# ── ✅ NEW: Request card with delete button (for Submit tab only) ─────────────
+# ── Request card with delete button ──────────────────────────────────────────
+
 def _request_card_with_delete(req: dict, ctx: str = "sub"):
-    """Same as _request_card but with a delete button added."""
     stage    = req["chain"][req["stage_idx"]] if not req["done"] else "—"
     timer    = _time_left(req["expires_at"]) if not req["done"] else ""
     urg_icon = {"URGENT": "🟡", "CRITICAL": "🔴"}.get(req["urgency"], "")
     rid = req["id"]
     k   = f"{ctx}_{rid}"
 
-    # Status colour indicator
     status_icon = {
         "Pending":  "🟡",
         "Approved": "🟢",
@@ -484,8 +922,6 @@ def _request_card_with_delete(req: dict, ctx: str = "sub"):
         label += f"  ·  ⏳ {timer}"
 
     with st.expander(label, expanded=False):
-
-        # ── Request details ───────────────────────────────────────────────────
         c1, c2, c3, c4 = st.columns(4)
         c1.markdown(f"**Requester**  \n{req['requester']}")
         c2.markdown(f"**Category**  \n{req.get('category','—')} › {req.get('subtype','—')}")
@@ -494,7 +930,6 @@ def _request_card_with_delete(req: dict, ctx: str = "sub"):
 
         st.markdown(f"> {req['description']}")
 
-        # Approval chain progress
         if req["chain"]:
             parts = []
             for i, s in enumerate(req["chain"]):
@@ -510,7 +945,6 @@ def _request_card_with_delete(req: dict, ctx: str = "sub"):
         else:
             st.caption("Auto-approved — no chain required.")
 
-        # History
         with st.expander("History", key=f"hist_{k}"):
             for entry in req["history"]:
                 t    = _fmt(entry.get("time", ""))
@@ -519,19 +953,16 @@ def _request_card_with_delete(req: dict, ctx: str = "sub"):
 
         st.divider()
 
-        # ── ✅ NEW: Delete section ─────────────────────────────────────────────
         confirm_key = f"confirm_del_{rid}"
         is_pending_confirm = st.session_state.ap_confirm_delete.get(rid, False)
 
         if not is_pending_confirm:
-            # First click — show delete button
             del_col, _ = st.columns([1, 5])
             with del_col:
                 if st.button("🗑️ Delete", key=f"del_btn_{k}", use_container_width=True):
                     st.session_state.ap_confirm_delete[rid] = True
                     st.rerun()
         else:
-            # Second click — show confirmation row
             st.warning(f"⚠️ Are you sure you want to delete **{rid} — {req['title']}**? This cannot be undone.")
             conf_col1, conf_col2, _ = st.columns([1, 1, 4])
             with conf_col1:
@@ -611,7 +1042,6 @@ def _request_card(req: dict, show_actions: bool, ctx: str = ""):
         label += f"  ·  ⏳ {timer}"
 
     with st.expander(label, expanded=(show_actions and not req["done"])):
-
         c1, c2, c3, c4 = st.columns(4)
         c1.markdown(f"**Requester**  \n{req['requester']}")
         c2.markdown(f"**Category**  \n{req.get('category','—')} › {req.get('subtype','—')}")
