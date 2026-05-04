@@ -49,7 +49,7 @@ TIMEOUT_HOURS = 2
 # ── Document taxonomy ─────────────────────────────────────────────────────────
 DOC_CATEGORIES = {
     "Security": {
-        "label":    "🔒 Security",
+        "label":    " Security",
         "subtypes": ["Legal", "Compliance", "Public API", "Financial"],
         "approver": "CEO",
         "auto":     False,
@@ -67,13 +67,13 @@ DOC_CATEGORIES = {
         "auto":     False,
     },
     "Team": {
-        "label":    "👥 Team",
+        "label":    " Team",
         "subtypes": ["Internal Processes", "Troubleshooting", "Setup Guides"],
         "approver": "Team Lead",
         "auto":     False,
     },
     "General": {
-        "label":    "📄 General",
+        "label":    " General",
         "subtypes": ["FAQs", "Onboarding", "General Info"],
         "approver": "Admin",
         "auto":     True,
@@ -564,7 +564,7 @@ def _render_ai_assistant():
         for turn in history:
             if turn["role"] == "user":
                 st.markdown(
-                    f"<div class='chat-bubble-user'>🧑 {turn['content']}</div>",
+                    f"<div class='chat-bubble-user'> {turn['content']}</div>",
                     unsafe_allow_html=True,
                 )
             else:
@@ -723,10 +723,10 @@ def page_approval_pipeline():
 
     tabs = st.tabs([
         "📝 Submit",
-        f"👤 Team Lead ({_n('Team Lead')})",
-        f"🔧 Tech Manager ({_n('Tech Manager')})",
-        f"⚙️ CTO ({_n('CTO')})",
-        f"👑 CEO ({_n('CEO')})",
+        f" Team Lead ({_n('Team Lead')})",
+        f" Tech Manager ({_n('Tech Manager')})",
+        f" CTO ({_n('CTO')})",
+        f" CEO ({_n('CEO')})",
     ])
 
     with tabs[0]: _view_submit()
@@ -982,7 +982,7 @@ def _view_role(role: str):
     authed = st.session_state.ap_role_auth.get(role, False)
 
     if not authed:
-        st.subheader(f"🔐 {role} Login")
+        st.subheader(f" {role} Login")
         col, _ = st.columns([1.5, 3])
         with col:
             pwd = st.text_input("Password", type="password", key=f"pwd_{role}")
