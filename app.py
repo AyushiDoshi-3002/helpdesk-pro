@@ -341,8 +341,8 @@ def load_qa_pairs():
 # ════════════════════════════════════════════════════════
 #  SEMANTIC SEARCH MODEL
 # ════════════════════════════════════════════════════════
-_Q_THRESHOLD   = 0.40
-_A_THRESHOLD   = 0.45
+_Q_THRESHOLD   = 0.60
+_A_THRESHOLD   = 0.65
 _ANSWER_WEIGHT = 0.85
 
 @st.cache_resource(show_spinner="🧠 Loading semantic search model…")
