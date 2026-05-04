@@ -6,7 +6,6 @@ import csv
 from datetime import datetime, timezone, timedelta
 from collections import Counter
 
-# ── IST Timezone (UTC+5:30) ───────────────────────────────────────────────────
 IST = timezone(timedelta(hours=5, minutes=30))
 
 def _to_ist(dt_str: str) -> str:
@@ -21,34 +20,480 @@ def _to_ist(dt_str: str) -> str:
     except Exception:
         return dt_str
 
-st.set_page_config(page_title="HelpDesk Pro", page_icon="🤖", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(
+    page_title="HelpDesk Pro",
+    page_icon="🎯",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap');
-html, body, [class*="css"] { font-family: 'DM Sans', sans-serif; }
-h1, h2, h3 { font-family: 'Syne', sans-serif !important; }
-section[data-testid="stSidebar"] { background: linear-gradient(180deg, #0f0c29, #302b63, #24243e); }
-section[data-testid="stSidebar"] * { color: white !important; }
-.main { background: #f8f7ff; }
-.answer-box { background: linear-gradient(135deg, #ede9fe, #ddd6fe); border-radius: 12px; padding: 20px; border-left: 4px solid #7c3aed; font-size: 15px; line-height: 1.7; color: #1e1b4b; }
-.no-answer-box { background: #fff7ed; border-radius: 12px; padding: 16px 20px; border-left: 4px solid #f97316; color: #7c2d12; font-size: 14px; }
-.learned-box { background: linear-gradient(135deg, #d1fae5, #a7f3d0); border-radius: 12px; padding: 20px; border-left: 4px solid #059669; font-size: 15px; line-height: 1.7; color: #064e3b; }
-.badge-open { background:#fef3c7;color:#92400e;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600; }
-.badge-inprogress { background:#dbeafe;color:#1e40af;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600; }
-.badge-resolved { background:#d1fae5;color:#065f46;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600; }
-.badge-overdue { background:#fee2e2;color:#991b1b;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600; }
-.prio-high { background:#fee2e2;color:#991b1b;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700; }
-.prio-medium { background:#fef9c3;color:#854d0e;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700; }
-.prio-low { background:#dcfce7;color:#166534;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700; }
-div.stButton > button { background: linear-gradient(135deg, #7c3aed, #5b21b6); color: white; border: none; border-radius: 10px; padding: 10px 24px; font-weight: 600; font-size: 14px; }
-div.stButton > button:hover { background: linear-gradient(135deg, #6d28d9, #4c1d95); }
-.metric-card { background:white;border-radius:14px;padding:20px;text-align:center;box-shadow:0 2px 12px rgba(0,0,0,0.06); }
-.metric-number { font-family:'Syne',sans-serif;font-size:36px;font-weight:800;color:#7c3aed; }
-.metric-label { font-size:13px;color:#6b7280;margin-top:4px; }
-.gap-card { background:white;border-radius:12px;padding:16px;margin-bottom:10px;border-left:4px solid #f97316;box-shadow:0 2px 8px rgba(0,0,0,0.05); }
-.gap-count { font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:#f97316; }
-.timeline-dot { width:12px;height:12px;border-radius:50%;display:inline-block;margin-right:8px; }
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+/* ─── Global Reset ─────────────────────────────── */
+html, body, [class*="css"] {
+    font-family: 'Outfit', sans-serif;
+    font-size: 15px;
+}
+
+/* ─── App Background ───────────────────────────── */
+.stApp {
+    background: linear-gradient(135deg, #0f0a1e 0%, #1a0f3c 30%, #0d1f3c 60%, #0f1a2e 100%);
+    min-height: 100vh;
+}
+
+/* ─── Main Content Area ────────────────────────── */
+.main .block-container {
+    background: rgba(15, 10, 30, 0.0);
+    padding: 2rem 2.5rem;
+    max-width: 1200px;
+}
+
+/* ─── Sidebar ──────────────────────────────────── */
+section[data-testid="stSidebar"] {
+    background: linear-gradient(180deg, #09061a 0%, #0f0a2e 100%);
+    border-right: 1px solid rgba(139, 92, 246, 0.15);
+}
+section[data-testid="stSidebar"] > div {
+    padding: 0;
+}
+section[data-testid="stSidebar"] * {
+    color: rgba(255,255,255,0.85) !important;
+}
+
+/* ─── Sidebar Radio (Nav) ──────────────────────── */
+section[data-testid="stSidebar"] .stRadio > div {
+    gap: 2px;
+}
+section[data-testid="stSidebar"] .stRadio label {
+    display: flex !important;
+    align-items: center !important;
+    padding: 10px 20px !important;
+    border-radius: 0 !important;
+    font-size: 13.5px !important;
+    font-weight: 400 !important;
+    color: rgba(255,255,255,0.55) !important;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border-left: 2px solid transparent;
+    margin: 0 !important;
+}
+section[data-testid="stSidebar"] .stRadio label:hover {
+    color: rgba(255,255,255,0.9) !important;
+    background: rgba(139, 92, 246, 0.08) !important;
+}
+section[data-testid="stSidebar"] .stRadio label[data-testid="stMarkdownContainer"] {
+    color: white !important;
+}
+section[data-testid="stSidebar"] input[type="radio"]:checked + label,
+section[data-testid="stSidebar"] .stRadio [aria-checked="true"] {
+    color: white !important;
+    background: rgba(139, 92, 246, 0.2) !important;
+    border-left: 2px solid #8b5cf6 !important;
+}
+/* Hide default radio circles */
+section[data-testid="stSidebar"] .stRadio input[type="radio"] {
+    display: none !important;
+}
+
+/* ─── Headings ─────────────────────────────────── */
+h1, h2, h3 {
+    font-family: 'Outfit', sans-serif !important;
+    letter-spacing: -0.5px;
+    color: #fff !important;
+}
+
+/* ─── Cards & Boxes ────────────────────────────── */
+.hd-card {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 16px;
+    padding: 20px 22px;
+    margin-bottom: 12px;
+    backdrop-filter: blur(12px);
+    transition: border-color 0.2s ease, background 0.2s ease;
+}
+.hd-card:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(139, 92, 246, 0.3);
+}
+
+.answer-box {
+    background: linear-gradient(135deg, rgba(139,92,246,0.12), rgba(99,102,241,0.08));
+    border-radius: 14px;
+    padding: 20px 22px;
+    border: 1px solid rgba(139,92,246,0.25);
+    font-size: 14.5px;
+    line-height: 1.8;
+    color: rgba(255,255,255,0.9);
+}
+.no-answer-box {
+    background: rgba(249, 115, 22, 0.08);
+    border-radius: 14px;
+    padding: 16px 20px;
+    border: 1px solid rgba(249,115,22,0.25);
+    color: #fb923c;
+    font-size: 14px;
+}
+.learned-box {
+    background: linear-gradient(135deg, rgba(16,185,129,0.10), rgba(5,150,105,0.06));
+    border-radius: 14px;
+    padding: 20px 22px;
+    border: 1px solid rgba(16,185,129,0.25);
+    font-size: 14.5px;
+    line-height: 1.8;
+    color: rgba(255,255,255,0.9);
+}
+
+/* ─── Metric Cards ─────────────────────────────── */
+.metric-card {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 16px;
+    padding: 22px 20px;
+    text-align: center;
+    backdrop-filter: blur(10px);
+    transition: transform 0.2s, border-color 0.2s;
+}
+.metric-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(139,92,246,0.3);
+}
+.metric-number {
+    font-family: 'Outfit', sans-serif;
+    font-size: 38px;
+    font-weight: 700;
+    line-height: 1;
+    background: linear-gradient(135deg, #a78bfa, #818cf8);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+.metric-number-amber {
+    background: linear-gradient(135deg, #fbbf24, #f59e0b);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+.metric-number-blue {
+    background: linear-gradient(135deg, #60a5fa, #3b82f6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+.metric-number-green {
+    background: linear-gradient(135deg, #34d399, #10b981);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+.metric-number-red {
+    background: linear-gradient(135deg, #f87171, #ef4444);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+.metric-label {
+    font-size: 12px;
+    color: rgba(255,255,255,0.45);
+    margin-top: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    font-weight: 500;
+}
+
+/* ─── Badges ───────────────────────────────────── */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+}
+.badge-open    { background: rgba(251,191,36,0.15);  color: #fbbf24; border: 1px solid rgba(251,191,36,0.3); }
+.badge-inprogress { background: rgba(96,165,250,0.15); color: #60a5fa; border: 1px solid rgba(96,165,250,0.3); }
+.badge-resolved { background: rgba(52,211,153,0.15); color: #34d399; border: 1px solid rgba(52,211,153,0.3); }
+.badge-overdue { background: rgba(248,113,113,0.15); color: #f87171; border: 1px solid rgba(248,113,113,0.3); }
+
+.prio-dot {
+    display: inline-block;
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    margin-right: 5px;
+}
+.prio-high   { background: #ef4444; box-shadow: 0 0 6px rgba(239,68,68,0.5); }
+.prio-medium { background: #f59e0b; box-shadow: 0 0 6px rgba(245,158,11,0.5); }
+.prio-low    { background: #10b981; box-shadow: 0 0 6px rgba(16,185,129,0.5); }
+
+/* ─── Ticket Row ───────────────────────────────── */
+.ticket-row {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 14px;
+    padding: 16px 20px;
+    margin-bottom: 10px;
+    transition: all 0.2s ease;
+}
+.ticket-row:hover {
+    background: rgba(255,255,255,0.055);
+    border-color: rgba(139,92,246,0.25);
+}
+.ticket-id {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: rgba(139,92,246,0.8);
+    font-weight: 500;
+}
+.ticket-query {
+    font-size: 14px;
+    font-weight: 500;
+    color: rgba(255,255,255,0.9);
+    line-height: 1.5;
+    margin: 4px 0;
+}
+.ticket-meta {
+    font-size: 11.5px;
+    color: rgba(255,255,255,0.35);
+}
+
+/* ─── Gap Card ─────────────────────────────────── */
+.gap-card {
+    background: rgba(249,115,22,0.06);
+    border-radius: 12px;
+    padding: 14px 18px;
+    margin-bottom: 10px;
+    border: 1px solid rgba(249,115,22,0.15);
+}
+.gap-count {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 20px;
+    font-weight: 700;
+    color: #fb923c;
+}
+
+/* ─── Timeline ─────────────────────────────────── */
+.timeline-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 8px;
+}
+
+/* ─── Buttons ──────────────────────────────────── */
+div.stButton > button {
+    background: linear-gradient(135deg, #7c3aed, #4f46e5);
+    color: white !important;
+    border: none !important;
+    border-radius: 10px;
+    padding: 9px 22px;
+    font-weight: 600;
+    font-size: 13.5px;
+    font-family: 'Outfit', sans-serif;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 15px rgba(124,58,237,0.3);
+}
+div.stButton > button:hover {
+    background: linear-gradient(135deg, #6d28d9, #4338ca) !important;
+    box-shadow: 0 6px 20px rgba(124,58,237,0.45);
+    transform: translateY(-1px);
+}
+div.stButton > button:active {
+    transform: translateY(0);
+}
+
+/* ─── Inputs & Selects ─────────────────────────── */
+.stTextInput > div > div > input,
+.stTextArea > div > div > textarea,
+.stSelectbox > div > div > div {
+    background: rgba(255,255,255,0.05) !important;
+    border: 1px solid rgba(255,255,255,0.12) !important;
+    border-radius: 10px !important;
+    color: rgba(255,255,255,0.9) !important;
+    font-family: 'Outfit', sans-serif !important;
+    transition: border-color 0.2s;
+}
+.stTextInput > div > div > input:focus,
+.stTextArea > div > div > textarea:focus {
+    border-color: rgba(139,92,246,0.5) !important;
+    box-shadow: 0 0 0 3px rgba(139,92,246,0.1) !important;
+}
+.stTextInput > label,
+.stTextArea > label,
+.stSelectbox > label {
+    color: rgba(255,255,255,0.6) !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+}
+
+/* ─── Expander ─────────────────────────────────── */
+.streamlit-expanderHeader {
+    background: rgba(255,255,255,0.04) !important;
+    border: 1px solid rgba(255,255,255,0.08) !important;
+    border-radius: 12px !important;
+    color: rgba(255,255,255,0.85) !important;
+    font-family: 'Outfit', sans-serif !important;
+    font-size: 13.5px !important;
+}
+.streamlit-expanderContent {
+    background: rgba(255,255,255,0.02) !important;
+    border: 1px solid rgba(255,255,255,0.06) !important;
+    border-top: none !important;
+    border-radius: 0 0 12px 12px !important;
+}
+
+/* ─── Success / Error / Warning / Info ─────────── */
+.stSuccess, div[data-testid="stSuccess"] {
+    background: rgba(16,185,129,0.10) !important;
+    border: 1px solid rgba(16,185,129,0.25) !important;
+    border-radius: 10px !important;
+    color: #34d399 !important;
+}
+.stError, div[data-testid="stError"] {
+    background: rgba(239,68,68,0.10) !important;
+    border: 1px solid rgba(239,68,68,0.25) !important;
+    border-radius: 10px !important;
+    color: #f87171 !important;
+}
+.stWarning, div[data-testid="stWarning"] {
+    background: rgba(245,158,11,0.10) !important;
+    border: 1px solid rgba(245,158,11,0.25) !important;
+    border-radius: 10px !important;
+    color: #fbbf24 !important;
+}
+.stInfo, div[data-testid="stInfo"] {
+    background: rgba(96,165,250,0.10) !important;
+    border: 1px solid rgba(96,165,250,0.25) !important;
+    border-radius: 10px !important;
+    color: #93c5fd !important;
+}
+
+/* ─── Markdown text ────────────────────────────── */
+.stMarkdown p, .stMarkdown li, .stMarkdown small {
+    color: rgba(255,255,255,0.75) !important;
+}
+.stMarkdown strong {
+    color: rgba(255,255,255,0.95) !important;
+}
+.stMarkdown code {
+    background: rgba(139,92,246,0.15) !important;
+    color: #c4b5fd !important;
+    border-radius: 5px;
+    padding: 1px 5px;
+    font-family: 'JetBrains Mono', monospace !important;
+    font-size: 13px;
+}
+
+/* ─── Divider ──────────────────────────────────── */
+hr {
+    border-color: rgba(255,255,255,0.08) !important;
+    margin: 1.5rem 0 !important;
+}
+
+/* ─── Download Button ──────────────────────────── */
+div[data-testid="stDownloadButton"] > button {
+    background: rgba(255,255,255,0.06) !important;
+    color: rgba(255,255,255,0.8) !important;
+    border: 1px solid rgba(255,255,255,0.12) !important;
+    border-radius: 10px !important;
+}
+div[data-testid="stDownloadButton"] > button:hover {
+    background: rgba(255,255,255,0.1) !important;
+    border-color: rgba(255,255,255,0.2) !important;
+}
+
+/* ─── Plotly charts ────────────────────────────── */
+.js-plotly-plot .plotly {
+    border-radius: 14px;
+    overflow: hidden;
+}
+
+/* ─── Page header style ────────────────────────── */
+.page-header {
+    margin-bottom: 28px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+}
+.page-title {
+    font-size: 28px;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: -0.5px;
+    margin: 0 0 4px 0;
+    background: linear-gradient(135deg, #fff 60%, rgba(167,139,250,0.9));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+.page-subtitle {
+    font-size: 13.5px;
+    color: rgba(255,255,255,0.4);
+    margin: 0;
+}
+
+/* ─── Section label ────────────────────────────── */
+.section-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: rgba(139,92,246,0.7);
+    margin-bottom: 12px;
+}
+
+/* ─── Sidebar logo area ────────────────────────── */
+.sidebar-logo {
+    padding: 24px 20px 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+    margin-bottom: 12px;
+}
+.sidebar-logo-mark {
+    font-size: 19px;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: -0.5px;
+}
+.sidebar-logo-sub {
+    font-size: 11px;
+    color: rgba(255,255,255,0.3) !important;
+    margin-top: 2px;
+}
+.sidebar-section-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.25) !important;
+    padding: 16px 20px 6px;
+}
+.sidebar-footer {
+    padding: 16px 20px;
+    border-top: 1px solid rgba(255,255,255,0.07);
+    font-size: 11px;
+    color: rgba(255,255,255,0.25) !important;
+}
+
+/* ─── Toast override ───────────────────────────── */
+div[data-testid="stToast"] {
+    background: rgba(15,10,30,0.95) !important;
+    border: 1px solid rgba(139,92,246,0.3) !important;
+    border-radius: 12px !important;
+    color: rgba(255,255,255,0.9) !important;
+    backdrop-filter: blur(20px);
+}
+
+/* ─── Spinner ──────────────────────────────────── */
+.stSpinner > div {
+    border-color: #7c3aed transparent transparent transparent !important;
+}
+
+/* ─── Checkbox ─────────────────────────────────── */
+.stCheckbox > label {
+    color: rgba(255,255,255,0.7) !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -121,8 +566,7 @@ def db_create_ticket(user_id, job_role, query, priority):
         result = db.table("tickets").insert(row).execute()
         if result.data:
             ticket = result.data[0]
-            # ── POPUP: ticket saved to DB ─────────────────────────────────────
-            st.toast(f"🎫 Ticket #{ticket.get('id')} saved to `tickets` table in Supabase!", icon="☁️")
+            st.toast(f"🎫 Ticket #{ticket.get('id')} saved to Supabase!", icon="☁️")
             return ticket
         raise Exception("No data returned from insert")
     except Exception as e:
@@ -147,8 +591,7 @@ def db_update_ticket(tid, status, note):
         raise ConnectionError("Supabase not configured.")
     try:
         db.table("tickets").update({"status": status, "admin_note": note}).eq("id", tid).execute()
-        # ── POPUP: ticket updated in DB ───────────────────────────────────────
-        st.toast(f"✏️ Ticket #{tid} updated in `tickets` table → status: {status}", icon="☁️")
+        st.toast(f"✏️ Ticket #{tid} updated → {status}", icon="☁️")
     except Exception as e:
         raise Exception(f"Update failed: {e}")
 
@@ -157,8 +600,7 @@ def db_delete_ticket(tid):
     if db:
         try:
             db.table("tickets").delete().eq("id", tid).execute()
-            # ── POPUP: ticket deleted from DB ─────────────────────────────────
-            st.toast(f"🗑️ Ticket #{tid} deleted from `tickets` table in Supabase", icon="☁️")
+            st.toast(f"🗑️ Ticket #{tid} deleted", icon="☁️")
         except Exception as e:
             raise Exception(f"Delete failed: {e}")
 
@@ -167,8 +609,7 @@ def db_log_failed_query(query: str):
     if db:
         try:
             db.table("failed_queries").insert({"query": query}).execute()
-            # ── POPUP: failed query logged ────────────────────────────────────
-            st.toast("📋 Unanswered question logged to `failed_queries` table in Supabase", icon="☁️")
+            st.toast("📋 Unanswered question logged", icon="☁️")
         except Exception:
             pass
 
@@ -195,10 +636,6 @@ def is_overdue(created_at_str: str) -> bool:
     except Exception:
         return False
 
-
-# ════════════════════════════════════════════════════════
-#  AUTO-SAVE NOTE TO RESOLVED ISSUES
-# ════════════════════════════════════════════════════════
 def auto_save_note_to_resolved(ticket_query: str, note: str):
     db = get_db()
     if db is None or not note.strip() or not ticket_query.strip():
@@ -207,12 +644,10 @@ def auto_save_note_to_resolved(ticket_query: str, note: str):
         existing = db.table("resolved_issues").select("id").eq("query", ticket_query).execute()
         if not existing.data:
             db.table("resolved_issues").insert({"query": ticket_query, "solution": note.strip()}).execute()
-            # ── POPUP: new learned answer saved ───────────────────────────────
-            st.toast("🧠 Admin note saved as new learned answer in `resolved_issues` table!", icon="☁️")
+            st.toast("🧠 New learned answer saved!", icon="☁️")
         else:
             db.table("resolved_issues").update({"solution": note.strip()}).eq("query", ticket_query).execute()
-            # ── POPUP: existing learned answer updated ────────────────────────
-            st.toast("🧠 Learned answer updated in `resolved_issues` table in Supabase", icon="☁️")
+            st.toast("🧠 Learned answer updated", icon="☁️")
         return True
     except Exception:
         return False
@@ -222,10 +657,9 @@ def auto_save_note_to_resolved(ticket_query: str, note: str):
 #  LEARNED ANSWERS LOOKUP
 # ════════════════════════════════════════════════════════
 _STOP_WORDS = {
-    "what", "is", "are", "the", "a", "an", "of", "in", "on", "at",
-    "to", "for", "and", "or", "how", "why", "when", "where", "who",
-    "does", "do", "can", "could", "would", "should", "explain",
-    "tell", "me", "about", "difference", "between", "use", "using"
+    "what","is","are","the","a","an","of","in","on","at","to","for","and","or",
+    "how","why","when","where","who","does","do","can","could","would","should",
+    "explain","tell","me","about","difference","between","use","using"
 }
 
 def _normalize(text: str) -> str:
@@ -299,10 +733,6 @@ def get_pdf_bytes(_v=3):
         st.warning(f"PDF download failed: {e}")
         return None
 
-
-# ════════════════════════════════════════════════════════
-#  Q&A EXTRACTION FROM PDF
-# ════════════════════════════════════════════════════════
 @st.cache_resource(show_spinner="📄 Extracting Q&A from PDF…")
 def load_qa_pairs():
     pdf_bytes = get_pdf_bytes()
@@ -362,10 +792,6 @@ def load_model_and_embeddings():
         st.warning(f"Semantic model error: {e}")
         return None, None, None, None, None
 
-
-# ════════════════════════════════════════════════════════
-#  ANSWER LOOKUP  (PDF → Learned)
-# ════════════════════════════════════════════════════════
 def answer_question(query: str) -> dict:
     model, q_embeddings, a_embeddings, pairs, util = load_model_and_embeddings()
     if model is not None and q_embeddings is not None and a_embeddings is not None and pairs is not None and util is not None:
@@ -406,13 +832,9 @@ def answer_question(query: str) -> dict:
         "match_src": "none", "pdf_error": pdf_unavailable, "source": "none"
     }
 
-
-# ════════════════════════════════════════════════════════
-#  CSV EXPORT HELPER
-# ════════════════════════════════════════════════════════
 def tickets_to_csv(tickets: list) -> bytes:
     output = io.StringIO()
-    writer = csv.DictWriter(output, fieldnames=["id", "user_id", "job_role", "query", "priority", "status", "admin_note", "created_at"])
+    writer = csv.DictWriter(output, fieldnames=["id","user_id","job_role","query","priority","status","admin_note","created_at"])
     writer.writeheader()
     for t in tickets:
         writer.writerow({k: t.get(k, "") for k in writer.fieldnames})
@@ -423,29 +845,42 @@ def tickets_to_csv(tickets: list) -> bytes:
 #  PAGE: EMPLOYEE PORTAL
 # ════════════════════════════════════════════════════════
 def page_employee():
-    st.markdown("# 🔍 Employee Help Portal")
-    st.markdown("<p style='color:#6b7280'>Ask any question. If no answer is found, raise a support ticket.</p>", unsafe_allow_html=True)
-    st.markdown("---")
+    st.markdown("""
+    <div class="page-header">
+        <div class="page-title">Employee Help Portal</div>
+        <div class="page-subtitle">Ask any question — powered by AI semantic search across your knowledge base</div>
+    </div>
+    """, unsafe_allow_html=True)
 
     pairs = load_qa_pairs()
     if len(pairs) == 0:
         st.error("⚠️ PDF knowledge base could not be loaded.")
     else:
-        st.success(f"📚 PDF Knowledge Base: {len(pairs)} Q&A pairs", icon="✅")
+        st.markdown(f"""
+        <div class="hd-card" style="display:flex; align-items:center; gap:14px; padding:14px 20px;">
+            <span style="font-size:22px;">📚</span>
+            <div>
+                <div style="font-size:13.5px; font-weight:600; color:rgba(255,255,255,0.9);">{len(pairs)} Q&amp;A pairs loaded</div>
+                <div style="font-size:12px; color:rgba(255,255,255,0.4);">Semantic AI search active · multi-qa-mpnet-base-dot-v1</div>
+            </div>
+            <span style="margin-left:auto; background:rgba(52,211,153,0.15); color:#34d399; font-size:11px; font-weight:600; padding:3px 10px; border-radius:20px; border:1px solid rgba(52,211,153,0.25);">● Live</span>
+        </div>
+        """, unsafe_allow_html=True)
 
-    st.markdown("### 💬 Ask a Question")
+    st.markdown("<div class='section-label' style='margin-top:24px;'>Search</div>", unsafe_allow_html=True)
     col1, col2 = st.columns([4, 1])
     with col1:
         question = st.text_input("", placeholder="e.g. What is the difference between a list and a tuple?", label_visibility="collapsed")
     with col2:
-        search = st.button("🔎 Search", use_container_width=True)
+        st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
+        search = st.button("🔎  Search", use_container_width=True)
 
     if search and question.strip():
-        with st.spinner("🧠 Searching knowledge base…"):
+        with st.spinner("Searching knowledge base…"):
             result = answer_question(question.strip())
 
         if result.get("pdf_error") and not result["found"]:
-            st.error("❌ Knowledge base unavailable. Please raise a ticket.")
+            st.error("❌ Knowledge base unavailable. Please raise a support ticket.")
             db_log_failed_query(question.strip())
             st.session_state["show_ticket"] = True
             st.session_state["ticket_query"] = question.strip()
@@ -455,79 +890,94 @@ def page_employee():
             match_src = result.get("match_src", "question")
 
             if source == "learned":
-                st.markdown("#### ✅ Answer Found")
-                st.markdown("<small style='color:#059669'>💡 <strong>Source: Previously resolved support ticket</strong></small>", unsafe_allow_html=True)
-                st.markdown(f"<small style='color:#6b7280'>📌 Similar question: <em>{result['matched'][:160]}</em> (similarity: {result['score']:.0%})</small>", unsafe_allow_html=True)
-                st.markdown(f"<div class='learned-box'>{result['answer']}</div>", unsafe_allow_html=True)
+                st.markdown(f"""
+                <div style="margin:16px 0 6px;">
+                    <span style="font-size:12px; color:#34d399; font-weight:600;">✓ Answer found</span>
+                    <span style="font-size:11px; color:rgba(255,255,255,0.35); margin-left:10px;">Source: previously resolved ticket · {result['score']:.0%} match</span>
+                </div>
+                <div class="learned-box">{result['answer']}</div>
+                """, unsafe_allow_html=True)
             else:
-                st.markdown("#### ✅ Answer Found")
                 match_label = "matched via question" if match_src == "question" else "matched via answer content"
-                st.markdown(f"<small style='color:#7c3aed'>📚 <strong>Source: PDF Knowledge Base</strong> <span style='color:#9ca3af'>({match_label})</span></small>", unsafe_allow_html=True)
-                st.markdown(f"<small style='color:#6b7280'>📌 Matched: <em>{result['matched'][:120]}</em> (score: {result['score']:.2f})</small>", unsafe_allow_html=True)
-                st.markdown(f"<div class='answer-box'>{result['answer']}</div>", unsafe_allow_html=True)
+                st.markdown(f"""
+                <div style="margin:16px 0 6px;">
+                    <span style="font-size:12px; color:#a78bfa; font-weight:600;">✓ Answer found</span>
+                    <span style="font-size:11px; color:rgba(255,255,255,0.35); margin-left:10px;">PDF Knowledge Base · {match_label} · score {result['score']:.2f}</span>
+                </div>
+                <div class="answer-box">{result['answer']}</div>
+                """, unsafe_allow_html=True)
 
-            st.markdown("---")
+            st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
             col_a, col_b, _ = st.columns([1, 1, 4])
             with col_a:
-                if st.button("👍 Helpful", key="emp_helpful"):
+                if st.button("👍  Helpful", key="emp_helpful"):
                     st.success("Great! Glad it helped.")
             with col_b:
-                if st.button("👎 Not helpful", key="emp_not_helpful"):
+                if st.button("👎  Not helpful", key="emp_not_helpful"):
                     db_log_failed_query(question.strip())
                     st.session_state["show_ticket"] = True
                     st.session_state["ticket_query"] = question.strip()
                     st.warning("Sorry! Please raise a ticket below.")
-
         else:
-            st.markdown("#### ❌ No Answer Found")
-            st.markdown("<div class='no-answer-box'>⚠️ No answer found in the knowledge base. Please fill in the ticket details below and our team will help you.</div>", unsafe_allow_html=True)
+            st.markdown(f"""
+            <div class="no-answer-box" style="margin:16px 0;">
+                ⚠️ No answer found in the knowledge base. Please fill in the ticket form below and our team will help you.
+            </div>
+            """, unsafe_allow_html=True)
             db_log_failed_query(question.strip())
             st.session_state["show_ticket"] = True
             st.session_state["ticket_query"] = question.strip()
 
     elif search:
-        st.warning("Please enter a question.")
+        st.warning("Please enter a question first.")
 
-    st.markdown("---")
+    st.markdown("<hr>", unsafe_allow_html=True)
 
     if st.session_state.get("show_ticket", False):
-        st.markdown("### 📝 Support Ticket")
-        c1, c2 = st.columns(2)
-        with c1:
-            user_id = st.text_input("👤 Employee ID *", placeholder="e.g. EMP-1042", key="emp_user_id")
-            job_role = st.selectbox("💼 Job Role *", ["Select…", "Software Engineer", "Data Analyst", "QA Engineer", "DevOps Engineer", "Product Manager", "HR / Operations", "Other"], key="emp_job_role")
-        with c2:
-            priority = st.selectbox("🚨 Priority *", ["Medium", "High", "Low"], key="emp_priority")
+        st.markdown("<div class='section-label'>Raise a Support Ticket</div>", unsafe_allow_html=True)
 
         original_question = st.session_state.get("ticket_query", "")
         if original_question:
-            st.markdown(f"<small style='color:#7c3aed'>🔍 Your search question: <strong>{original_question}</strong></small>", unsafe_allow_html=True)
-        query_text = st.text_area("📋 Describe your problem in detail *", value="", placeholder="Add more details about your issue…", height=120, key="emp_query_text")
+            st.markdown(f"""
+            <div class="hd-card" style="padding:12px 18px; margin-bottom:16px;">
+                <span style="font-size:11px; color:rgba(139,92,246,0.8); font-weight:600;">YOUR SEARCH</span>
+                <div style="font-size:13.5px; color:rgba(255,255,255,0.85); margin-top:4px;">{original_question}</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        c1, c2 = st.columns(2)
+        with c1:
+            user_id  = st.text_input("Employee ID", placeholder="e.g. EMP-1042", key="emp_user_id")
+            job_role = st.selectbox("Job Role", ["Select…","Software Engineer","Data Analyst","QA Engineer","DevOps Engineer","Product Manager","HR / Operations","Other"], key="emp_job_role")
+        with c2:
+            priority = st.selectbox("Priority", ["Medium","High","Low"], key="emp_priority")
+            st.markdown("""
+            <div style="margin-top:8px; padding:10px 14px; background:rgba(96,165,250,0.07); border-radius:10px; border:1px solid rgba(96,165,250,0.15);">
+                <div style="font-size:11.5px; color:rgba(255,255,255,0.5);">⏱ Tickets are usually resolved within 24 hours</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        query_text = st.text_area("Describe your problem in detail", value="", placeholder="Add more context about your issue…", height=120, key="emp_query_text")
 
         col_sub, col_cancel, _ = st.columns([1, 1, 4])
         with col_sub:
-            if st.button("🚀 Submit Ticket", use_container_width=True, key="emp_submit"):
+            if st.button("🚀  Submit Ticket", use_container_width=True, key="emp_submit"):
                 errors = []
-                if not user_id.strip():
-                    errors.append("Employee ID required.")
-                if job_role == "Select…":
-                    errors.append("Select your job role.")
-                if not original_question and not query_text.strip():
-                    errors.append("Problem description required.")
+                if not user_id.strip(): errors.append("Employee ID required.")
+                if job_role == "Select…": errors.append("Select your job role.")
+                if not original_question and not query_text.strip(): errors.append("Problem description required.")
                 for e in errors:
                     st.error(e)
                 if not errors:
                     final_query = original_question if original_question else query_text.strip()
                     try:
                         t = db_create_ticket(user_id.strip(), job_role, final_query, priority)
-                        # ── POPUP: ticket submitted ───────────────────────────
-                        st.toast(f"🎉 Ticket #{t.get('id')} submitted & stored in Supabase `tickets` table!", icon="✅")
-                        st.success(f"✅ Ticket #{t.get('id', '–')} submitted! Our team will respond shortly.", icon="🎉")
+                        st.success(f"✅ Ticket #{t.get('id', '–')} submitted! Our team will respond shortly.")
                         st.session_state["show_ticket"] = False
                     except Exception as ex:
                         st.error(f"Failed: {ex}")
         with col_cancel:
-            if st.button("✖ Cancel", use_container_width=True, key="emp_cancel"):
+            if st.button("✖  Cancel", use_container_width=True, key="emp_cancel"):
                 st.session_state["show_ticket"] = False
                 st.rerun()
 
@@ -538,15 +988,18 @@ def page_employee():
 def page_admin():
     ADMIN_PWD = st.secrets.get("ADMIN_PASSWORD", "admin123")
     if not st.session_state.get("admin_logged_in"):
-        st.markdown("# 🛡️ Admin Panel")
-        st.markdown("---")
+        st.markdown("""
+        <div class="page-header">
+            <div class="page-title">Admin Panel</div>
+            <div class="page-subtitle">Restricted access — enter your password to continue</div>
+        </div>
+        """, unsafe_allow_html=True)
         col, _ = st.columns([1.5, 2.5])
         with col:
             pwd = st.text_input("Password", type="password", key="admin_pwd_input")
             if st.button("Login →", use_container_width=True, key="admin_login_btn"):
                 if pwd == ADMIN_PWD:
                     st.session_state["admin_logged_in"] = True
-                    # ── POPUP: admin logged in ────────────────────────────────
                     st.toast("🛡️ Admin logged in successfully", icon="✅")
                     st.rerun()
                 else:
@@ -555,77 +1008,92 @@ def page_admin():
 
     c1, c2 = st.columns([5, 1])
     with c1:
-        st.markdown("# 🛡️ Admin Dashboard")
+        st.markdown("""
+        <div class="page-header">
+            <div class="page-title">Admin Dashboard</div>
+            <div class="page-subtitle">Review, update and manage all support tickets</div>
+        </div>
+        """, unsafe_allow_html=True)
     with c2:
+        st.markdown("<div style='height:20px'></div>", unsafe_allow_html=True)
         if st.button("Logout", key="admin_logout_btn"):
             st.session_state["admin_logged_in"] = False
-            st.toast("👋 Admin logged out", icon="🔒")
+            st.toast("👋 Logged out", icon="🔒")
             st.rerun()
 
+    # ── Stats ────────────────────────────────────────────
     try:
         stats = db_stats()
+        metric_data = [
+            (stats["total"],       "Total",       "metric-number"),
+            (stats["open"],        "Open",        "metric-number metric-number-amber"),
+            (stats["in_progress"], "In Progress", "metric-number metric-number-blue"),
+            (stats["resolved"],    "Resolved",    "metric-number metric-number-green"),
+            (stats["overdue"],     "Overdue",     "metric-number metric-number-red"),
+        ]
         cols = st.columns(5)
-        for col, val, label, icon in zip(
-            cols,
-            [stats["total"], stats["open"], stats["in_progress"], stats["resolved"], stats["overdue"]],
-            ["Total", "Open", "In Progress", "Resolved", "🔴 Overdue"],
-            ["📋", "🟡", "🔵", "🟢", "🔴"]
-        ):
+        for col, (val, label, cls) in zip(cols, metric_data):
             with col:
-                st.markdown(
-                    f"<div class='metric-card'><div style='font-size:28px'>{icon}</div>"
-                    f"<div class='metric-number'>{val}</div>"
-                    f"<div class='metric-label'>{label}</div></div>",
-                    unsafe_allow_html=True
-                )
+                st.markdown(f"""
+                <div class="metric-card">
+                    <div class="{cls}">{val}</div>
+                    <div class="metric-label">{label}</div>
+                </div>
+                """, unsafe_allow_html=True)
     except Exception as e:
         st.error(f"Stats error: {e}")
 
-    st.markdown("---")
+    st.markdown("<hr>", unsafe_allow_html=True)
 
+    # ── Filters ──────────────────────────────────────────
     c1, c2, c3, c4 = st.columns([1.5, 1.5, 1.5, 1])
     with c1:
-        sf = st.selectbox("Status", ["All", "Open", "In Progress", "Resolved", "Overdue"], key="admin_filter_status")
+        sf = st.selectbox("Status", ["All","Open","In Progress","Resolved","Overdue"], key="admin_filter_status")
     with c2:
-        pf = st.selectbox("Priority", ["All", "High", "Medium", "Low"], key="admin_filter_priority")
+        pf = st.selectbox("Priority", ["All","High","Medium","Low"], key="admin_filter_priority")
     with c3:
-        search_term = st.text_input("🔍 Search tickets", placeholder="keyword / employee ID", key="admin_search_term")
+        search_term = st.text_input("Search tickets", placeholder="keyword / employee ID", key="admin_search_term")
     with c4:
-        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
         export_btn = st.button("📥 Export CSV", use_container_width=True, key="admin_export_btn")
 
     try:
-        tickets = db_get_tickets(sf if sf not in ["All", "Overdue"] else None)
+        tickets = db_get_tickets(sf if sf not in ["All","Overdue"] else None)
     except Exception as e:
         st.error(f"DB error: {e}")
         return
 
     if sf == "Overdue":
-        tickets = [t for t in tickets if t.get("status") == "Open" and is_overdue(t.get("created_at", ""))]
+        tickets = [t for t in tickets if t.get("status") == "Open" and is_overdue(t.get("created_at",""))]
     if pf != "All":
         tickets = [t for t in tickets if t.get("priority") == pf]
     if search_term.strip():
         kw = search_term.strip().lower()
-        tickets = [t for t in tickets if kw in t.get("query", "").lower() or kw in t.get("user_id", "").lower()]
+        tickets = [t for t in tickets if kw in t.get("query","").lower() or kw in t.get("user_id","").lower()]
 
     if export_btn:
         all_tickets = db_get_tickets()
         csv_bytes = tickets_to_csv(all_tickets)
         st.download_button("⬇️ Download CSV", data=csv_bytes, file_name="helpdesk_tickets.csv", mime="text/csv", key="admin_download_csv")
-        st.toast("📥 CSV exported from `tickets` table", icon="✅")
+        st.toast("📥 CSV exported", icon="✅")
 
     if not tickets:
-        st.info("No tickets found.", icon="📭")
+        st.markdown("""
+        <div class="hd-card" style="text-align:center; padding:40px;">
+            <div style="font-size:32px; margin-bottom:12px;">📭</div>
+            <div style="font-size:14px; color:rgba(255,255,255,0.4);">No tickets found matching your filters</div>
+        </div>
+        """, unsafe_allow_html=True)
         return
 
-    st.markdown(f"**{len(tickets)} ticket(s)**")
+    st.markdown(f"<div class='section-label'>{len(tickets)} Ticket(s)</div>", unsafe_allow_html=True)
 
     for t in tickets:
-        tid = t.get("id")
+        tid    = t.get("id")
         status = t.get("status", "Open")
         priority = t.get("priority", "Medium")
-        created = t.get("created_at", "")
-        overdue = is_overdue(created) and status == "Open"
+        created  = t.get("created_at", "")
+        overdue  = is_overdue(created) and status == "Open"
         ticket_query = t.get("query", "")
 
         try:
@@ -633,32 +1101,55 @@ def page_admin():
         except Exception:
             created_fmt = created
 
-        badge_class = "badge-overdue" if overdue else {"Open": "badge-open", "In Progress": "badge-inprogress", "Resolved": "badge-resolved"}.get(status, "badge-open")
-        display_status = "🔴 OVERDUE" if overdue else status
-        prio_class = {"High": "prio-high", "Medium": "prio-medium", "Low": "prio-low"}.get(priority, "prio-medium")
+        badge_class = "badge-overdue" if overdue else {
+            "Open": "badge-open",
+            "In Progress": "badge-inprogress",
+            "Resolved": "badge-resolved"
+        }.get(status, "badge-open")
+        display_status = "OVERDUE" if overdue else status
 
-        with st.expander(f"🎫 #{tid} — {t.get('user_id', '?')} ({t.get('job_role', '?')}) | {display_status} | {priority} | {created_fmt}"):
-            st.markdown(f"<span class='{badge_class}'>{display_status}</span>&nbsp;<span class='{prio_class}'>{priority}</span>", unsafe_allow_html=True)
-            st.markdown(f"**Employee:** {t.get('user_id', '–')} &nbsp;|&nbsp; **Role:** {t.get('job_role', '–')} &nbsp;|&nbsp; **Submitted:** {created_fmt}")
+        prio_dot_class = {"High": "prio-high", "Medium": "prio-medium", "Low": "prio-low"}.get(priority, "prio-medium")
 
-            st.markdown("**📅 Ticket Timeline:**")
-            st.markdown(f"<span class='timeline-dot' style='background:#7c3aed'></span> **Opened** — {created_fmt}", unsafe_allow_html=True)
-            if status == "In Progress":
-                st.markdown(f"<span class='timeline-dot' style='background:#3b82f6'></span> **In Progress** — being worked on", unsafe_allow_html=True)
-            if status == "Resolved":
-                st.markdown(f"<span class='timeline-dot' style='background:#059669'></span> **Resolved** ✅", unsafe_allow_html=True)
-            if overdue:
-                st.markdown(f"<span class='timeline-dot' style='background:#dc2626'></span> **⚠️ Overdue — open for more than 24 hours**", unsafe_allow_html=True)
+        with st.expander(f"#{tid}  ·  {t.get('user_id','?')}  ·  {ticket_query[:70]}{'…' if len(ticket_query)>70 else ''}"):
+            # Header row
+            st.markdown(f"""
+            <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px; flex-wrap:wrap;">
+                <span class="badge {badge_class}">{display_status}</span>
+                <span style="display:inline-flex; align-items:center; font-size:12px; color:rgba(255,255,255,0.5);">
+                    <span class="prio-dot {prio_dot_class}"></span>{priority} priority
+                </span>
+                <span style="font-size:12px; color:rgba(255,255,255,0.35); margin-left:auto;">
+                    {t.get('user_id','–')} · {t.get('job_role','–')} · {created_fmt}
+                </span>
+            </div>
+            """, unsafe_allow_html=True)
 
-            st.markdown("**Problem:**")
-            st.markdown(f"<div class='answer-box'>{ticket_query}</div>", unsafe_allow_html=True)
-            st.markdown("---")
+            # Timeline
+            st.markdown(f"""
+            <div style="margin-bottom:14px; padding:12px 16px; background:rgba(255,255,255,0.025); border-radius:10px; border:1px solid rgba(255,255,255,0.06);">
+                <div style="font-size:11px; font-weight:600; letter-spacing:0.8px; text-transform:uppercase; color:rgba(255,255,255,0.3); margin-bottom:8px;">Timeline</div>
+                <div style="font-size:12.5px; color:rgba(255,255,255,0.6);">
+                    <span class="timeline-dot" style="background:#8b5cf6;"></span><strong>Opened</strong> — {created_fmt}
+                </div>
+                {"<div style='font-size:12.5px; color:rgba(255,255,255,0.6); margin-top:6px;'><span class='timeline-dot' style='background:#60a5fa;'></span><strong>In Progress</strong> — being worked on</div>" if status == "In Progress" else ""}
+                {"<div style='font-size:12.5px; color:rgba(255,255,255,0.6); margin-top:6px;'><span class='timeline-dot' style='background:#34d399;'></span><strong>Resolved</strong> ✅</div>" if status == "Resolved" else ""}
+                {"<div style='font-size:12.5px; color:#f87171; margin-top:6px;'><span class='timeline-dot' style='background:#ef4444;'></span><strong>⚠️ Overdue</strong> — open for more than 24 hours</div>" if overdue else ""}
+            </div>
+            """, unsafe_allow_html=True)
 
+            # Problem
+            st.markdown(f"""
+            <div style="font-size:11px; font-weight:600; letter-spacing:0.8px; text-transform:uppercase; color:rgba(255,255,255,0.3); margin-bottom:6px;">Problem</div>
+            <div class="answer-box" style="margin-bottom:16px;">{ticket_query}</div>
+            """, unsafe_allow_html=True)
+
+            # Admin actions
             nc1, nc2 = st.columns(2)
             with nc1:
                 new_status = st.selectbox(
-                    "Update Status", ["Open", "In Progress", "Resolved"],
-                    index=["Open", "In Progress", "Resolved"].index(status),
+                    "Update Status",
+                    ["Open","In Progress","Resolved"],
+                    index=["Open","In Progress","Resolved"].index(status),
                     key=f"admin_s_{tid}"
                 )
             with nc2:
@@ -674,7 +1165,7 @@ def page_admin():
 
             bc1, bc2, _, _ = st.columns([1, 1, 1.5, 1])
             with bc1:
-                if st.button("💾 Save", key=f"admin_save_{tid}", use_container_width=True):
+                if st.button("💾  Save", key=f"admin_save_{tid}", use_container_width=True):
                     try:
                         db_update_ticket(tid, new_status, note)
                         if note.strip():
@@ -684,7 +1175,7 @@ def page_admin():
                     except Exception as e:
                         st.error(str(e))
             with bc2:
-                if st.button("🗑️ Delete", key=f"admin_del_{tid}", use_container_width=True):
+                if st.button("🗑️  Delete", key=f"admin_del_{tid}", use_container_width=True):
                     try:
                         db_delete_ticket(tid)
                         st.warning("Deleted.")
@@ -694,18 +1185,23 @@ def page_admin():
 
 
 # ════════════════════════════════════════════════════════
-#  PAGE: ANALYTICS DASHBOARD
+#  PAGE: ANALYTICS
 # ════════════════════════════════════════════════════════
 def page_analytics():
     if not st.session_state.get("admin_logged_in"):
         st.warning("Please log in via the Admin Panel first.")
         return
 
-    st.markdown("# 📊 Analytics Dashboard")
-    st.markdown("---")
+    st.markdown("""
+    <div class="page-header">
+        <div class="page-title">Analytics Dashboard</div>
+        <div class="page-subtitle">Ticket trends, resolution rates and team performance</div>
+    </div>
+    """, unsafe_allow_html=True)
 
     try:
         import plotly.express as px
+        import plotly.graph_objects as go
         import pandas as pd
     except ImportError:
         st.error("Please install plotly and pandas.")
@@ -721,66 +1217,103 @@ def page_analytics():
     df["created_at_ist"] = df["created_at"] + pd.Timedelta(hours=5, minutes=30)
     df["date"] = df["created_at_ist"].dt.strftime("%d %b %Y")
 
-    col1, col2, col3, col4 = st.columns(4)
     resolved = df[df["status"] == "Resolved"]
     resolution_rate = round(len(resolved) / len(df) * 100, 1) if len(df) else 0
 
-    with col1:
-        st.markdown(f"<div class='metric-card'><div class='metric-number'>{len(df)}</div><div class='metric-label'>Total Tickets</div></div>", unsafe_allow_html=True)
-    with col2:
-        st.markdown(f"<div class='metric-card'><div class='metric-number'>{resolution_rate}%</div><div class='metric-label'>Resolution Rate</div></div>", unsafe_allow_html=True)
-    with col3:
-        open_count = len(df[df["status"] == "Open"])
-        st.markdown(f"<div class='metric-card'><div class='metric-number'>{open_count}</div><div class='metric-label'>Open Tickets</div></div>", unsafe_allow_html=True)
-    with col4:
-        high_prio = len(df[df["priority"] == "High"])
-        st.markdown(f"<div class='metric-card'><div class='metric-number'>{high_prio}</div><div class='metric-label'>High Priority</div></div>", unsafe_allow_html=True)
+    metric_data = [
+        (len(df),          "Total tickets",  "metric-number"),
+        (f"{resolution_rate}%", "Resolution rate", "metric-number metric-number-green"),
+        (len(df[df["status"]=="Open"]), "Open tickets", "metric-number metric-number-amber"),
+        (len(df[df["priority"]=="High"]), "High priority", "metric-number metric-number-red"),
+    ]
+    cols = st.columns(4)
+    for col, (val, label, cls) in zip(cols, metric_data):
+        with col:
+            st.markdown(f"""
+            <div class="metric-card">
+                <div class="{cls}">{val}</div>
+                <div class="metric-label">{label}</div>
+            </div>
+            """, unsafe_allow_html=True)
 
-    st.markdown("---")
+    st.markdown("<hr>", unsafe_allow_html=True)
+
+    # Shared plotly dark theme
+    plot_layout = dict(
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(255,255,255,0.02)",
+        font=dict(family="Outfit", color="rgba(255,255,255,0.6)", size=12),
+        margin=dict(t=20, b=60, l=40, r=20),
+        xaxis=dict(gridcolor="rgba(255,255,255,0.05)", linecolor="rgba(255,255,255,0.1)"),
+        yaxis=dict(gridcolor="rgba(255,255,255,0.05)", linecolor="rgba(255,255,255,0.1)"),
+    )
+
     col_a, col_b = st.columns(2)
 
     with col_a:
-        st.markdown("### 📅 Tickets Per Day")
+        st.markdown("<div class='section-label'>Tickets per day</div>", unsafe_allow_html=True)
         daily = df.groupby("date").size().reset_index(name="count")
-        fig1 = px.bar(daily, x="date", y="count", color_discrete_sequence=["#7c3aed"], text="count")
-        fig1.update_layout(xaxis_title="Date", yaxis_title="Number of Tickets", plot_bgcolor="white", paper_bgcolor="white", margin=dict(t=20, b=80), bargap=0.4, xaxis=dict(tickangle=-35, type="category", tickfont=dict(size=11)), yaxis=dict(tickformat="d", dtick=1))
-        fig1.update_traces(textposition="outside", marker_line_width=0, marker_color="#7c3aed")
+        fig1 = px.bar(daily, x="date", y="count", text="count",
+                      color_discrete_sequence=["#7c3aed"])
+        fig1.update_traces(textposition="outside", marker_line_width=0,
+                           marker_color="#7c3aed", opacity=0.85)
+        fig1.update_layout(**plot_layout, bargap=0.4,
+                           xaxis=dict(**plot_layout["xaxis"], tickangle=-35, type="category", tickfont=dict(size=10)),
+                           yaxis=dict(**plot_layout["yaxis"], tickformat="d", dtick=1))
         st.plotly_chart(fig1, use_container_width=True)
 
     with col_b:
-        st.markdown("### 🥧 Ticket Status Breakdown")
+        st.markdown("<div class='section-label'>Status breakdown</div>", unsafe_allow_html=True)
         status_counts = df["status"].value_counts().reset_index()
         status_counts.columns = ["status", "count"]
-        fig2 = px.pie(status_counts, names="status", values="count", color="status", color_discrete_map={"Open": "#f59e0b", "In Progress": "#3b82f6", "Resolved": "#10b981"}, hole=0.35)
-        fig2.update_traces(textinfo="label+percent", textfont_size=13)
-        fig2.update_layout(margin=dict(t=20), legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5))
+        fig2 = px.pie(status_counts, names="status", values="count", hole=0.45,
+                      color="status",
+                      color_discrete_map={"Open":"#fbbf24","In Progress":"#60a5fa","Resolved":"#34d399"})
+        fig2.update_traces(textinfo="label+percent", textfont=dict(size=12, color="rgba(255,255,255,0.8)"),
+                           marker=dict(line=dict(color="rgba(0,0,0,0.3)", width=2)))
+        fig2.update_layout(paper_bgcolor="rgba(0,0,0,0)",
+                           font=dict(family="Outfit", color="rgba(255,255,255,0.6)"),
+                           margin=dict(t=20, b=20, l=20, r=20),
+                           legend=dict(orientation="h", yanchor="bottom", y=-0.25, xanchor="center", x=0.5,
+                                       font=dict(color="rgba(255,255,255,0.5)")))
         st.plotly_chart(fig2, use_container_width=True)
 
     col_c, col_d = st.columns(2)
 
     with col_c:
-        st.markdown("### 🚨 Tickets by Priority")
-        prio_order = ["High", "Medium", "Low"]
+        st.markdown("<div class='section-label'>Tickets by priority</div>", unsafe_allow_html=True)
+        prio_order = ["High","Medium","Low"]
         prio_counts = df["priority"].value_counts().reindex(prio_order, fill_value=0).reset_index()
-        prio_counts.columns = ["priority", "count"]
-        fig3 = px.bar(prio_counts, x="priority", y="count", color="priority", color_discrete_map={"High": "#ef4444", "Medium": "#f59e0b", "Low": "#10b981"}, text="count", category_orders={"priority": prio_order})
-        fig3.update_layout(showlegend=False, plot_bgcolor="white", paper_bgcolor="white", margin=dict(t=20), bargap=0.45, xaxis_title="Priority Level", yaxis=dict(title="Count", tickformat="d", dtick=1))
-        fig3.update_traces(textposition="outside", marker_line_width=0)
+        prio_counts.columns = ["priority","count"]
+        fig3 = px.bar(prio_counts, x="priority", y="count", color="priority", text="count",
+                      color_discrete_map={"High":"#ef4444","Medium":"#f59e0b","Low":"#34d399"},
+                      category_orders={"priority": prio_order})
+        fig3.update_traces(textposition="outside", marker_line_width=0, opacity=0.85)
+        fig3.update_layout(**plot_layout, showlegend=False, bargap=0.45,
+                           yaxis=dict(**plot_layout["yaxis"], tickformat="d", dtick=1))
         st.plotly_chart(fig3, use_container_width=True)
 
     with col_d:
-        st.markdown("### 💼 Tickets by Job Role")
+        st.markdown("<div class='section-label'>Tickets by job role</div>", unsafe_allow_html=True)
         role_counts = df["job_role"].value_counts().reset_index()
-        role_counts.columns = ["role", "count"]
-        fig4 = px.bar(role_counts, x="count", y="role", orientation="h", color_discrete_sequence=["#7c3aed"], text="count")
-        fig4.update_layout(xaxis=dict(title="Number of Tickets", tickformat="d", dtick=1), yaxis_title="", plot_bgcolor="white", paper_bgcolor="white", margin=dict(t=20, l=140), bargap=0.35, height=max(300, len(role_counts) * 50))
-        fig4.update_traces(textposition="outside", marker_line_width=0)
+        role_counts.columns = ["role","count"]
+        fig4 = px.bar(role_counts, x="count", y="role", orientation="h", text="count",
+                      color_discrete_sequence=["#818cf8"])
+        fig4.update_traces(textposition="outside", marker_line_width=0, opacity=0.85)
+        fig4.update_layout(**plot_layout,
+                           xaxis=dict(**plot_layout["xaxis"], tickformat="d", dtick=1),
+                           yaxis=dict(**plot_layout["yaxis"]),
+                           bargap=0.35,
+                           height=max(280, len(role_counts)*50),
+                           margin=dict(t=20, b=20, l=140, r=20))
         st.plotly_chart(fig4, use_container_width=True)
 
-    st.markdown("---")
-    st.markdown("### 📥 Export Data")
+    st.markdown("<hr>", unsafe_allow_html=True)
+    st.markdown("<div class='section-label'>Export</div>", unsafe_allow_html=True)
     csv_bytes = tickets_to_csv(tickets)
-    st.download_button("⬇️ Download All Tickets as CSV", data=csv_bytes, file_name="helpdesk_tickets.csv", mime="text/csv", key="analytics_download_csv")
+    st.download_button("⬇️ Download All Tickets as CSV", data=csv_bytes,
+                       file_name="helpdesk_tickets.csv", mime="text/csv",
+                       key="analytics_download_csv")
 
 
 # ════════════════════════════════════════════════════════
@@ -791,9 +1324,12 @@ def page_knowledge_gap():
         st.warning("Please log in via the Admin Panel first.")
         return
 
-    st.markdown("# 🕳️ Knowledge Gap Report")
-    st.markdown("<p style='color:#6b7280'>Questions employees asked that the system couldn't answer.</p>", unsafe_allow_html=True)
-    st.markdown("---")
+    st.markdown("""
+    <div class="page-header">
+        <div class="page-title">Knowledge Gap Report</div>
+        <div class="page-subtitle">Questions employees asked that the system couldn't answer</div>
+    </div>
+    """, unsafe_allow_html=True)
 
     db = get_db()
     if db is None:
@@ -807,38 +1343,53 @@ def page_knowledge_gap():
         return
 
     if not rows:
-        st.success("🎉 No knowledge gaps yet! Every question has been answered.", icon="✅")
+        st.markdown("""
+        <div class="hd-card" style="text-align:center; padding:40px;">
+            <div style="font-size:32px; margin-bottom:12px;">🎉</div>
+            <div style="font-size:15px; color:rgba(255,255,255,0.7); font-weight:500;">No knowledge gaps yet!</div>
+            <div style="font-size:13px; color:rgba(255,255,255,0.35); margin-top:6px;">Every question has been answered.</div>
+        </div>
+        """, unsafe_allow_html=True)
         return
 
     queries = [r["query"] for r in rows]
+    unique  = len(set(q.lower().strip() for q in queries))
 
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown(f"<div class='metric-card'><div class='metric-number'>{len(queries)}</div><div class='metric-label'>Total Unanswered Questions</div></div>", unsafe_allow_html=True)
-    with col2:
-        unique = len(set(q.lower().strip() for q in queries))
-        st.markdown(f"<div class='metric-card'><div class='metric-number'>{unique}</div><div class='metric-label'>Unique Questions</div></div>", unsafe_allow_html=True)
+    cols = st.columns(2)
+    with cols[0]:
+        st.markdown(f"""
+        <div class="metric-card">
+            <div class="metric-number">{len(queries)}</div>
+            <div class="metric-label">Total unanswered</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with cols[1]:
+        st.markdown(f"""
+        <div class="metric-card">
+            <div class="metric-number metric-number-amber">{unique}</div>
+            <div class="metric-label">Unique questions</div>
+        </div>
+        """, unsafe_allow_html=True)
 
-    st.markdown("---")
-    st.markdown("### 📋 All Unanswered Questions")
+    st.markdown("<hr>", unsafe_allow_html=True)
+    st.markdown("<div class='section-label'>All Unanswered Questions</div>", unsafe_allow_html=True)
 
     for i, row in enumerate(rows, 1):
-        created = row.get("created_at", "")
         try:
-            date_fmt = _to_ist(created)
+            date_fmt = _to_ist(row.get("created_at",""))
         except Exception:
-            date_fmt = created
-        st.markdown(
-            f"<div class='gap-card'>"
-            f"<span class='gap-count'>#{i}</span> &nbsp;"
-            f"<strong>{row['query']}</strong>"
-            f"<br><small style='color:#9ca3af'>Asked on {date_fmt}</small>"
-            f"</div>",
-            unsafe_allow_html=True
-        )
+            date_fmt = row.get("created_at","")
+        st.markdown(f"""
+        <div class="gap-card">
+            <span class="gap-count">#{i}</span>
+            <span style="font-size:14px; font-weight:500; color:rgba(255,255,255,0.85); margin-left:10px;">{row['query']}</span>
+            <div style="font-size:11px; color:rgba(255,255,255,0.3); margin-top:6px;">Asked on {date_fmt}</div>
+        </div>
+        """, unsafe_allow_html=True)
 
-    st.markdown("---")
-    st.markdown("### 🔑 Most Requested Missing Topics")
+    st.markdown("<hr>", unsafe_allow_html=True)
+    st.markdown("<div class='section-label'>Most Requested Missing Topics</div>", unsafe_allow_html=True)
+
     all_words = []
     for q in queries:
         all_words.extend(_content_words(q))
@@ -848,21 +1399,30 @@ def page_knowledge_gap():
         try:
             import plotly.express as px
             import pandas as pd
-            wdf = pd.DataFrame(word_freq, columns=["keyword", "count"])
-            fig = px.bar(wdf, x="count", y="keyword", orientation="h", color_discrete_sequence=["#f97316"], text="count")
-            fig.update_layout(xaxis=dict(title="Times Asked", tickformat="d", dtick=1), yaxis_title="", plot_bgcolor="white", paper_bgcolor="white", margin=dict(t=10, l=120), height=max(300, len(wdf) * 40), bargap=0.35)
-            fig.update_traces(textposition="outside", marker_line_width=0)
-            fig.update_yaxes(autorange="reversed", tickfont=dict(size=12))
+            wdf = pd.DataFrame(word_freq, columns=["keyword","count"])
+            fig = px.bar(wdf, x="count", y="keyword", orientation="h", text="count",
+                         color_discrete_sequence=["#fb923c"])
+            fig.update_layout(
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(255,255,255,0.02)",
+                font=dict(family="Outfit", color="rgba(255,255,255,0.6)", size=12),
+                margin=dict(t=10, l=120, r=20, b=20),
+                height=max(280, len(wdf)*38),
+                bargap=0.35,
+                xaxis=dict(gridcolor="rgba(255,255,255,0.05)", tickformat="d", dtick=1),
+                yaxis=dict(gridcolor="rgba(255,255,255,0.05)", autorange="reversed"),
+            )
+            fig.update_traces(textposition="outside", marker_line_width=0, opacity=0.85)
             st.plotly_chart(fig, use_container_width=True)
         except ImportError:
             for word, count in word_freq:
-                st.markdown(f"**{word}** — asked {count} time(s)")
+                st.markdown(f"**{word}** — {count} time(s)")
 
-    st.markdown("---")
-    if st.button("🗑️ Clear All Failed Queries (after fixing KB)", key="gap_clear_btn"):
+    st.markdown("<hr>", unsafe_allow_html=True)
+    if st.button("🗑️  Clear All Failed Queries (after fixing KB)", key="gap_clear_btn"):
         try:
             db.table("failed_queries").delete().neq("id", 0).execute()
-            st.toast("🗑️ All failed queries cleared from `failed_queries` table", icon="✅")
+            st.toast("🗑️ All failed queries cleared", icon="✅")
             st.success("Cleared!")
             st.rerun()
         except Exception as e:
@@ -873,70 +1433,77 @@ def page_knowledge_gap():
 #  PAGE: SETUP
 # ════════════════════════════════════════════════════════
 def page_setup():
-    st.markdown("# ⚙️ Setup & Configuration")
+    st.markdown("""
+    <div class="page-header">
+        <div class="page-title">Setup & Configuration</div>
+        <div class="page-subtitle">Connect your database, test the PDF pipeline and view learned answers</div>
+    </div>
+    """, unsafe_allow_html=True)
+
     with st.expander("📁 Streamlit Secrets", expanded=True):
         st.code('[secrets]\nSUPABASE_URL   = "https://xxxx.supabase.co"\nSUPABASE_KEY   = "eyJ..."\nADMIN_PASSWORD = "your_password"', language="toml")
-    with st.expander("🗄️ Create Supabase Tables (run all)", expanded=True):
+    with st.expander("🗄️ Create Supabase Tables"):
         st.code(SCHEMA_SQL, language="sql")
     with st.expander("📦 Install Dependencies"):
         st.code("pip install streamlit supabase pdfplumber sentence-transformers requests torch plotly pandas", language="bash")
 
-    st.markdown("---")
-    st.markdown("### 🔌 Connection Status")
+    st.markdown("<hr>", unsafe_allow_html=True)
+    st.markdown("<div class='section-label'>Connection Status</div>", unsafe_allow_html=True)
+
     c1, c2 = st.columns(2)
     with c1:
-        if st.secrets.get("SUPABASE_URL", ""):
+        if st.secrets.get("SUPABASE_URL",""):
             st.success("✅ Supabase URL configured")
         else:
             st.error("❌ Supabase URL missing")
     with c2:
-        if st.secrets.get("SUPABASE_KEY", ""):
+        if st.secrets.get("SUPABASE_KEY",""):
             st.success("✅ Supabase Key configured")
         else:
             st.error("❌ Supabase Key missing")
 
-    st.markdown("---")
-    if st.button("🧪 Test Database", key="setup_test_db"):
-        try:
-            db = get_db()
-            if db is None:
-                st.error("Not configured.")
+    st.markdown("<hr>", unsafe_allow_html=True)
+    st.markdown("<div class='section-label'>Tests</div>", unsafe_allow_html=True)
+
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        if st.button("🧪 Test Database", use_container_width=True, key="setup_test_db"):
+            try:
+                db = get_db()
+                if db is None:
+                    st.error("Not configured.")
+                else:
+                    db.table("tickets").select("id").limit(1).execute()
+                    st.success("✅ Database connected!")
+                    st.toast("✅ Supabase connected", icon="☁️")
+            except Exception as e:
+                st.error(f"Failed: {e}")
+
+    with col2:
+        if st.button("📄 Test PDF + Q&A", use_container_width=True, key="setup_test_pdf"):
+            pdf_bytes = get_pdf_bytes()
+            if not pdf_bytes:
+                st.error("❌ Could not download PDF.")
             else:
-                db.table("tickets").select("id").limit(1).execute()
-                st.success("✅ Database connected!")
-                st.toast("✅ Successfully connected to Supabase!", icon="☁️")
-        except Exception as e:
-            st.error(f"Failed: {e}")
+                st.success(f"✅ PDF downloaded ({len(pdf_bytes)//1024} KB)")
+                pairs = load_qa_pairs()
+                if pairs:
+                    st.success(f"✅ {len(pairs)} Q&A pairs extracted!")
+                else:
+                    st.error("❌ No Q&A pairs found.")
 
-    if st.button("📄 Test PDF + Q&A Extraction", key="setup_test_pdf"):
-        pdf_bytes = get_pdf_bytes()
-        if not pdf_bytes:
-            st.error("❌ Could not download PDF.")
-        else:
-            st.success(f"✅ PDF downloaded ({len(pdf_bytes) // 1024} KB)")
-            pairs = load_qa_pairs()
-            if pairs:
-                st.success(f"✅ {len(pairs)} Q&A pairs extracted!")
-                st.toast(f"📄 {len(pairs)} Q&A pairs loaded from PDF into memory", icon="📚")
-                with st.expander("Preview first 5 pairs"):
-                    for q, a in pairs[:5]:
-                        st.markdown(f"**Q:** {q[:200]}")
-                        st.markdown(f"**A:** {a[:200]}")
-                        st.markdown("---")
+    with col3:
+        if st.button("🧠 Test Semantic Model", use_container_width=True, key="setup_test_model"):
+            model, q_emb, a_emb, pairs, util = load_model_and_embeddings()
+            if model is None:
+                st.error("❌ Model failed to load.")
             else:
-                st.error("❌ No Q&A pairs found.")
+                st.success(f"✅ Model loaded · {len(pairs)} embeddings ready")
+                st.toast("🧠 Semantic model loaded", icon="⚡")
 
-    if st.button("🧠 Test Semantic Search Model", key="setup_test_model"):
-        model, q_emb, a_emb, pairs, util = load_model_and_embeddings()
-        if model is None:
-            st.error("❌ Model failed to load.")
-        else:
-            st.success("✅ Model loaded: multi-qa-mpnet-base-dot-v1")
-            st.toast("🧠 Semantic model loaded into RAM cache", icon="⚡")
-            st.info(f"📊 {len(pairs)} Q embeddings + {len(pairs)} A embeddings ready.")
+    st.markdown("<hr>", unsafe_allow_html=True)
+    st.markdown("<div class='section-label'>Learned Answers</div>", unsafe_allow_html=True)
 
-    st.markdown("---")
-    st.markdown("### 🧠 Learned Answers (from resolved tickets)")
     if st.button("📋 View All Learned Answers", key="setup_view_learned"):
         db = get_db()
         if db is None:
@@ -946,12 +1513,11 @@ def page_setup():
                 rows = db.table("resolved_issues").select("*").order("created_at", desc=True).execute().data or []
                 if rows:
                     st.success(f"{len(rows)} learned answer(s) in database.")
-                    st.toast(f"🧠 Fetched {len(rows)} learned answers from `resolved_issues` table", icon="☁️")
                     for row in rows:
                         with st.expander(f"🟢 {row['query'][:100]}"):
                             st.markdown(f"**Original question:** {row['query']}")
                             st.markdown(f"**Admin solution:** {row['solution']}")
-                            st.markdown(f"<small style='color:#6b7280'>Saved: {_to_ist(row.get('created_at', ''))}</small>", unsafe_allow_html=True)
+                            st.markdown(f"<small style='color:rgba(255,255,255,0.3)'>Saved: {_to_ist(row.get('created_at',''))}</small>", unsafe_allow_html=True)
                 else:
                     st.info("No learned answers yet.")
             except Exception as e:
@@ -959,39 +1525,47 @@ def page_setup():
 
 
 # ════════════════════════════════════════════════════════
-#  MAIN — SIDEBAR + ROUTING
+#  SIDEBAR + ROUTING
 # ════════════════════════════════════════════════════════
 with st.sidebar:
-    st.markdown("## 🤖 HelpDesk Pro")
-    st.markdown("---")
+    st.markdown("""
+    <div class="sidebar-logo">
+        <div class="sidebar-logo-mark">🎯 HelpDesk Pro</div>
+        <div class="sidebar-logo-sub">Internal support system</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("<div class='sidebar-section-label'>Navigation</div>", unsafe_allow_html=True)
 
     page = st.radio("Navigation", [
-        "🔍 Employee Portal",
-        "🛡️ Admin Panel",
-        "📊 Analytics",
-        "🕳️ Knowledge Gap Report",
-        "📋 Approval Pipeline",
-        "⚙️ Setup / Config",
-    ])
+        "🔍  Employee Portal",
+        "🛡️  Admin Panel",
+        "📊  Analytics",
+        "🕳️  Knowledge Gaps",
+        "📋  Approval Pipeline",
+        "⚙️  Setup / Config",
+    ], label_visibility="collapsed")
 
-    st.markdown("---")
+    st.markdown("<div style='flex:1'></div>", unsafe_allow_html=True)
+
     if not PIPELINE_AVAILABLE:
-        st.warning("⚠️ approval_pipeline.py not found.", icon="⚠️")
-    st.markdown("<small style='opacity:0.6'>Powered by Supabase + pdfplumber</small>", unsafe_allow_html=True)
+        st.warning("⚠️ approval_pipeline.py not found")
+
+    st.markdown("""
+    <div class="sidebar-footer">
+        Powered by Supabase + pdfplumber<br>
+        <span style="opacity:0.5">sentence-transformers · Streamlit</span>
+    </div>
+    """, unsafe_allow_html=True)
 
 
-if page == "🔍 Employee Portal":
-    page_employee()
-elif page == "🛡️ Admin Panel":
-    page_admin()
-elif page == "📊 Analytics":
-    page_analytics()
-elif page == "🕳️ Knowledge Gap Report":
-    page_knowledge_gap()
-elif page == "📋 Approval Pipeline":
+if   page == "🔍  Employee Portal":  page_employee()
+elif page == "🛡️  Admin Panel":       page_admin()
+elif page == "📊  Analytics":         page_analytics()
+elif page == "🕳️  Knowledge Gaps":    page_knowledge_gap()
+elif page == "📋  Approval Pipeline":
     if PIPELINE_AVAILABLE:
         page_approval_pipeline()
     else:
         st.error("❌ `approval_pipeline.py` is missing from your project folder.")
-elif page == "⚙️ Setup / Config":
-    page_setup()
+elif page == "⚙️  Setup / Config":   page_setup()
