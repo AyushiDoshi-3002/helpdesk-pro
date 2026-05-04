@@ -153,7 +153,7 @@ def _db_insert(req: dict):
         else:
             st.warning(f"⚠️ Insert returned no data. Response: {res}")
     except Exception as e:
-        st.error(f"❌ DB insert error for {req.get('id')}: {type(e).__name__}: {e}")
+        st.error(f" DB insert error for {req.get('id')}: {type(e).__name__}: {e}")
 
 def _db_update(req: dict):
     try:
@@ -162,9 +162,9 @@ def _db_update(req: dict):
         if hasattr(res, "data") and res.data:
             st.toast(f"✅ Updated in Supabase: {req['id']}", icon="🗄️")
         else:
-            st.warning(f"⚠️ Upsert returned no data. Response: {res}")
+            st.warning(f" Upsert returned no data. Response: {res}")
     except Exception as e:
-        st.error(f"❌ DB update error for {req.get('id')}: {type(e).__name__}: {e}")
+        st.error(f" DB update error for {req.get('id')}: {type(e).__name__}: {e}")
 
 def _db_delete(rid: str):
     try:
@@ -665,8 +665,8 @@ def _render_ai_bubble(data: dict):
           🤖 {msg}
           <br><br>
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;">
-            <span class="route-badge">📁 {cat_label} › {subtype}</span>
-            <span class="route-badge">🔀 {route}</span>
+            <span class="route-badge"> {cat_label} › {subtype}</span>
+            <span class="route-badge"> {route}</span>
             <span class="route-badge" style="color:{urgency_color};border-color:{urgency_color};">⚡ {urgency}</span>
           </div>
         </div>
@@ -682,7 +682,7 @@ def _render_ai_bubble(data: dict):
         )
         if not msg.startswith("⚠️"):
             st.markdown(
-                "<div class='ai-no-doc-box'>ℹ️ No document approval needed for this request. "
+                "<div class='ai-no-doc-box'> No document approval needed for this request. "
                 "You can still use the form below to submit one manually if needed.</div>",
                 unsafe_allow_html=True,
             )
@@ -722,7 +722,7 @@ def page_approval_pipeline():
         )
 
     tabs = st.tabs([
-        "📝 Submit",
+        " Submit",
         f" Team Lead ({_n('Team Lead')})",
         f" Tech Manager ({_n('Tech Manager')})",
         f" CTO ({_n('CTO')})",
@@ -750,13 +750,13 @@ def _view_submit():
 
     if show_prefill and prefill:
         st.markdown(
-            "### 📝 Submit Request  "
+            "### Submit Request  "
             "<small style='background:#d1fae5;color:#065f46;border-radius:8px;"
             "padding:2px 10px;font-size:12px;font-weight:600;'>✨ Pre-filled by AI</small>",
             unsafe_allow_html=True,
         )
     else:
-        st.markdown("### 📝 Submit Request")
+        st.markdown("### Submit Request")
 
     # Resolve prefill category safely
     prefill_category = prefill.get("category", list(DOC_CATEGORIES.keys())[0])
@@ -936,7 +936,7 @@ def _request_card_with_delete(req: dict, ctx: str = "sub"):
                 if req["status"] == "Approved" or i < req["stage_idx"]:
                     parts.append(f"~~{s}~~ ✅")
                 elif i == req["stage_idx"] and not req["done"]:
-                    parts.append(f"**{s} ⏳**")
+                    parts.append(f"**{s} **")
                 elif req["done"] and i == req["stage_idx"]:
                     parts.append(f"**{s} {'❌' if req['status'] == 'Rejected' else '⏰'}**")
                 else:
@@ -968,7 +968,7 @@ def _request_card_with_delete(req: dict, ctx: str = "sub"):
             with conf_col1:
                 if st.button("✅ Yes, Delete", key=f"confirm_yes_{k}", use_container_width=True):
                     _delete_request(rid)
-                    st.success(f"🗑️ {rid} deleted.")
+                    st.success(f" {rid} deleted.")
                     st.rerun()
             with conf_col2:
                 if st.button("✖ Cancel", key=f"confirm_no_{k}", use_container_width=True):
