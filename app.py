@@ -52,6 +52,84 @@ div.stButton > button:hover { background: linear-gradient(135deg, #6d28d9, #4c1d
 .gap-card { background:white;border-radius:12px;padding:16px;margin-bottom:10px;border-left:4px solid #f97316;box-shadow:0 2px 8px rgba(0,0,0,0.05); }
 .gap-count { font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:#f97316; }
 .timeline-dot { width:12px;height:12px;border-radius:50%;display:inline-block;margin-right:8px; }
+
+/* Doc Validator styles */
+.validator-card {
+    background: white;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    margin-bottom: 20px;
+}
+.sensitive-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, #fee2e2, #fecaca);
+    color: #991b1b;
+    border: 1.5px solid #fca5a5;
+    border-radius: 20px;
+    padding: 4px 14px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+}
+.normal-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+    color: #065f46;
+    border: 1.5px solid #6ee7b7;
+    border-radius: 20px;
+    padding: 4px 14px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+}
+.chain-step {
+    display: inline-flex;
+    align-items: center;
+    background: #eff6ff;
+    border: 1.5px solid #bfdbfe;
+    border-radius: 10px;
+    padding: 8px 16px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1e40af;
+    margin: 4px;
+}
+.chain-arrow {
+    font-size: 20px;
+    color: #9ca3af;
+    margin: 0 2px;
+}
+.auto-approve-box {
+    background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+    border: 2px solid #86efac;
+    border-radius: 14px;
+    padding: 20px 24px;
+    text-align: center;
+}
+.sensitive-box {
+    background: linear-gradient(135deg, #fff1f2, #ffe4e6);
+    border: 2px solid #fda4af;
+    border-radius: 14px;
+    padding: 20px 24px;
+}
+.validator-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 22px;
+    font-weight: 800;
+    color: #1e1b4b;
+    margin-bottom: 4px;
+}
+.keyword-tag {
+    display: inline-block;
+    background: #f3f4f6;
+    color: #374151;
+    border-radius: 8px;
+    padding: 2px 10px;
+    font-size: 12px;
+    margin: 2px;
+    border: 1px solid #e5e7eb;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -60,7 +138,7 @@ div.stButton > button:hover { background: linear-gradient(135deg, #6d28d9, #4c1d
 #  IMPORT APPROVAL PIPELINE
 # ════════════════════════════════════════════════════════
 try:
-    from approval_pipeline import page_approval_pipeline
+    from approval_pipeline import page_approval_pipeline, DOC_CATEGORIES, _build_chain, _classify_request
     PIPELINE_AVAILABLE = True
 except ImportError:
     PIPELINE_AVAILABLE = False
@@ -124,7 +202,6 @@ def db_create_ticket(user_id, job_role, query, priority):
         result = db.table("tickets").insert(row).execute()
         if result.data:
             ticket = result.data[0]
-            # ── POPUP: ticket saved to DB ─────────────────────────────────────
             st.toast(f"🎫 Ticket #{ticket.get('id')} saved to `tickets` table in Supabase!", icon="☁️")
             return ticket
         raise Exception("No data returned from insert")
@@ -150,7 +227,6 @@ def db_update_ticket(tid, status, note):
         raise ConnectionError("Supabase not configured.")
     try:
         db.table("tickets").update({"status": status, "admin_note": note}).eq("id", tid).execute()
-        # ── POPUP: ticket updated in DB ───────────────────────────────────────
         st.toast(f"✏️ Ticket #{tid} updated in `tickets` table → status: {status}", icon="☁️")
     except Exception as e:
         raise Exception(f"Update failed: {e}")
@@ -160,7 +236,6 @@ def db_delete_ticket(tid):
     if db:
         try:
             db.table("tickets").delete().eq("id", tid).execute()
-            # ── POPUP: ticket deleted from DB ─────────────────────────────────
             st.toast(f"🗑️ Ticket #{tid} deleted from `tickets` table in Supabase", icon="☁️")
         except Exception as e:
             raise Exception(f"Delete failed: {e}")
@@ -170,7 +245,6 @@ def db_log_failed_query(query: str):
     if db:
         try:
             db.table("failed_queries").insert({"query": query}).execute()
-            # ── POPUP: failed query logged ────────────────────────────────────
             st.toast("📋 Unanswered question logged to `failed_queries` table in Supabase", icon="☁️")
         except Exception:
             pass
@@ -210,11 +284,9 @@ def auto_save_note_to_resolved(ticket_query: str, note: str):
         existing = db.table("resolved_issues").select("id").eq("query", ticket_query).execute()
         if not existing.data:
             db.table("resolved_issues").insert({"query": ticket_query, "solution": note.strip()}).execute()
-            # ── POPUP: new learned answer saved ───────────────────────────────
             st.toast("🧠 Admin note saved as new learned answer in `resolved_issues` table!", icon="☁️")
         else:
             db.table("resolved_issues").update({"solution": note.strip()}).eq("query", ticket_query).execute()
-            # ── POPUP: existing learned answer updated ────────────────────────
             st.toast("🧠 Learned answer updated in `resolved_issues` table in Supabase", icon="☁️")
         return True
     except Exception:
@@ -423,6 +495,83 @@ def tickets_to_csv(tickets: list) -> bytes:
 
 
 # ════════════════════════════════════════════════════════
+#  DOC VALIDATOR LOGIC
+# ════════════════════════════════════════════════════════
+
+# Keywords that flag a document as SENSITIVE → must go through pipeline
+_SENSITIVE_KEYWORDS = [
+    # Network / Access
+    "vpn", "virtual private network", "network access", "firewall", "proxy",
+    "remote access", "zero trust", "ssl vpn", "ipsec",
+    # Security
+    "security", "cybersecurity", "penetration test", "pentest", "vulnerability",
+    "encryption", "cryptography", "access control", "identity", "iam",
+    "sso", "single sign-on", "mfa", "multi-factor", "certificate", "ssl", "tls",
+    # Legal / Compliance
+    "legal", "contract", "nda", "agreement", "gdpr", "compliance", "audit",
+    "regulation", "policy", "terms of service", "data protection", "privacy",
+    # Financial
+    "financial", "budget", "invoice", "payment", "salary", "payroll",
+    "revenue", "expense", "accounting", "tax", "billing",
+    # Infrastructure
+    "infrastructure", "cloud", "aws", "gcp", "azure", "kubernetes", "k8s",
+    "server", "database schema", "production", "disaster recovery", "backup",
+    # Sensitive data
+    "pii", "personal data", "sensitive data", "confidential", "classified",
+    "secret", "restricted", "privileged",
+]
+
+# Keywords that flag a document as NORMAL → auto-approved
+_NORMAL_KEYWORDS = [
+    "faq", "onboarding", "general", "guide", "how to", "tutorial",
+    "overview", "introduction", "readme", "changelog", "release notes",
+    "meeting notes", "team update", "announcement",
+]
+
+def classify_doc_sensitivity(title: str, description: str) -> dict:
+    """
+    Classifies whether a document is SENSITIVE (needs pipeline) or NORMAL (auto-approved).
+    Returns a dict with: is_sensitive, reason, matched_keywords, chain, category
+    """
+    combined = (title + " " + description).lower()
+
+    # Check sensitive keywords first
+    matched_sensitive = [kw for kw in _SENSITIVE_KEYWORDS if kw in combined]
+    matched_normal    = [kw for kw in _NORMAL_KEYWORDS    if kw in combined]
+
+    if matched_sensitive:
+        # Determine which category from approval_pipeline
+        if PIPELINE_AVAILABLE:
+            result     = _classify_request(f"I need to create a document about {title}. {description}")
+            category   = result.get("category", "Security")
+            chain      = _build_chain(category)
+            cat_config = DOC_CATEGORIES.get(category, {})
+            # Force sensitive docs to always go through chain even if category is General
+            if not chain:
+                chain    = ["Team Lead", "Tech Manager", "CTO", "CEO"]
+                category = "Security"
+        else:
+            category = "Security"
+            chain    = ["Team Lead", "Tech Manager", "CTO", "CEO"]
+
+        return {
+            "is_sensitive":       True,
+            "category":           category,
+            "matched_keywords":   matched_sensitive[:6],   # show up to 6
+            "chain":              chain,
+            "reason":             f"This document contains sensitive content ({', '.join(matched_sensitive[:3])}…) and must go through the full approval pipeline.",
+        }
+    else:
+        return {
+            "is_sensitive":       False,
+            "category":           "General",
+            "matched_keywords":   matched_normal[:6],
+            "chain":              [],
+            "reason":             "This document does not contain sensitive content and will be auto-approved instantly.",
+        }
+
+
+# ════════════════════════════════════════════════════════
 #  PAGE: EMPLOYEE PORTAL
 # ════════════════════════════════════════════════════════
 def page_employee():
@@ -523,7 +672,6 @@ def page_employee():
                     final_query = original_question if original_question else query_text.strip()
                     try:
                         t = db_create_ticket(user_id.strip(), job_role, final_query, priority)
-                        # ── POPUP: ticket submitted ───────────────────────────
                         st.toast(f"🎉 Ticket #{t.get('id')} submitted & stored in Supabase `tickets` table!", icon="✅")
                         st.success(f"✅ Ticket #{t.get('id', '–')} submitted! Our team will respond shortly.", icon="🎉")
                         st.session_state["show_ticket"] = False
@@ -536,7 +684,7 @@ def page_employee():
 
 
 # ════════════════════════════════════════════════════════
-#  PAGE: ADMIN PANEL
+#  PAGE: ADMIN PANEL  (with Doc Validator tab)
 # ════════════════════════════════════════════════════════
 def page_admin():
     ADMIN_PWD = st.secrets.get("ADMIN_PASSWORD", "admin123")
@@ -549,7 +697,6 @@ def page_admin():
             if st.button("Login →", use_container_width=True, key="admin_login_btn"):
                 if pwd == ADMIN_PWD:
                     st.session_state["admin_logged_in"] = True
-                    # ── POPUP: admin logged in ────────────────────────────────
                     st.toast("🛡️ Admin logged in successfully", icon="✅")
                     st.rerun()
                 else:
@@ -565,135 +712,421 @@ def page_admin():
             st.toast("👋 Admin logged out", icon="🔒")
             st.rerun()
 
-    try:
-        stats = db_stats()
-        cols = st.columns(5)
-        for col, val, label, icon in zip(
-            cols,
-            [stats["total"], stats["open"], stats["in_progress"], stats["resolved"], stats["overdue"]],
-            ["Total", "Open", "In Progress", "Resolved", "🔴 Overdue"],
-            ["📋", "🟡", "🔵", "🟢", "🔴"]
-        ):
-            with col:
-                st.markdown(
-                    f"<div class='metric-card'><div style='font-size:28px'>{icon}</div>"
-                    f"<div class='metric-number'>{val}</div>"
-                    f"<div class='metric-label'>{label}</div></div>",
-                    unsafe_allow_html=True
-                )
-    except Exception as e:
-        st.error(f"Stats error: {e}")
+    # ── Admin tabs ────────────────────────────────────────────────────────────
+    admin_tab1, admin_tab2 = st.tabs(["📋 Ticket Management", "🔍 Doc Validator"])
+
+    # ══════════════════════════════════════════
+    #  TAB 1 — Ticket Management (original)
+    # ══════════════════════════════════════════
+    with admin_tab1:
+        try:
+            stats = db_stats()
+            cols = st.columns(5)
+            for col, val, label, icon in zip(
+                cols,
+                [stats["total"], stats["open"], stats["in_progress"], stats["resolved"], stats["overdue"]],
+                ["Total", "Open", "In Progress", "Resolved", "🔴 Overdue"],
+                ["📋", "🟡", "🔵", "🟢", "🔴"]
+            ):
+                with col:
+                    st.markdown(
+                        f"<div class='metric-card'><div style='font-size:28px'>{icon}</div>"
+                        f"<div class='metric-number'>{val}</div>"
+                        f"<div class='metric-label'>{label}</div></div>",
+                        unsafe_allow_html=True
+                    )
+        except Exception as e:
+            st.error(f"Stats error: {e}")
+
+        st.markdown("---")
+
+        c1, c2, c3, c4 = st.columns([1.5, 1.5, 1.5, 1])
+        with c1:
+            sf = st.selectbox("Status", ["All", "Open", "In Progress", "Resolved", "Overdue"], key="admin_filter_status")
+        with c2:
+            pf = st.selectbox("Priority", ["All", "High", "Medium", "Low"], key="admin_filter_priority")
+        with c3:
+            search_term = st.text_input("🔍 Search tickets", placeholder="keyword / employee ID", key="admin_search_term")
+        with c4:
+            st.markdown("<br>", unsafe_allow_html=True)
+            export_btn = st.button("📥 Export CSV", use_container_width=True, key="admin_export_btn")
+
+        try:
+            tickets = db_get_tickets(sf if sf not in ["All", "Overdue"] else None)
+        except Exception as e:
+            st.error(f"DB error: {e}")
+            return
+
+        if sf == "Overdue":
+            tickets = [t for t in tickets if t.get("status") == "Open" and is_overdue(t.get("created_at", ""))]
+        if pf != "All":
+            tickets = [t for t in tickets if t.get("priority") == pf]
+        if search_term.strip():
+            kw = search_term.strip().lower()
+            tickets = [t for t in tickets if kw in t.get("query", "").lower() or kw in t.get("user_id", "").lower()]
+
+        if export_btn:
+            all_tickets = db_get_tickets()
+            csv_bytes = tickets_to_csv(all_tickets)
+            st.download_button("⬇️ Download CSV", data=csv_bytes, file_name="helpdesk_tickets.csv", mime="text/csv", key="admin_download_csv")
+            st.toast("📥 CSV exported from `tickets` table", icon="✅")
+
+        if not tickets:
+            st.info("No tickets found.", icon="📭")
+        else:
+            st.markdown(f"**{len(tickets)} ticket(s)**")
+
+            for t in tickets:
+                tid = t.get("id")
+                status = t.get("status", "Open")
+                priority = t.get("priority", "Medium")
+                created = t.get("created_at", "")
+                overdue = is_overdue(created) and status == "Open"
+                ticket_query = t.get("query", "")
+
+                try:
+                    created_fmt = _to_ist(created)
+                except Exception:
+                    created_fmt = created
+
+                badge_class = "badge-overdue" if overdue else {"Open": "badge-open", "In Progress": "badge-inprogress", "Resolved": "badge-resolved"}.get(status, "badge-open")
+                display_status = "🔴 OVERDUE" if overdue else status
+                prio_class = {"High": "prio-high", "Medium": "prio-medium", "Low": "prio-low"}.get(priority, "prio-medium")
+
+                with st.expander(f"🎫 #{tid} — {t.get('user_id', '?')} ({t.get('job_role', '?')}) | {display_status} | {priority} | {created_fmt}"):
+                    st.markdown(f"<span class='{badge_class}'>{display_status}</span>&nbsp;<span class='{prio_class}'>{priority}</span>", unsafe_allow_html=True)
+                    st.markdown(f"**Employee:** {t.get('user_id', '–')} &nbsp;|&nbsp; **Role:** {t.get('job_role', '–')} &nbsp;|&nbsp; **Submitted:** {created_fmt}")
+
+                    st.markdown("**📅 Ticket Timeline:**")
+                    st.markdown(f"<span class='timeline-dot' style='background:#7c3aed'></span> **Opened** — {created_fmt}", unsafe_allow_html=True)
+                    if status == "In Progress":
+                        st.markdown(f"<span class='timeline-dot' style='background:#3b82f6'></span> **In Progress** — being worked on", unsafe_allow_html=True)
+                    if status == "Resolved":
+                        st.markdown(f"<span class='timeline-dot' style='background:#059669'></span> **Resolved** ✅", unsafe_allow_html=True)
+                    if overdue:
+                        st.markdown(f"<span class='timeline-dot' style='background:#dc2626'></span> **⚠️ Overdue — open for more than 24 hours**", unsafe_allow_html=True)
+
+                    st.markdown("**Problem:**")
+                    st.markdown(f"<div class='answer-box'>{ticket_query}</div>", unsafe_allow_html=True)
+                    st.markdown("---")
+
+                    nc1, nc2 = st.columns(2)
+                    with nc1:
+                        new_status = st.selectbox(
+                            "Update Status", ["Open", "In Progress", "Resolved"],
+                            index=["Open", "In Progress", "Resolved"].index(status),
+                            key=f"admin_s_{tid}"
+                        )
+                    with nc2:
+                        prefill_note = st.session_state.pop(f"admin_prefill_{tid}", None)
+                        default_note = prefill_note if prefill_note is not None else (t.get("admin_note") or "")
+                        note = st.text_area(
+                            "Admin Note / Solution",
+                            value=default_note,
+                            key=f"admin_n_{tid}",
+                            height=100,
+                            placeholder="Write solution here…"
+                        )
+
+                    bc1, bc2, _, _ = st.columns([1, 1, 1.5, 1])
+                    with bc1:
+                        if st.button("💾 Save", key=f"admin_save_{tid}", use_container_width=True):
+                            try:
+                                db_update_ticket(tid, new_status, note)
+                                if note.strip():
+                                    auto_save_note_to_resolved(ticket_query, note)
+                                st.success("✅ Ticket updated!")
+                                st.rerun()
+                            except Exception as e:
+                                st.error(str(e))
+                    with bc2:
+                        if st.button("🗑️ Delete", key=f"admin_del_{tid}", use_container_width=True):
+                            try:
+                                db_delete_ticket(tid)
+                                st.warning("Deleted.")
+                                st.rerun()
+                            except Exception as e:
+                                st.error(str(e))
+
+    # ══════════════════════════════════════════
+    #  TAB 2 — Doc Validator
+    # ══════════════════════════════════════════
+    with admin_tab2:
+        _render_doc_validator()
+
+
+# ════════════════════════════════════════════════════════
+#  DOC VALIDATOR UI
+# ════════════════════════════════════════════════════════
+def _render_doc_validator():
+    st.markdown("""
+    <div style='margin-bottom: 8px;'>
+        <p class='validator-title'>🔍 Document Sensitivity Validator</p>
+        <p style='color:#6b7280; font-size:14px; margin-top:0;'>
+            Enter your document details below. The system will instantly classify it as
+            <strong>Sensitive</strong> (requires full approval pipeline) or
+            <strong>Normal</strong> (auto-approved).
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
 
     st.markdown("---")
 
-    c1, c2, c3, c4 = st.columns([1.5, 1.5, 1.5, 1])
-    with c1:
-        sf = st.selectbox("Status", ["All", "Open", "In Progress", "Resolved", "Overdue"], key="admin_filter_status")
-    with c2:
-        pf = st.selectbox("Priority", ["All", "High", "Medium", "Low"], key="admin_filter_priority")
-    with c3:
-        search_term = st.text_input("🔍 Search tickets", placeholder="keyword / employee ID", key="admin_search_term")
-    with c4:
-        st.markdown("<br>", unsafe_allow_html=True)
-        export_btn = st.button("📥 Export CSV", use_container_width=True, key="admin_export_btn")
+    # ── Input form ────────────────────────────────────────────────────────────
+    with st.form("doc_validator_form", clear_on_submit=False):
+        col1, col2 = st.columns(2)
+        with col1:
+            doc_title = st.text_input(
+                "📄 Document Title *",
+                placeholder="e.g. VPN Access Policy, Employee Onboarding Guide…",
+                key="dv_title"
+            )
+        with col2:
+            doc_type_hint = st.selectbox(
+                "📂 Document Hint (optional)",
+                ["— Let the system decide —", "VPN / Network", "Security Policy",
+                 "Legal / Compliance", "Financial", "Infrastructure",
+                 "Technical Guide", "Team Process", "FAQ / Onboarding", "General"],
+                key="dv_type_hint"
+            )
 
-    try:
-        tickets = db_get_tickets(sf if sf not in ["All", "Overdue"] else None)
-    except Exception as e:
-        st.error(f"DB error: {e}")
-        return
+        doc_description = st.text_area(
+            "📝 Document Description *",
+            placeholder="Briefly describe what this document covers, its purpose, and intended audience…",
+            height=120,
+            key="dv_description"
+        )
 
-    if sf == "Overdue":
-        tickets = [t for t in tickets if t.get("status") == "Open" and is_overdue(t.get("created_at", ""))]
-    if pf != "All":
-        tickets = [t for t in tickets if t.get("priority") == pf]
-    if search_term.strip():
-        kw = search_term.strip().lower()
-        tickets = [t for t in tickets if kw in t.get("query", "").lower() or kw in t.get("user_id", "").lower()]
+        validate_btn = st.form_submit_button(
+            "🔍 Validate Document",
+            type="primary",
+            use_container_width=False
+        )
 
-    if export_btn:
-        all_tickets = db_get_tickets()
-        csv_bytes = tickets_to_csv(all_tickets)
-        st.download_button("⬇️ Download CSV", data=csv_bytes, file_name="helpdesk_tickets.csv", mime="text/csv", key="admin_download_csv")
-        st.toast("📥 CSV exported from `tickets` table", icon="✅")
+    # ── Validation result ─────────────────────────────────────────────────────
+    if validate_btn:
+        if not doc_title.strip() or not doc_description.strip():
+            st.warning("⚠️ Please fill in both the Document Title and Description.")
+        else:
+            # Append type hint to description for better classification
+            hint_text = doc_description.strip()
+            if doc_type_hint != "— Let the system decide —":
+                hint_text += f" {doc_type_hint}"
 
-    if not tickets:
-        st.info("No tickets found.", icon="📭")
-        return
+            result = classify_doc_sensitivity(doc_title.strip(), hint_text)
+            st.session_state["dv_result"]      = result
+            st.session_state["dv_last_title"]  = doc_title.strip()
+            st.session_state["dv_last_desc"]   = doc_description.strip()
 
-    st.markdown(f"**{len(tickets)} ticket(s)**")
+    # ── Show result if available ──────────────────────────────────────────────
+    result = st.session_state.get("dv_result")
+    if result:
+        st.markdown("---")
+        st.markdown("### 📊 Validation Result")
 
-    for t in tickets:
-        tid = t.get("id")
-        status = t.get("status", "Open")
-        priority = t.get("priority", "Medium")
-        created = t.get("created_at", "")
-        overdue = is_overdue(created) and status == "Open"
-        ticket_query = t.get("query", "")
+        is_sensitive = result["is_sensitive"]
 
-        try:
-            created_fmt = _to_ist(created)
-        except Exception:
-            created_fmt = created
+        if is_sensitive:
+            # ── SENSITIVE result ──────────────────────────────────────────────
+            st.markdown(f"""
+            <div class='sensitive-box'>
+                <div style='display:flex; align-items:center; gap:12px; margin-bottom:14px;'>
+                    <span style='font-size:36px;'>🔴</span>
+                    <div>
+                        <span class='sensitive-badge'>🔒 SENSITIVE DOCUMENT</span>
+                        <p style='margin:6px 0 0 0; color:#7f1d1d; font-size:14px;'>
+                            {result["reason"]}
+                        </p>
+                    </div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
 
-        badge_class = "badge-overdue" if overdue else {"Open": "badge-open", "In Progress": "badge-inprogress", "Resolved": "badge-resolved"}.get(status, "badge-open")
-        display_status = "🔴 OVERDUE" if overdue else status
-        prio_class = {"High": "prio-high", "Medium": "prio-medium", "Low": "prio-low"}.get(priority, "prio-medium")
+            st.markdown("<br>", unsafe_allow_html=True)
 
-        with st.expander(f"🎫 #{tid} — {t.get('user_id', '?')} ({t.get('job_role', '?')}) | {display_status} | {priority} | {created_fmt}"):
-            st.markdown(f"<span class='{badge_class}'>{display_status}</span>&nbsp;<span class='{prio_class}'>{priority}</span>", unsafe_allow_html=True)
-            st.markdown(f"**Employee:** {t.get('user_id', '–')} &nbsp;|&nbsp; **Role:** {t.get('job_role', '–')} &nbsp;|&nbsp; **Submitted:** {created_fmt}")
+            # Detected keywords
+            if result["matched_keywords"]:
+                kw_html = "".join(
+                    f"<span class='keyword-tag'>🔑 {kw}</span>"
+                    for kw in result["matched_keywords"]
+                )
+                st.markdown(f"""
+                <div style='margin-bottom:16px;'>
+                    <p style='font-size:13px; color:#6b7280; margin-bottom:6px;'>
+                        <strong>Detected sensitive keywords:</strong>
+                    </p>
+                    {kw_html}
+                </div>
+                """, unsafe_allow_html=True)
 
-            st.markdown("**📅 Ticket Timeline:**")
-            st.markdown(f"<span class='timeline-dot' style='background:#7c3aed'></span> **Opened** — {created_fmt}", unsafe_allow_html=True)
-            if status == "In Progress":
-                st.markdown(f"<span class='timeline-dot' style='background:#3b82f6'></span> **In Progress** — being worked on", unsafe_allow_html=True)
-            if status == "Resolved":
-                st.markdown(f"<span class='timeline-dot' style='background:#059669'></span> **Resolved** ✅", unsafe_allow_html=True)
-            if overdue:
-                st.markdown(f"<span class='timeline-dot' style='background:#dc2626'></span> **⚠️ Overdue — open for more than 24 hours**", unsafe_allow_html=True)
+            # Approval chain preview
+            chain = result["chain"]
+            if chain:
+                st.markdown("#### 🔗 Required Approval Chain")
+                st.markdown(
+                    "<p style='color:#6b7280; font-size:13px; margin-top:-8px;'>"
+                    f"This document must be approved by all {len(chain)} level(s) before it is published.</p>",
+                    unsafe_allow_html=True
+                )
 
-            st.markdown("**Problem:**")
-            st.markdown(f"<div class='answer-box'>{ticket_query}</div>", unsafe_allow_html=True)
+                # Visual chain
+                chain_html = ""
+                for i, role in enumerate(chain):
+                    role_icons = {
+                        "Team Lead":    "👨‍💼",
+                        "Tech Manager": "👩‍💻",
+                        "CTO":          "🧑‍🔬",
+                        "CEO":          "👑",
+                    }
+                    icon = role_icons.get(role, "👤")
+                    chain_html += f"<span class='chain-step'>{icon} {role}</span>"
+                    if i < len(chain) - 1:
+                        chain_html += "<span class='chain-arrow'>→</span>"
+
+                st.markdown(
+                    f"<div style='display:flex; flex-wrap:wrap; align-items:center; "
+                    f"gap:4px; padding:16px; background:#eff6ff; border-radius:12px; "
+                    f"border:1.5px solid #bfdbfe;'>{chain_html}</div>",
+                    unsafe_allow_html=True
+                )
+
+                st.markdown("<br>", unsafe_allow_html=True)
+
+                # Timeline breakdown
+                st.markdown("#### 📅 Approval Timeline")
+                for i, role in enumerate(chain):
+                    role_descs = {
+                        "Team Lead":    "Reviews team-level concerns and day-to-day impact.",
+                        "Tech Manager": "Assesses technical risk and implementation feasibility.",
+                        "CTO":          "Evaluates architectural and strategic technology alignment.",
+                        "CEO":          "Final sign-off for company-wide policy and risk exposure.",
+                    }
+                    desc   = role_descs.get(role, "Reviews and approves the document.")
+                    colors = ["#7c3aed", "#3b82f6", "#0891b2", "#059669"]
+                    color  = colors[i % len(colors)]
+                    st.markdown(
+                        f"<div style='display:flex; gap:12px; align-items:flex-start; "
+                        f"margin-bottom:10px; padding:12px 16px; background:white; "
+                        f"border-radius:10px; border-left:4px solid {color};'>"
+                        f"<span style='font-size:22px; min-width:32px; text-align:center;'>"
+                        f"{'👨‍💼' if role=='Team Lead' else '👩‍💻' if role=='Tech Manager' else '🧑‍🔬' if role=='CTO' else '👑'}"
+                        f"</span>"
+                        f"<div>"
+                        f"<p style='margin:0; font-weight:700; color:{color};'>Stage {i+1}: {role}</p>"
+                        f"<p style='margin:2px 0 0 0; font-size:13px; color:#6b7280;'>{desc}</p>"
+                        f"</div>"
+                        f"</div>",
+                        unsafe_allow_html=True
+                    )
+
+            # Action buttons
             st.markdown("---")
+            st.markdown("#### ⚡ Next Steps")
+            act_col1, act_col2, _ = st.columns([2, 2, 3])
+            with act_col1:
+                if PIPELINE_AVAILABLE:
+                    if st.button("🚀 Submit to Approval Pipeline", use_container_width=True, type="primary", key="dv_submit_pipeline"):
+                        # Store prefill info so the pipeline form can use it
+                        st.session_state["ap_ai_prefill"] = {
+                            "title":    st.session_state.get("dv_last_title", ""),
+                            "category": result.get("category", "Security"),
+                            "subtype":  "Compliance",
+                            "urgency":  "Normal",
+                        }
+                        st.session_state["ap_show_prefill_form"] = True
+                        st.session_state["nav_page"] = "📋 Approval Pipeline"
+                        st.success("✅ Pre-filled! Navigate to the **Approval Pipeline** page to submit.")
+                else:
+                    st.info("Approval Pipeline not available.")
+            with act_col2:
+                if st.button("🔄 Validate Another Doc", use_container_width=True, key="dv_reset"):
+                    st.session_state.pop("dv_result", None)
+                    st.rerun()
 
-            nc1, nc2 = st.columns(2)
-            with nc1:
-                new_status = st.selectbox(
-                    "Update Status", ["Open", "In Progress", "Resolved"],
-                    index=["Open", "In Progress", "Resolved"].index(status),
-                    key=f"admin_s_{tid}"
-                )
-            with nc2:
-                prefill_note = st.session_state.pop(f"admin_prefill_{tid}", None)
-                default_note = prefill_note if prefill_note is not None else (t.get("admin_note") or "")
-                note = st.text_area(
-                    "Admin Note / Solution",
-                    value=default_note,
-                    key=f"admin_n_{tid}",
-                    height=100,
-                    placeholder="Write solution here…"
-                )
+        else:
+            # ── NORMAL result ─────────────────────────────────────────────────
+            st.markdown(f"""
+            <div class='auto-approve-box'>
+                <div style='display:flex; align-items:center; gap:12px; margin-bottom:10px;'>
+                    <span style='font-size:40px;'>✅</span>
+                    <div>
+                        <span class='normal-badge'>✅ NORMAL DOCUMENT — AUTO-APPROVED</span>
+                        <p style='margin:6px 0 0 0; color:#14532d; font-size:14px;'>
+                            {result["reason"]}
+                        </p>
+                    </div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
 
-            bc1, bc2, _, _ = st.columns([1, 1, 1.5, 1])
-            with bc1:
-                if st.button("💾 Save", key=f"admin_save_{tid}", use_container_width=True):
-                    try:
-                        db_update_ticket(tid, new_status, note)
-                        if note.strip():
-                            auto_save_note_to_resolved(ticket_query, note)
-                        st.success("✅ Ticket updated!")
-                        st.rerun()
-                    except Exception as e:
-                        st.error(str(e))
-            with bc2:
-                if st.button("🗑️ Delete", key=f"admin_del_{tid}", use_container_width=True):
-                    try:
-                        db_delete_ticket(tid)
-                        st.warning("Deleted.")
-                        st.rerun()
-                    except Exception as e:
-                        st.error(str(e))
+            st.markdown("<br>", unsafe_allow_html=True)
+
+            if result["matched_keywords"]:
+                kw_html = "".join(
+                    f"<span class='keyword-tag' style='background:#f0fdf4; border-color:#86efac;'>✅ {kw}</span>"
+                    for kw in result["matched_keywords"]
+                )
+                st.markdown(f"""
+                <div style='margin-bottom:16px;'>
+                    <p style='font-size:13px; color:#6b7280; margin-bottom:6px;'>
+                        <strong>Detected normal-content keywords:</strong>
+                    </p>
+                    {kw_html}
+                </div>
+                """, unsafe_allow_html=True)
+
+            st.info(
+                "💡 **No approval chain needed.** This document will be instantly approved "
+                "when submitted through the Approval Pipeline. You can proceed directly to submission.",
+                icon="ℹ️"
+            )
+
+            st.markdown("---")
+            act_col1, act_col2, _ = st.columns([2, 2, 3])
+            with act_col1:
+                if PIPELINE_AVAILABLE:
+                    if st.button("🚀 Submit to Approval Pipeline", use_container_width=True, type="primary", key="dv_submit_normal"):
+                        st.session_state["ap_ai_prefill"] = {
+                            "title":    st.session_state.get("dv_last_title", ""),
+                            "category": "General",
+                            "subtype":  "General Info",
+                            "urgency":  "Normal",
+                        }
+                        st.session_state["ap_show_prefill_form"] = True
+                        st.success("✅ Pre-filled! Navigate to the **Approval Pipeline** page to submit.")
+                else:
+                    st.info("Approval Pipeline not available.")
+            with act_col2:
+                if st.button("🔄 Validate Another Doc", use_container_width=True, key="dv_reset_normal"):
+                    st.session_state.pop("dv_result", None)
+                    st.rerun()
+
+    else:
+        # Empty state placeholder
+        st.markdown("""
+        <div style='text-align:center; padding:48px 24px; background:white;
+                    border-radius:16px; border:2px dashed #e5e7eb; margin-top:16px;'>
+            <div style='font-size:52px; margin-bottom:12px;'>🔍</div>
+            <p style='font-size:16px; font-weight:600; color:#374151; margin:0;'>
+                Enter your document details above and click <strong>Validate Document</strong>
+            </p>
+            <p style='font-size:13px; color:#9ca3af; margin-top:8px;'>
+                The system will instantly classify it and show you the required approval chain.
+            </p>
+            <div style='margin-top:20px; display:flex; justify-content:center; gap:24px; flex-wrap:wrap;'>
+                <div style='text-align:center;'>
+                    <span style='font-size:28px;'>🔴</span>
+                    <p style='font-size:12px; color:#991b1b; font-weight:600; margin:4px 0 0;'>Sensitive</p>
+                    <p style='font-size:11px; color:#9ca3af; margin:0;'>Full pipeline required</p>
+                </div>
+                <div style='text-align:center;'>
+                    <span style='font-size:28px;'>✅</span>
+                    <p style='font-size:12px; color:#065f46; font-weight:600; margin:4px 0 0;'>Normal</p>
+                    <p style='font-size:11px; color:#9ca3af; margin:0;'>Auto-approved instantly</p>
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
 
 # ════════════════════════════════════════════════════════
