@@ -4,14 +4,13 @@ approval_pipeline.py  –  role-based tabs + Supabase persistence + AI Assistant
 ────────────────────────────────────────────────────────────────────────────────
 ESCALATION RULE:
   Each approver has 168 hours (7 days / 1 week) to respond.
-  If they don't, the request is automatically forwarded to the next level.
-  Only when the final approver (CEO) also times out does the request Expire.
+  If they don't, the request is automatically forwarded DIRECTLY to the
+  FINAL approver (e.g. Team Lead times out → goes straight to CTO, skipping Tech Manager).
+  Only when the final approver (e.g. CTO/CEO) also times out does the request Expire.
 
-  Example:
-    Team Lead ignores for 7 days    → auto-escalated to Tech Manager
-    Tech Manager ignores for 7 days → auto-escalated to CTO
-    CTO ignores for 7 days          → auto-escalated to CEO
-    CEO ignores for 7 days          → Expired
+  Example for Technical doc (chain: Team Lead → CTO):
+    Team Lead ignores for 7 days → auto-escalated directly to CTO
+    CTO ignores for 7 days       → Expired
 
 TO TEST QUICKLY (without waiting a week):
   Change ESCALATION_HOURS = 0.05  (fires in ~3 minutes)
@@ -41,7 +40,7 @@ ROLE_PASSWORDS = {
 }
 
 # ── Escalation timer ──────────────────────────────────────────────────────────
-# 168h = 7 days = 1 week. Change to 0.05 for 3-minute testing.
+# 168h = 7 days = 1 week. Change to 0.05 for ~3-minute testing.
 ESCALATION_HOURS = 168
 
 def _escalation_label():
@@ -89,9 +88,15 @@ DOC_CATEGORIES = {
     },
 }
 
+# ── Approval chains ───────────────────────────────────────────────────────────
+# On timeout, request jumps directly to the LAST role in the chain.
+# Technical:  Team Lead → CTO          (Tech Manager skipped on timeout)
+# Security:   Team Lead → CEO          (Tech Manager + CTO skipped on timeout)
+# Operations: Team Lead → Tech Manager (single escalation step)
+# Team:       Team Lead only
 _CHAINS = {
     "CEO":          ["Team Lead", "Tech Manager", "CTO", "CEO"],
-    "CTO":          ["Team Lead", "Tech Manager", "CTO"],
+    "CTO":          ["Team Lead", "CTO"],           # direct jump on timeout
     "Tech Manager": ["Team Lead", "Tech Manager"],
     "Team Lead":    ["Team Lead"],
     "Admin":        [],
@@ -262,8 +267,8 @@ def _create(title, category, subtype, description, urgency, requester):
             ],
         }
     else:
-        deadline = now + timedelta(hours=ESCALATION_HOURS)
-        next_role = chain[1] if len(chain) > 1 else "next level"
+        deadline       = now + timedelta(hours=ESCALATION_HOURS)
+        final_approver = chain[-1] if len(chain) > 1 else chain[0]
         req = {
             "id": rid, "title": title, "category": category, "subtype": subtype,
             "description": description, "urgency": urgency, "requester": requester,
@@ -274,7 +279,7 @@ def _create(title, category, subtype, description, urgency, requester):
                 "action": (
                     f"Submitted → routed to {chain[0]}. "
                     f"If no response within {_escalation_label()}, "
-                    f"auto-escalates to {next_role}. "
+                    f"auto-escalates directly to {final_approver}. "
                     f"Deadline: {_fmt(deadline)}."
                 ),
             }],
@@ -295,15 +300,16 @@ def _approve(req, note):
         req["done"]   = True
         req["history"].append({"time": _now(), "by": "System", "action": "All levels approved — COMPLETE ✅"})
     else:
-        deadline  = _now() + timedelta(hours=ESCALATION_HOURS)
-        next_role = req["chain"][next_idx]
+        deadline       = _now() + timedelta(hours=ESCALATION_HOURS)
+        next_role      = req["chain"][next_idx]
+        final_approver = req["chain"][-1]
         req["stage_idx"]  = next_idx
         req["expires_at"] = deadline
         req["history"].append({
             "time": _now(), "by": "System",
             "action": (
                 f"✅ Approved by {stage} → forwarded to {next_role}. "
-                f"Auto-escalates if no response within {_escalation_label()}. "
+                f"Auto-escalates directly to {final_approver} if no response within {_escalation_label()}. "
                 f"Deadline: {_fmt(deadline)}."
             ),
         })
@@ -322,38 +328,28 @@ def _check_expiry(req):
     """
     Auto-escalation — called on every page load / refresh.
 
-    If current approver hasn't responded within ESCALATION_HOURS (1 week),
-    skip them and forward to the next level with a fresh 1-week timer.
+    If the current approver hasn't responded within ESCALATION_HOURS,
+    the request jumps DIRECTLY to the final approver in the chain,
+    skipping any intermediate levels.
 
-    Scenario: Tech Manager is on leave for 2 weeks.
-      → After 1 week of no response, request auto-escalates to CTO.
-      → CTO gets a fresh 1-week window.
-      → If CTO also doesn't respond, escalates to CEO.
-      → If CEO also doesn't respond, request expires.
+    Technical doc  [Team Lead, CTO]:
+      Team Lead times out → goes to CTO (no middle step)
+      CTO times out       → Expired
+
+    Security doc  [Team Lead, Tech Manager, CTO, CEO]:
+      Team Lead times out → goes directly to CEO (Tech Manager + CTO skipped)
+      CEO times out       → Expired
     """
     if req["done"]:
         return
     if _now() <= req["expires_at"]:
-        return  # Still within window
+        return  # still within window
 
-    current = req["chain"][req["stage_idx"]]
-    next_idx = req["stage_idx"] + 1
+    current   = req["chain"][req["stage_idx"]]
+    final_idx = len(req["chain"]) - 1
 
-    if next_idx < len(req["chain"]):
-        next_role = req["chain"][next_idx]
-        deadline  = _now() + timedelta(hours=ESCALATION_HOURS)
-        req["history"].append({
-            "time": _now(), "by": "System",
-            "action": (
-                f"⚠️ AUTO-ESCALATED — {current} did not respond within "
-                f"{_escalation_label()}. Automatically forwarded to {next_role}. "
-                f"New deadline: {_fmt(deadline)}."
-            ),
-        })
-        req["stage_idx"]  = next_idx
-        req["expires_at"] = deadline
-        _db_update(req)
-    else:
+    # Already at final approver → Expire
+    if req["stage_idx"] >= final_idx:
         req["status"] = "Expired"
         req["done"]   = True
         req["history"].append({
@@ -364,6 +360,25 @@ def _check_expiry(req):
             ),
         })
         _db_update(req)
+        return
+
+    # Jump directly to the final approver
+    deadline  = _now() + timedelta(hours=ESCALATION_HOURS)
+    next_role = req["chain"][final_idx]
+    skipped   = req["chain"][req["stage_idx"] + 1 : final_idx]
+    skip_note = f" (skipping: {', '.join(skipped)})" if skipped else ""
+
+    req["history"].append({
+        "time": _now(), "by": "System",
+        "action": (
+            f"⚠️ AUTO-ESCALATED — {current} did not respond within "
+            f"{_escalation_label()}. Automatically forwarded directly to {next_role}{skip_note}. "
+            f"New deadline: {_fmt(deadline)}."
+        ),
+    })
+    req["stage_idx"]  = final_idx
+    req["expires_at"] = deadline
+    _db_update(req)
 
 
 def _delete_request(rid):
@@ -437,7 +452,8 @@ def _classify_request(text: str) -> dict:
         "message": (
             f"Got it! This looks like a **{cfg['label']} › {matched_subtype}** document. "
             f"Approval route: **{route}**. "
-            f"Each approver has **{_escalation_label()}** to respond — after that it auto-escalates. "
+            f"Each approver has **{_escalation_label()}** to respond — if no response, "
+            f"it escalates directly to the final approver. "
             f"Pre-filled the form below!"
         ),
         "suggested_title": matched_title,
@@ -609,25 +625,55 @@ def _render_ai_bubble(data: dict):
 
 
 def _render_policy_box():
-    roles = ["Team Lead","Tech Manager","CTO","CEO"]
-    chain_html = ""
-    for i, role in enumerate(roles):
-        chain_html += f"<span class='chain-role'>{role}</span>"
-        if i < len(roles) - 1:
-            chain_html += (
-                f"<span class='chain-arrow'>→</span>"
-                f"<span class='timer-chip'>⏳ {_escalation_label()}</span>"
-                f"<span class='chain-arrow'>→</span>"
-            )
     st.markdown(f"""
     <div class="policy-box">
-      <div class="title">⏳ Auto-Escalation Policy — {_escalation_label()} per approver</div>
-      <p style="font-size:13px;color:#92400e;margin:0 0 10px;">
+      <div class="title">⏳ Auto-Escalation Policy — {_escalation_label()} per approver, then direct jump to final approver</div>
+      <p style="font-size:13px;color:#92400e;margin:0 0 12px;">
         Each approver has <strong>{_escalation_label()}</strong> to respond.
-        If they're on leave or unavailable, the request <strong>automatically moves to the next level</strong>
-        — no manual action needed. If every level times out, the request is marked <strong>Expired</strong>.
+        If they don't, the request <strong>jumps directly to the final approver</strong>
+        (intermediate levels are skipped). If the final approver also times out, the request is <strong>Expired</strong>.
       </p>
-      <div style="display:flex;flex-wrap:wrap;align-items:center;gap:4px;">{chain_html}</div>
+      <table style="font-size:13px;color:#92400e;border-collapse:collapse;width:100%">
+        <tr style="border-bottom:1px solid #fcd34d">
+          <td style="padding:6px 10px;font-weight:700;white-space:nowrap;">⚙️ Technical</td>
+          <td style="padding:6px 10px;">
+            <span class="chain-role">Team Lead</span>
+            <span class="chain-arrow">→</span>
+            <span class="timer-chip">⏳ {_escalation_label()}</span>
+            <span class="chain-arrow">→</span>
+            <span class="chain-role">CTO</span>
+            <span style="font-size:11px;color:#b45309;margin-left:8px;">Tech Manager skipped on timeout</span>
+          </td>
+        </tr>
+        <tr style="border-bottom:1px solid #fcd34d">
+          <td style="padding:6px 10px;font-weight:700;white-space:nowrap;">🔧 Operations</td>
+          <td style="padding:6px 10px;">
+            <span class="chain-role">Team Lead</span>
+            <span class="chain-arrow">→</span>
+            <span class="timer-chip">⏳ {_escalation_label()}</span>
+            <span class="chain-arrow">→</span>
+            <span class="chain-role">Tech Manager</span>
+          </td>
+        </tr>
+        <tr style="border-bottom:1px solid #fcd34d">
+          <td style="padding:6px 10px;font-weight:700;white-space:nowrap;">🔒 Security</td>
+          <td style="padding:6px 10px;">
+            <span class="chain-role">Team Lead</span>
+            <span class="chain-arrow">→</span>
+            <span class="timer-chip">⏳ {_escalation_label()}</span>
+            <span class="chain-arrow">→</span>
+            <span class="chain-role">CEO</span>
+            <span style="font-size:11px;color:#b45309;margin-left:8px;">Tech Manager + CTO skipped on timeout</span>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:6px 10px;font-weight:700;white-space:nowrap;">👥 Team</td>
+          <td style="padding:6px 10px;">
+            <span class="chain-role">Team Lead</span>
+            <span style="font-size:11px;color:#b45309;margin-left:8px;">Single approver</span>
+          </td>
+        </tr>
+      </table>
     </div>
     """, unsafe_allow_html=True)
 
@@ -736,21 +782,29 @@ def _view_submit():
 
         cfg   = DOC_CATEGORIES[category]
         chain = _build_chain(category)
-        route = ("Auto-approved instantly" if cfg["auto"]
-                 else "  →  ".join(chain) + f"  ·  {_escalation_label()} per level (auto-escalates)")
+        if cfg["auto"]:
+            route = "Auto-approved instantly"
+        elif len(chain) == 1:
+            route = chain[0]
+        else:
+            route = (
+                f"{chain[0]} → {chain[-1]}  ·  "
+                f"{_escalation_label()} for first approver, "
+                f"then escalates directly to {chain[-1]}"
+            )
         st.caption(f"Approval route: {route}")
 
         bc1, bc2, _ = st.columns([2,1,3])
-        with bc1: submitted    = st.form_submit_button("🚀 Submit Request", type="primary", use_container_width=True)
-        with bc2: cancel       = st.form_submit_button("✖ Clear Prefill", use_container_width=True) if show_prefill else False
+        with bc1: submitted = st.form_submit_button("🚀 Submit Request", type="primary", use_container_width=True)
+        with bc2: cancel    = st.form_submit_button("✖ Clear Prefill", use_container_width=True) if show_prefill else False
 
     if cancel:
         st.session_state.ap_ai_prefill = None; st.session_state.ap_show_prefill_form = False; st.rerun()
 
     if submitted:
         errs = []
-        if not requester.strip(): errs.append("Name / Employee ID required.")
-        if not title.strip():     errs.append("Document title required.")
+        if not requester.strip():   errs.append("Name / Employee ID required.")
+        if not title.strip():       errs.append("Document title required.")
         if not description.strip(): errs.append("Description required.")
         for e in errs: st.error(e)
         if not errs:
@@ -759,10 +813,13 @@ def _view_submit():
             if req["done"]:
                 st.success(f"✅ **{req['id']}** auto-approved instantly.")
             else:
+                chain  = req["chain"]
+                final  = chain[-1]
+                first  = chain[0]
                 st.success(
-                    f"✅ **{req['id']}** submitted → **{req['chain'][0]}** must respond by "
-                    f"**{_fmt(req['expires_at'])}** or it auto-escalates to "
-                    f"**{req['chain'][1] if len(req['chain']) > 1 else 'next level'}**."
+                    f"✅ **{req['id']}** submitted → **{first}** must respond by "
+                    f"**{_fmt(req['expires_at'])}**. "
+                    f"If no response, escalates directly to **{final}**."
                 )
 
     all_reqs = list(reversed(st.session_state.ap_requests))
@@ -928,7 +985,7 @@ def _view_role(role: str):
     <div class="role-reminder">
       ⏳ <strong>You have {_escalation_label()} to respond to each request.</strong>
       If you don't approve or reject in time, it will be
-      <strong>automatically escalated to the next level</strong> — no action needed from you.
+      <strong>automatically escalated directly to the final approver</strong> — no action needed from you.
     </div>
     """, unsafe_allow_html=True)
 
