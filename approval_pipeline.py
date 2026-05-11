@@ -1,27 +1,22 @@
 """
 approval_pipeline.py  –  role-based tabs + Supabase persistence + AI Assistant
-                          + Auto-escalation (48h per level)
+                          + Auto-escalation: 1 week (168h) per level
 ────────────────────────────────────────────────────────────────────────────────
-Install dependency:  pip install supabase anthropic
+ESCALATION RULE:
+  Each approver has 168 hours (7 days / 1 week) to respond.
+  If they don't, the request is automatically forwarded to the next level.
+  Only when the final approver (CEO) also times out does the request Expire.
 
-Run this SQL once in your Supabase SQL editor to create the table:
-──────────────────────────────────────────────────────────────────
-create table if not exists ap_requests (
-    id          text primary key,
-    title       text,
-    category    text,
-    subtype     text,
-    description text,
-    urgency     text,
-    requester   text,
-    chain       jsonb,
-    stage_idx   integer default 0,
-    status      text,
-    created_at  timestamptz,
-    expires_at  timestamptz,
-    history     jsonb,
-    done        boolean default false
-);
+  Example:
+    Team Lead ignores for 7 days    → auto-escalated to Tech Manager
+    Tech Manager ignores for 7 days → auto-escalated to CTO
+    CTO ignores for 7 days          → auto-escalated to CEO
+    CEO ignores for 7 days          → Expired
+
+TO TEST QUICKLY (without waiting a week):
+  Change ESCALATION_HOURS = 0.05  (fires in ~3 minutes)
+  Submit a request, wait 3 min, click Refresh → escalation fires instantly.
+  Change back to 168 before going live.
 """
 
 import json
@@ -45,9 +40,20 @@ ROLE_PASSWORDS = {
     "CEO":          "CEO123",
 }
 
-# ── Timeout constants ─────────────────────────────────────────────────────────
-TIMEOUT_HOURS     = 2      # used only for demo/testing display purposes
-ESCALATION_HOURS  = 48     # 2 days — auto-escalate if no response from current approver
+# ── Escalation timer ──────────────────────────────────────────────────────────
+# 168h = 7 days = 1 week. Change to 0.05 for 3-minute testing.
+ESCALATION_HOURS = 168
+
+def _escalation_label():
+    """Returns a readable label like '1 week (168h)' or '2 days (48h)'."""
+    if ESCALATION_HOURS >= 168 and ESCALATION_HOURS % 168 == 0:
+        w = int(ESCALATION_HOURS // 168)
+        return f"{w} week{'s' if w > 1 else ''} ({int(ESCALATION_HOURS)}h)"
+    elif ESCALATION_HOURS >= 24:
+        d = int(ESCALATION_HOURS // 24)
+        return f"{d} day{'s' if d > 1 else ''} ({int(ESCALATION_HOURS)}h)"
+    else:
+        return f"{ESCALATION_HOURS}h"
 
 # ── Document taxonomy ─────────────────────────────────────────────────────────
 DOC_CATEGORIES = {
@@ -96,7 +102,7 @@ def _build_chain(category: str) -> list:
     return list(_CHAINS.get(cfg.get("approver", "Team Lead"), ["Team Lead"]))
 
 
-# ── Supabase client (cached) ──────────────────────────────────────────────────
+# ── Supabase client ───────────────────────────────────────────────────────────
 
 @st.cache_resource
 def _get_sb() -> Client:
@@ -147,47 +153,41 @@ def _deserialize(row: dict) -> dict:
         req["chain"] = json.loads(req["chain"]) if req.get("chain") else []
     return req
 
-def _db_insert(req: dict):
+def _db_insert(req):
     try:
-        row = _serialize(req)
-        res = _get_sb().table(TABLE).insert(row).execute()
-        if hasattr(res, "data") and res.data:
-            st.toast(f"✅ Saved to Supabase: {req['id']}", icon="🗄️")
-        else:
-            st.warning(f"⚠️ Insert returned no data. Response: {res}")
+        res = _get_sb().table(TABLE).insert(_serialize(req)).execute()
+        if res.data:
+            st.toast(f"✅ Saved: {req['id']}", icon="🗄️")
     except Exception as e:
-        st.error(f"DB insert error for {req.get('id')}: {type(e).__name__}: {e}")
+        st.error(f"DB insert error: {e}")
 
-def _db_update(req: dict):
+def _db_update(req):
     try:
-        row = _serialize(req)
-        res = _get_sb().table(TABLE).upsert(row).execute()
-        if hasattr(res, "data") and res.data:
-            st.toast(f"✅ Updated in Supabase: {req['id']}", icon="🗄️")
-        else:
-            st.warning(f"⚠️ Upsert returned no data. Response: {res}")
+        res = _get_sb().table(TABLE).upsert(_serialize(req)).execute()
+        if res.data:
+            st.toast(f"✅ Updated: {req['id']}", icon="🗄️")
     except Exception as e:
-        st.error(f"DB update error for {req.get('id')}: {type(e).__name__}: {e}")
+        st.error(f"DB update error: {e}")
 
-def _db_delete(rid: str):
+def _db_delete(rid):
     try:
         _get_sb().table(TABLE).delete().eq("id", rid).execute()
-        st.toast(f"🗑️ Deleted {rid} from Supabase", icon="🗄️")
+        st.toast(f"🗑️ Deleted {rid}", icon="🗄️")
     except Exception as e:
-        st.error(f"DB delete error for {rid}: {type(e).__name__}: {e}")
+        st.error(f"DB delete error: {e}")
 
-def _db_load_all() -> list:
+def _db_load_all():
     try:
         res = _get_sb().table(TABLE).select("*").order("created_at", desc=False).execute()
         rows = res.data or []
         st.caption(f"🗄️ Loaded {len(rows)} record(s) from Supabase.")
-        return [_deserialize(row) for row in rows]
+        return [_deserialize(r) for r in rows]
     except Exception as e:
-        st.error(f"DB load error: {type(e).__name__}: {e}")
+        st.error(f"DB load error: {e}")
         return []
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
+# ── Time helpers ──────────────────────────────────────────────────────────────
 
 def _now():
     return datetime.now(IST)
@@ -196,50 +196,47 @@ def _fmt(dt):
     try:
         if isinstance(dt, str):
             dt = _str_to_dt(dt)
-        dt_ist = dt.astimezone(IST)
-        return dt_ist.strftime("%d %b %Y, %I:%M %p IST")
+        return dt.astimezone(IST).strftime("%d %b %Y, %I:%M %p IST")
     except Exception:
         return str(dt)
 
 def _time_left(expires_at):
-    """
-    Returns a human-readable string showing how long until auto-escalation fires.
-    """
     if isinstance(expires_at, str):
         expires_at = _str_to_dt(expires_at)
-    diff = expires_at - _now()
-    secs = int(diff.total_seconds())
+    secs = int((expires_at - _now()).total_seconds())
     if secs <= 0:
         return "⚠️ Escalating now…"
     h, rem = divmod(secs, 3600)
-    m, _   = divmod(rem, 60)
+    m      = rem // 60
     if h >= 24:
-        days = h // 24
-        hrs  = h % 24
-        return f"⏳ {days}d {hrs}h before auto-escalation"
+        d = h // 24; hr = h % 24
+        return f"⏳ {d}d {hr}h before auto-escalation"
     return f"⏳ {h}h {m}m before auto-escalation" if h else f"⏳ {m}m before auto-escalation"
 
+def _deadline_str(expires_at):
+    try:
+        if isinstance(expires_at, str):
+            expires_at = _str_to_dt(expires_at)
+        return "Deadline: " + expires_at.astimezone(IST).strftime("%d %b %Y, %I:%M %p IST")
+    except Exception:
+        return ""
 
-# ── Session-state init ────────────────────────────────────────────────────────
+
+# ── Session state ─────────────────────────────────────────────────────────────
 
 def _init():
-    defaults = {
-        "ap_role_auth":             {},
-        "ap_loaded":                False,
-        "ap_confirm_delete":        {},
-        "ap_ai_chat_history":       [],
-        "ap_ai_result":             None,
-        "ap_ai_prefill":            None,
-        "ap_show_prefill_form":     False,
-    }
-    for k, v in defaults.items():
+    for k, v in {
+        "ap_role_auth": {}, "ap_loaded": False, "ap_confirm_delete": {},
+        "ap_ai_chat_history": [], "ap_ai_result": None,
+        "ap_ai_prefill": None, "ap_show_prefill_form": False,
+    }.items():
         if k not in st.session_state:
             st.session_state[k] = v
 
 def _load_requests():
     rows = _db_load_all()
     st.session_state.ap_requests = rows
-    ids = [int(r["id"].split("-")[1]) for r in rows if r.get("id", "").startswith("REQ-")]
+    ids = [int(r["id"].split("-")[1]) for r in rows if r.get("id","").startswith("REQ-")]
     st.session_state.ap_next_id = (max(ids) + 1) if ids else 1
     st.session_state.ap_loaded  = True
 
@@ -247,37 +244,40 @@ def _load_requests():
 # ── Core actions ──────────────────────────────────────────────────────────────
 
 def _create(title, category, subtype, description, urgency, requester):
-    rid   = f"REQ-{st.session_state.ap_next_id:03d}"
+    rid  = f"REQ-{st.session_state.ap_next_id:03d}"
     st.session_state.ap_next_id += 1
-    now   = _now()
-    cfg   = DOC_CATEGORIES[category]
+    now  = _now()
+    cfg  = DOC_CATEGORIES[category]
     chain = _build_chain(category)
-    auto  = cfg["auto"]
 
-    if auto:
+    if cfg["auto"]:
         req = {
             "id": rid, "title": title, "category": category, "subtype": subtype,
             "description": description, "urgency": urgency, "requester": requester,
             "chain": [], "stage_idx": 0, "status": "Approved",
-            "created_at": now, "expires_at": now,
+            "created_at": now, "expires_at": now, "done": True,
             "history": [
                 {"time": now, "by": "System", "action": "Submitted"},
                 {"time": now, "by": "Admin",  "action": "Auto-approved (General document)"},
             ],
-            "done": True,
         }
     else:
+        deadline = now + timedelta(hours=ESCALATION_HOURS)
+        next_role = chain[1] if len(chain) > 1 else "next level"
         req = {
             "id": rid, "title": title, "category": category, "subtype": subtype,
             "description": description, "urgency": urgency, "requester": requester,
             "chain": chain, "stage_idx": 0, "status": "Pending",
-            "created_at": now,
-            # Each approver gets ESCALATION_HOURS (48h) to respond before auto-escalation
-            "expires_at": now + timedelta(hours=ESCALATION_HOURS),
-            "history": [{"time": now, "by": "System",
-                         "action": f"Submitted → routed to {chain[0]} "
-                                   f"(auto-escalates in {ESCALATION_HOURS}h if no response)"}],
-            "done": False,
+            "created_at": now, "expires_at": deadline, "done": False,
+            "history": [{
+                "time": now, "by": "System",
+                "action": (
+                    f"Submitted → routed to {chain[0]}. "
+                    f"If no response within {_escalation_label()}, "
+                    f"auto-escalates to {next_role}. "
+                    f"Deadline: {_fmt(deadline)}."
+                ),
+            }],
         }
 
     st.session_state.ap_requests.append(req)
@@ -286,23 +286,26 @@ def _create(title, category, subtype, description, urgency, requester):
 
 
 def _approve(req, note):
-    stage = req["chain"][req["stage_idx"]]
-    req["history"].append({"time": _now(), "by": stage, "action": "Approved", "note": note})
+    stage    = req["chain"][req["stage_idx"]]
     next_idx = req["stage_idx"] + 1
+    req["history"].append({"time": _now(), "by": stage, "action": "Approved", "note": note})
+
     if next_idx >= len(req["chain"]):
         req["status"] = "Approved"
         req["done"]   = True
-        req["history"].append({"time": _now(), "by": "System",
-                                "action": "All levels approved — COMPLETE ✅"})
+        req["history"].append({"time": _now(), "by": "System", "action": "All levels approved — COMPLETE ✅"})
     else:
+        deadline  = _now() + timedelta(hours=ESCALATION_HOURS)
+        next_role = req["chain"][next_idx]
         req["stage_idx"]  = next_idx
-        # Reset the 48h escalation clock for the next approver
-        req["expires_at"] = _now() + timedelta(hours=ESCALATION_HOURS)
+        req["expires_at"] = deadline
         req["history"].append({
-            "time":   _now(),
-            "by":     "System",
-            "action": f"✅ Approved by {stage} — forwarded to {req['chain'][next_idx]} "
-                      f"(auto-escalates in {ESCALATION_HOURS}h if no response)",
+            "time": _now(), "by": "System",
+            "action": (
+                f"✅ Approved by {stage} → forwarded to {next_role}. "
+                f"Auto-escalates if no response within {_escalation_label()}. "
+                f"Deadline: {_fmt(deadline)}."
+            ),
         })
     _db_update(req)
 
@@ -317,309 +320,241 @@ def _reject(req, note):
 
 def _check_expiry(req):
     """
-    Auto-escalation logic:
+    Auto-escalation — called on every page load / refresh.
 
-    If the current approver has not responded within ESCALATION_HOURS (48h),
-    skip them and automatically forward to the next level with a fresh 48h clock.
+    If current approver hasn't responded within ESCALATION_HOURS (1 week),
+    skip them and forward to the next level with a fresh 1-week timer.
 
-    This continues up the chain. Only when the FINAL approver (e.g. CEO) is also
-    unresponsive does the request get marked as Expired — meaning every level
-    in the chain timed out.
-
-    Example:
-        Team Lead ignores for 48h → auto-escalated to Tech Manager
-        Tech Manager ignores for 48h → auto-escalated to CTO
-        CTO ignores for 48h → auto-escalated to CEO
-        CEO ignores for 48h → Expired (no further escalation possible)
+    Scenario: Tech Manager is on leave for 2 weeks.
+      → After 1 week of no response, request auto-escalates to CTO.
+      → CTO gets a fresh 1-week window.
+      → If CTO also doesn't respond, escalates to CEO.
+      → If CEO also doesn't respond, request expires.
     """
     if req["done"]:
         return
-
     if _now() <= req["expires_at"]:
-        return  # Still within the allowed window — nothing to do
+        return  # Still within window
 
-    current_stage = req["chain"][req["stage_idx"]]
-    next_idx      = req["stage_idx"] + 1
+    current = req["chain"][req["stage_idx"]]
+    next_idx = req["stage_idx"] + 1
 
     if next_idx < len(req["chain"]):
-        # There is a next level — escalate instead of expiring
-        next_stage = req["chain"][next_idx]
+        next_role = req["chain"][next_idx]
+        deadline  = _now() + timedelta(hours=ESCALATION_HOURS)
         req["history"].append({
-            "time":   _now(),
-            "by":     "System",
+            "time": _now(), "by": "System",
             "action": (
-                f"⚠️ Auto-escalated — {current_stage} did not respond within "
-                f"{ESCALATION_HOURS}h. Automatically forwarded to {next_stage}."
+                f"⚠️ AUTO-ESCALATED — {current} did not respond within "
+                f"{_escalation_label()}. Automatically forwarded to {next_role}. "
+                f"New deadline: {_fmt(deadline)}."
             ),
         })
         req["stage_idx"]  = next_idx
-        req["expires_at"] = _now() + timedelta(hours=ESCALATION_HOURS)
+        req["expires_at"] = deadline
         _db_update(req)
-
     else:
-        # No next level — every approver in the chain has timed out → mark Expired
         req["status"] = "Expired"
         req["done"]   = True
         req["history"].append({
-            "time":   _now(),
-            "by":     "System",
+            "time": _now(), "by": "System",
             "action": (
-                f"⏰ Expired — {current_stage} (final approver) did not respond "
-                f"within {ESCALATION_HOURS}h. No further escalation possible."
+                f"⏰ EXPIRED — {current} (final approver) did not respond within "
+                f"{_escalation_label()}. No further escalation possible."
             ),
         })
         _db_update(req)
 
 
-def _delete_request(rid: str):
-    st.session_state.ap_requests = [
-        r for r in st.session_state.ap_requests if r["id"] != rid
-    ]
+def _delete_request(rid):
+    st.session_state.ap_requests = [r for r in st.session_state.ap_requests if r["id"] != rid]
     st.session_state.ap_confirm_delete.pop(rid, None)
     _db_delete(rid)
 
 
-# ════════════════════════════════════════════════════════════════════════════
-#  SMART CLASSIFIER — keyword-based, zero API key needed
-# ════════════════════════════════════════════════════════════════════════════
+# ── Classifier ────────────────────────────────────────────────────────────────
 
 _RULES = [
-    # Security
-    (["security policy", "security doc"],           "Security", "Compliance",  "Security Policy Document"),
-    (["legal", "contract", "nda", "agreement"],     "Security", "Legal",       "Legal Document"),
-    (["compliance", "gdpr", "audit", "regulation"], "Security", "Compliance",  "Compliance Document"),
-    (["public api", "api security", "api access"],  "Security", "Public API",  "Public API Security Document"),
-    (["financial", "budget", "invoice", "payment"], "Security", "Financial",   "Financial Document"),
-    # Technical
-    (["java doc", "javadoc", "java documentation"], "Technical", "Code Standards", "Java Documentation"),
-    (["api doc", "api documentation", "swagger", "openapi", "rest api doc"], "Technical", "Code Standards", "API Documentation"),
-    (["code doc", "code documentation", "code standard", "coding standard"],  "Technical", "Code Standards", "Code Standards Document"),
-    (["architecture", "system design", "tech design", "design doc"],          "Technical", "Architecture",   "Architecture Document"),
-    (["database", "db schema", "schema", "data model", "erd"],                "Technical", "Database",       "Database Design Document"),
-    (["tech stack", "technology stack", "framework", "library choice"],       "Technical", "Tech Stack",     "Tech Stack Document"),
-    (["infrastructure", "server", "cloud", "aws", "gcp", "azure setup"],      "Technical", "Infrastructure", "Infrastructure Document"),
-    # Operations
-    (["runbook", "run book", "incident response"],           "Operations", "Runbooks",    "Runbook"),
-    (["deployment", "deploy guide", "release guide", "ci/cd", "pipeline doc"], "Operations", "Deployment", "Deployment Guide"),
-    (["monitoring", "alerting", "logging", "observability"], "Operations", "Monitoring",  "Monitoring Guide"),
-    (["setup guide", "installation guide", "how to setup", "environment setup"], "Operations", "Setup Guides", "Setup Guide"),
-    # Team
-    (["internal process", "team process", "workflow doc", "sop"],   "Team", "Internal Processes", "Internal Process Document"),
-    (["troubleshoot", "debug guide", "issue guide", "error guide"], "Team", "Troubleshooting",    "Troubleshooting Guide"),
-    (["team setup", "team guide", "team wiki"],                     "Team", "Setup Guides",       "Team Setup Guide"),
-    # General
-    (["faq", "faqs", "frequently asked"],           "General", "FAQs",         "FAQ Document"),
-    (["onboarding", "new joinee", "new employee", "induction"], "General", "Onboarding", "Onboarding Document"),
-    (["general info", "general doc", "general document"],       "General", "General Info", "General Information Document"),
+    (["security policy","security doc"],            "Security",  "Compliance",      "Security Policy Document"),
+    (["legal","contract","nda","agreement"],         "Security",  "Legal",           "Legal Document"),
+    (["compliance","gdpr","audit","regulation"],     "Security",  "Compliance",      "Compliance Document"),
+    (["public api","api security","api access"],     "Security",  "Public API",      "Public API Security Document"),
+    (["financial","budget","invoice","payment"],     "Security",  "Financial",       "Financial Document"),
+    (["java doc","javadoc","java documentation"],    "Technical", "Code Standards",  "Java Documentation"),
+    (["api doc","api documentation","swagger","openapi","rest api doc"],"Technical","Code Standards","API Documentation"),
+    (["code doc","code documentation","code standard","coding standard"],"Technical","Code Standards","Code Standards Document"),
+    (["architecture","system design","tech design","design doc"],       "Technical","Architecture",  "Architecture Document"),
+    (["database","db schema","schema","data model","erd"],              "Technical","Database",      "Database Design Document"),
+    (["tech stack","technology stack","framework","library choice"],    "Technical","Tech Stack",    "Tech Stack Document"),
+    (["infrastructure","server","cloud","aws","gcp","azure setup"],     "Technical","Infrastructure","Infrastructure Document"),
+    (["runbook","run book","incident response"],                        "Operations","Runbooks",     "Runbook"),
+    (["deployment","deploy guide","release guide","ci/cd","pipeline doc"],"Operations","Deployment","Deployment Guide"),
+    (["monitoring","alerting","logging","observability"],               "Operations","Monitoring",   "Monitoring Guide"),
+    (["setup guide","installation guide","how to setup","environment setup"],"Operations","Setup Guides","Setup Guide"),
+    (["internal process","team process","workflow doc","sop"],          "Team","Internal Processes", "Internal Process Document"),
+    (["troubleshoot","debug guide","issue guide","error guide"],        "Team","Troubleshooting",    "Troubleshooting Guide"),
+    (["team setup","team guide","team wiki"],                           "Team","Setup Guides",       "Team Setup Guide"),
+    (["faq","faqs","frequently asked"],                                 "General","FAQs",            "FAQ Document"),
+    (["onboarding","new joinee","new employee","induction"],            "General","Onboarding",      "Onboarding Document"),
+    (["general info","general doc","general document"],                 "General","General Info",    "General Information Document"),
 ]
-
-_URGENCY_CRITICAL = ["critical", "emergency", "urgent urgent", "asap", "immediately", "right now"]
-_URGENCY_URGENT   = ["urgent", "priority", "soon", "quickly", "fast", "high priority"]
-
-_NO_DOC_KEYWORDS = [
-    "what is", "how does", "can you explain", "tell me", "who is",
-    "when is", "where is", "define", "meaning of", "help me understand",
-]
-
+_URGENCY_CRITICAL = ["critical","emergency","asap","immediately","right now"]
+_URGENCY_URGENT   = ["urgent","priority","soon","quickly","fast","high priority"]
 
 def _classify_request(text: str) -> dict:
     lower = text.lower().strip()
-
-    doc_intent_words = [
-        "create", "make", "write", "need", "want", "request", "prepare",
-        "document", "doc", "guide", "policy", "documentation", "submit"
-    ]
-    has_doc_intent = any(w in lower for w in doc_intent_words)
-
-    if not has_doc_intent:
+    doc_words = ["create","make","write","need","want","request","prepare","document","doc","guide","policy","documentation","submit"]
+    if not any(w in lower for w in doc_words):
         return {
             "needs_document": False,
-            "message": (
-                "It looks like you're asking a general question rather than requesting "
-                "a document. If you'd like to request a document to be created, try phrasing "
-                "it like: \"I want to create a Java documentation\" or \"I need a deployment guide\"."
-            ),
-            "suggested_title": "", "category": "", "subtype": "",
-            "urgency": "Normal", "approval_route": "",
+            "message": "It looks like you're asking a general question. Try: \"I need a deployment guide\" or \"I want to create a compliance doc\".",
+            "suggested_title":"","category":"","subtype":"","urgency":"Normal","approval_route":"",
         }
-
-    matched_category = None
-    matched_subtype  = None
-    matched_title    = None
-
-    for keywords, category, subtype, title in _RULES:
+    matched_category = matched_subtype = matched_title = None
+    for keywords, cat, sub, title in _RULES:
         if any(kw in lower for kw in keywords):
-            matched_category = category
-            matched_subtype  = matched_subtype or subtype
-            matched_title    = title
+            matched_category, matched_subtype, matched_title = cat, sub, title
             break
-
     if not matched_category:
-        if any(w in lower for w in ["security", "legal", "compliance", "financial"]):
-            matched_category, matched_subtype, matched_title = "Security", "Compliance", "Security Document"
-        elif any(w in lower for w in ["technical", "code", "software", "system", "api", "doc"]):
-            matched_category, matched_subtype, matched_title = "Technical", "Code Standards", "Technical Document"
-        elif any(w in lower for w in ["deploy", "monitor", "run", "operation", "infra"]):
-            matched_category, matched_subtype, matched_title = "Operations", "Runbooks", "Operations Document"
-        elif any(w in lower for w in ["team", "internal", "process", "wiki", "sop"]):
-            matched_category, matched_subtype, matched_title = "Team", "Internal Processes", "Team Document"
+        if any(w in lower for w in ["security","legal","compliance","financial"]):
+            matched_category,matched_subtype,matched_title = "Security","Compliance","Security Document"
+        elif any(w in lower for w in ["technical","code","software","system","api"]):
+            matched_category,matched_subtype,matched_title = "Technical","Code Standards","Technical Document"
+        elif any(w in lower for w in ["deploy","monitor","run","operation","infra"]):
+            matched_category,matched_subtype,matched_title = "Operations","Runbooks","Operations Document"
+        elif any(w in lower for w in ["team","internal","process","wiki","sop"]):
+            matched_category,matched_subtype,matched_title = "Team","Internal Processes","Team Document"
         else:
-            matched_category, matched_subtype, matched_title = "General", "General Info", "General Document"
+            matched_category,matched_subtype,matched_title = "General","General Info","General Document"
 
-    if any(w in lower for w in _URGENCY_CRITICAL):
-        urgency = "CRITICAL"
-    elif any(w in lower for w in _URGENCY_URGENT):
-        urgency = "URGENT"
-    else:
-        urgency = "Normal"
-
-    chain     = _build_chain(matched_category)
-    cfg       = DOC_CATEGORIES[matched_category]
-    if cfg["auto"]:
-        route_str = "Auto-approved instantly ✅"
-    else:
-        route_str = " → ".join(chain)
-
-    cat_label = DOC_CATEGORIES[matched_category]["label"]
-    message = (
-        f"Got it! This looks like a **{cat_label} › {matched_subtype}** document. "
-        f"Once you submit, it will go through: **{route_str}**. "
-        f"I've pre-filled the form below — just add your name and description and hit Submit!"
-    )
+    urgency = "CRITICAL" if any(w in lower for w in _URGENCY_CRITICAL) else "URGENT" if any(w in lower for w in _URGENCY_URGENT) else "Normal"
+    chain   = _build_chain(matched_category)
+    cfg     = DOC_CATEGORIES[matched_category]
+    route   = "Auto-approved instantly ✅" if cfg["auto"] else " → ".join(chain)
 
     return {
-        "needs_document": True,
-        "message":        message,
+        "needs_document":  True,
+        "message": (
+            f"Got it! This looks like a **{cfg['label']} › {matched_subtype}** document. "
+            f"Approval route: **{route}**. "
+            f"Each approver has **{_escalation_label()}** to respond — after that it auto-escalates. "
+            f"Pre-filled the form below!"
+        ),
         "suggested_title": matched_title,
         "category":        matched_category,
         "subtype":         matched_subtype,
         "urgency":         urgency,
-        "approval_route":  route_str,
+        "approval_route":  route,
     }
 
 
-# ── CSS for the AI chat panel ─────────────────────────────────────────────────
+# ── CSS ───────────────────────────────────────────────────────────────────────
 
-_AI_CHAT_CSS = """
+_CSS = """
 <style>
 .ai-panel {
-    background: linear-gradient(135deg, #f0f4ff 0%, #e8f0fe 100%);
-    border: 1.5px solid #c7d7fd;
-    border-radius: 16px;
-    padding: 20px 24px 16px 24px;
-    margin-bottom: 24px;
+    background: linear-gradient(135deg,#f0f4ff,#e8f0fe);
+    border:1.5px solid #c7d7fd; border-radius:16px; padding:20px 24px 16px; margin-bottom:24px;
 }
-.ai-panel-header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
-.ai-panel-title { font-size: 17px; font-weight: 700; color: #1e3a8a; margin: 0; }
-.ai-panel-subtitle { font-size: 12.5px; color: #6b7280; margin: 0; }
+.ai-panel-title   { font-size:17px; font-weight:700; color:#1e3a8a; margin:0; }
+.ai-panel-subtitle{ font-size:12.5px; color:#6b7280; margin:0; }
 .chat-bubble-user {
-    background: #1e3a8a; color: white;
-    border-radius: 14px 14px 4px 14px;
-    padding: 10px 15px; margin: 6px 0 6px 60px;
-    font-size: 14px; line-height: 1.5;
+    background:#1e3a8a; color:white; border-radius:14px 14px 4px 14px;
+    padding:10px 15px; margin:6px 0 6px 60px; font-size:14px;
 }
 .chat-bubble-ai {
-    background: white; border: 1px solid #dbeafe; color: #1e293b;
-    border-radius: 14px 14px 14px 4px;
-    padding: 10px 15px; margin: 6px 60px 6px 0;
-    font-size: 14px; line-height: 1.6;
+    background:white; border:1px solid #dbeafe; color:#1e293b;
+    border-radius:14px 14px 14px 4px; padding:10px 15px; margin:6px 60px 6px 0;
+    font-size:14px; line-height:1.6;
 }
-.chat-bubble-ai .route-badge {
-    display: inline-block; background: #eff6ff; border: 1px solid #93c5fd;
-    color: #1d4ed8; border-radius: 20px; font-size: 12px; font-weight: 600;
-    padding: 2px 10px; margin-top: 6px;
+.route-badge {
+    display:inline-block; background:#eff6ff; border:1px solid #93c5fd;
+    color:#1d4ed8; border-radius:20px; font-size:12px; font-weight:600;
+    padding:2px 10px; margin:4px 2px 0;
 }
 .ai-suggestion-box {
-    background: #f0fdf4; border: 1.5px solid #86efac;
-    border-radius: 12px; padding: 14px 18px; margin: 10px 0 4px 0;
+    background:#f0fdf4; border:1.5px solid #86efac; border-radius:12px;
+    padding:14px 18px; margin:10px 0 4px;
 }
-.ai-suggestion-box .label { font-size: 11px; font-weight: 700; color: #166534; text-transform: uppercase; letter-spacing: 0.5px; }
-.ai-suggestion-box .value { font-size: 15px; font-weight: 600; color: #14532d; }
+.ai-suggestion-box .label { font-size:11px; font-weight:700; color:#166534; text-transform:uppercase; }
+.ai-suggestion-box .value { font-size:15px; font-weight:600; color:#14532d; }
 .ai-no-doc-box {
-    background: #fefce8; border: 1.5px solid #fde68a; border-radius: 12px;
-    padding: 12px 16px; margin: 8px 0 0 0; font-size: 14px; color: #713f12;
+    background:#fefce8; border:1.5px solid #fde68a; border-radius:12px;
+    padding:12px 16px; margin:8px 0 0; font-size:14px; color:#713f12;
 }
-/* Escalation banner */
+.policy-box {
+    background:linear-gradient(135deg,#fffbeb,#fef3c7);
+    border:1.5px solid #fcd34d; border-radius:14px; padding:16px 20px; margin:12px 0;
+}
+.policy-box .title { font-size:15px; font-weight:700; color:#92400e; margin-bottom:6px; }
+.chain-role  { background:white; border:1.5px solid #fcd34d; border-radius:10px; padding:6px 14px; font-size:13px; font-weight:600; color:#92400e; display:inline-block; margin:2px; }
+.chain-arrow { font-size:18px; color:#d97706; margin:0 2px; }
+.timer-chip  { background:#fef3c7; border:1px solid #fcd34d; border-radius:8px; padding:2px 8px; font-size:11px; font-weight:700; color:#92400e; display:inline-block; margin:2px; }
 .escalation-banner {
-    background: linear-gradient(135deg, #fff7ed, #ffedd5);
-    border: 1.5px solid #fed7aa;
-    border-radius: 12px;
-    padding: 14px 18px;
-    margin: 10px 0;
-    font-size: 13px;
-    color: #9a3412;
-    line-height: 1.7;
+    background:linear-gradient(135deg,#fff7ed,#ffedd5);
+    border:1.5px solid #fed7aa; border-radius:12px; padding:14px 18px;
+    margin:10px 0; font-size:13px; color:#9a3412; line-height:1.7;
 }
-.escalation-banner b { color: #7c2d12; }
-.escalation-history-item {
-    background: #fff7ed;
-    border-left: 3px solid #f97316;
-    border-radius: 0 8px 8px 0;
-    padding: 8px 14px;
-    margin: 6px 0;
-    font-size: 13px;
-    color: #9a3412;
+.esc-item {
+    background:#fff7ed; border-left:3px solid #f97316;
+    border-radius:0 8px 8px 0; padding:8px 14px; margin:6px 0;
+    font-size:13px; color:#9a3412;
+}
+.deadline-chip {
+    display:inline-block; background:#fef9c3; border:1px solid #fde047;
+    border-radius:8px; padding:3px 10px; font-size:12px; color:#713f12; margin-top:4px;
+}
+.role-reminder {
+    background:#fffbeb; border:1.5px solid #fcd34d; border-radius:10px;
+    padding:12px 16px; margin-bottom:12px; font-size:13px; color:#92400e;
 }
 </style>
 """
 
 
-def _render_ai_assistant():
-    st.markdown(_AI_CHAT_CSS, unsafe_allow_html=True)
+# ── AI Assistant render ───────────────────────────────────────────────────────
 
+def _render_ai_assistant():
+    st.markdown(_CSS, unsafe_allow_html=True)
     st.markdown("""
     <div class="ai-panel">
-      <div class="ai-panel-header">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
         <span style="font-size:26px">💬</span>
         <div>
           <p class="ai-panel-title">Need a Document Created?</p>
           <p class="ai-panel-subtitle">
-            Just describe what you need in plain English — e.g. <em>"I want to create Java documentation
-            for our new service"</em> or <em>"I need a deployment guide"</em>. The system will
-            automatically figure out the category and approval route for you.
+            Describe what you need in plain English. The system figures out the category,
+            approval chain, and routing automatically.
           </p>
         </div>
       </div>
     </div>
     """, unsafe_allow_html=True)
 
-    history = st.session_state.ap_ai_chat_history
-    if history:
-        for turn in history:
-            if turn["role"] == "user":
-                st.markdown(
-                    f"<div class='chat-bubble-user'>{turn['content']}</div>",
-                    unsafe_allow_html=True,
-                )
-            else:
-                try:
-                    data = json.loads(turn["content"])
-                    _render_ai_bubble(data)
-                except Exception:
-                    st.markdown(
-                        f"<div class='chat-bubble-ai'>🤖 {turn['content']}</div>",
-                        unsafe_allow_html=True,
-                    )
+    for turn in st.session_state.ap_ai_chat_history:
+        if turn["role"] == "user":
+            st.markdown(f"<div class='chat-bubble-user'>{turn['content']}</div>", unsafe_allow_html=True)
+        else:
+            try:
+                _render_ai_bubble(json.loads(turn["content"]))
+            except Exception:
+                st.markdown(f"<div class='chat-bubble-ai'>🤖 {turn['content']}</div>", unsafe_allow_html=True)
 
     result = st.session_state.get("ap_ai_result")
     if result and result.get("needs_document") and not st.session_state.get("ap_show_prefill_form"):
-        col_prefill, col_clear, _ = st.columns([2.2, 1, 3])
-        with col_prefill:
-            if st.button(
-                "📝 Pre-fill the Form Below with This Suggestion",
-                key="ai_prefill_btn",
-                use_container_width=True,
-                type="primary",
-            ):
+        c1, c2, _ = st.columns([2.2, 1, 3])
+        with c1:
+            if st.button("📝 Pre-fill the Form Below", key="ai_prefill_btn",
+                         use_container_width=True, type="primary"):
                 st.session_state.ap_ai_prefill = {
-                    "title":    result.get("suggested_title", ""),
-                    "category": result.get("category", "General"),
-                    "subtype":  result.get("subtype", ""),
-                    "urgency":  result.get("urgency", "Normal"),
+                    "title":    result.get("suggested_title",""),
+                    "category": result.get("category","General"),
+                    "subtype":  result.get("subtype",""),
+                    "urgency":  result.get("urgency","Normal"),
                 }
                 st.session_state.ap_show_prefill_form = True
                 st.rerun()
-        with col_clear:
+        with c2:
             if st.button("🗑️ Clear", key="ai_clear_btn", use_container_width=True):
                 st.session_state.ap_ai_chat_history   = []
                 st.session_state.ap_ai_result         = None
@@ -628,163 +563,128 @@ def _render_ai_assistant():
                 st.rerun()
 
     with st.form("ai_chat_form", clear_on_submit=True):
-        user_input = st.text_area(
-            "Describe what document you need",
-            placeholder=(
-                'e.g. "I want to create Java API documentation for our payment service"\n'
-                'e.g. "We need a security compliance doc for GDPR"\n'
-                'e.g. "Can someone make a deployment guide for our new release?"'
-            ),
-            height=90,
-            label_visibility="collapsed",
-        )
-        col_btn, _ = st.columns([1, 4])
-        with col_btn:
-            submitted = st.form_submit_button(
-                "🔍 Check & Route", use_container_width=True, type="primary"
-            )
+        user_input = st.text_area("desc", height=90, label_visibility="collapsed",
+            placeholder='e.g. "I need a deployment guide" or "Create a security compliance doc"')
+        c, _ = st.columns([1,4])
+        with c:
+            go = st.form_submit_button("🔍 Check & Route", use_container_width=True, type="primary")
 
-    if submitted and user_input.strip():
-        result = _classify_request(user_input.strip())
-        st.session_state.ap_ai_chat_history.append({"role": "user", "content": user_input.strip()})
-        st.session_state.ap_ai_chat_history.append({"role": "assistant", "content": json.dumps(result)})
-        st.session_state.ap_ai_result = result
+    if go and user_input.strip():
+        res = _classify_request(user_input.strip())
+        st.session_state.ap_ai_chat_history += [
+            {"role": "user",      "content": user_input.strip()},
+            {"role": "assistant", "content": json.dumps(res)},
+        ]
+        st.session_state.ap_ai_result = res
         st.rerun()
-    elif submitted:
+    elif go:
         st.warning("Please describe what document you need.")
-
-    if history and result and not result.get("needs_document"):
-        if st.button("🗑️ Clear", key="ai_clear_btn_bottom"):
-            st.session_state.ap_ai_chat_history   = []
-            st.session_state.ap_ai_result         = None
-            st.session_state.ap_ai_prefill        = None
-            st.session_state.ap_show_prefill_form = False
-            st.rerun()
 
 
 def _render_ai_bubble(data: dict):
-    msg       = data.get("message", "")
-    needs_doc = data.get("needs_document", False)
+    if not data.get("needs_document"):
+        st.markdown(f"<div class='chat-bubble-ai'>🤖 {data.get('message','')}</div>", unsafe_allow_html=True)
+        st.markdown("<div class='ai-no-doc-box'>No document approval needed. You can still submit manually below.</div>", unsafe_allow_html=True)
+        return
+    category  = data.get("category","")
+    subtype   = data.get("subtype","")
+    title     = data.get("suggested_title","")
+    route     = data.get("approval_route","")
+    urgency   = data.get("urgency","Normal")
+    cat_label = DOC_CATEGORIES.get(category,{}).get("label",category)
+    urg_color = {"URGENT":"#f59e0b","CRITICAL":"#ef4444"}.get(urgency,"#6b7280")
+    st.markdown(f"""
+    <div class="chat-bubble-ai">
+      🤖 {data.get('message','')}
+      <br>
+      <span class="route-badge">{cat_label} › {subtype}</span>
+      <span class="route-badge">{route}</span>
+      <span class="route-badge" style="color:{urg_color};border-color:{urg_color};">⚡ {urgency}</span>
+    </div>
+    <div class="ai-suggestion-box">
+      <div class="label">Suggested Document Title</div>
+      <div class="value">📄 {title}</div>
+    </div>
+    """, unsafe_allow_html=True)
 
-    if needs_doc:
-        category      = data.get("category", "")
-        subtype       = data.get("subtype", "")
-        title         = data.get("suggested_title", "")
-        route         = data.get("approval_route", "")
-        urgency       = data.get("urgency", "Normal")
-        cat_cfg       = DOC_CATEGORIES.get(category, {})
-        cat_label     = cat_cfg.get("label", category)
-        urgency_color = {"URGENT": "#f59e0b", "CRITICAL": "#ef4444"}.get(urgency, "#6b7280")
 
-        st.markdown(f"""
-        <div class="chat-bubble-ai">
-          🤖 {msg}
-          <br><br>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;">
-            <span class="route-badge">{cat_label} › {subtype}</span>
-            <span class="route-badge">{route}</span>
-            <span class="route-badge" style="color:{urgency_color};border-color:{urgency_color};">⚡ {urgency}</span>
-          </div>
-        </div>
-        <div class="ai-suggestion-box">
-          <div class="label">Suggested Document Title</div>
-          <div class="value">📄 {title}</div>
-        </div>
-        """, unsafe_allow_html=True)
-    else:
-        st.markdown(
-            f"<div class='chat-bubble-ai'>🤖 {msg}</div>",
-            unsafe_allow_html=True,
-        )
-        if not msg.startswith("⚠️"):
-            st.markdown(
-                "<div class='ai-no-doc-box'>No document approval needed for this request. "
-                "You can still use the form below to submit one manually if needed.</div>",
-                unsafe_allow_html=True,
+def _render_policy_box():
+    roles = ["Team Lead","Tech Manager","CTO","CEO"]
+    chain_html = ""
+    for i, role in enumerate(roles):
+        chain_html += f"<span class='chain-role'>{role}</span>"
+        if i < len(roles) - 1:
+            chain_html += (
+                f"<span class='chain-arrow'>→</span>"
+                f"<span class='timer-chip'>⏳ {_escalation_label()}</span>"
+                f"<span class='chain-arrow'>→</span>"
             )
+    st.markdown(f"""
+    <div class="policy-box">
+      <div class="title">⏳ Auto-Escalation Policy — {_escalation_label()} per approver</div>
+      <p style="font-size:13px;color:#92400e;margin:0 0 10px;">
+        Each approver has <strong>{_escalation_label()}</strong> to respond.
+        If they're on leave or unavailable, the request <strong>automatically moves to the next level</strong>
+        — no manual action needed. If every level times out, the request is marked <strong>Expired</strong>.
+      </p>
+      <div style="display:flex;flex-wrap:wrap;align-items:center;gap:4px;">{chain_html}</div>
+    </div>
+    """, unsafe_allow_html=True)
 
 
 # ── Main entry ────────────────────────────────────────────────────────────────
 
 def page_approval_pipeline():
     _init()
-    st.markdown(_AI_CHAT_CSS, unsafe_allow_html=True)
+    st.markdown(_CSS, unsafe_allow_html=True)
 
     try:
         _get_sb().table(TABLE).select("id").limit(1).execute()
-        st.success(f"🟢 Supabase connected — table `{TABLE}` is reachable.")
+        st.success(f"🟢 Supabase connected — table `{TABLE}` reachable.")
     except Exception as e:
-        st.error(f"🔴 Supabase connection FAILED: {type(e).__name__}: {e}")
+        st.error(f"🔴 Supabase FAILED: {e}")
         st.stop()
 
     if not st.session_state.ap_loaded:
         _load_requests()
 
-    # ── Run auto-escalation check on every page load ──────────────────────────
-    escalated_this_load = []
+    # Run auto-escalation on every load
+    escalated = []
     for r in st.session_state.ap_requests:
-        before_stage = r.get("stage_idx", 0)
-        before_done  = r.get("done", False)
+        bi, bd = r.get("stage_idx",0), r.get("done",False)
         _check_expiry(r)
-        after_stage  = r.get("stage_idx", 0)
-        after_done   = r.get("done", False)
-        # Track if something actually changed (escalation happened)
-        if (after_stage != before_stage) or (after_done and not before_done and r["status"] == "Expired"):
-            escalated_this_load.append(r)
+        if r.get("stage_idx",0) != bi or (r.get("done") and not bd):
+            escalated.append(r)
 
-    # Show a banner if any requests were auto-escalated this load
-    if escalated_this_load:
-        for r in escalated_this_load:
-            last_event = r["history"][-1] if r["history"] else {}
-            st.markdown(
-                f"<div class='escalation-banner'>"
-                f"⚠️ <b>Auto-escalation triggered for {r['id']} — {r['title']}</b><br>"
-                f"{last_event.get('action', '')}"
-                f"</div>",
-                unsafe_allow_html=True,
-            )
-
-    hcol, rcol = st.columns([5, 1])
-    with hcol:
-        st.title("Document Approval Pipeline")
-    with rcol:
-        st.markdown("<br>", unsafe_allow_html=True)
-        if st.button("🔄 Refresh", use_container_width=True):
-            _load_requests()
-            st.rerun()
-
-    # Show escalation policy note
-    st.info(
-        f"⏳ **Auto-escalation policy:** Each approver has **{ESCALATION_HOURS} hours (2 days)** "
-        f"to respond. If they don't, the request is automatically forwarded to the next level. "
-        f"If every level times out, the request is marked **Expired**.",
-        icon="ℹ️",
-    )
-
-    def _n(role):
-        return sum(
-            1 for r in st.session_state.ap_requests
-            if not r["done"] and r["chain"] and r["chain"][r["stage_idx"]] == role
+    for r in escalated:
+        last = r["history"][-1] if r["history"] else {}
+        st.markdown(
+            f"<div class='escalation-banner'>"
+            f"⚠️ <b>Auto-escalation fired — {r['id']}: {r['title']}</b><br>"
+            f"{last.get('action','')}</div>",
+            unsafe_allow_html=True,
         )
 
-    # Also count escalated (requests that passed through a role due to timeout)
-    def _escalated_through(role):
-        count = 0
-        for r in st.session_state.ap_requests:
-            for entry in r.get("history", []):
-                if "Auto-escalated" in entry.get("action", "") and role in entry.get("action", ""):
-                    count += 1
-                    break
-        return count
+    hc, rc = st.columns([5,1])
+    with hc: st.title("📋 Document Approval Pipeline")
+    with rc:
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("🔄 Refresh", use_container_width=True):
+            _load_requests(); st.rerun()
+
+    _render_policy_box()
+
+    def _n(role):
+        return sum(1 for r in st.session_state.ap_requests
+                   if not r["done"] and r["chain"] and r["chain"][r["stage_idx"]] == role)
 
     tabs = st.tabs([
-        "Submit",
-        f"Team Lead ({_n('Team Lead')})",
-        f"Tech Manager ({_n('Tech Manager')})",
-        f"CTO ({_n('CTO')})",
-        f"CEO ({_n('CEO')})",
+        "📝 Submit",
+        f"👨‍💼 Team Lead ({_n('Team Lead')})",
+        f"👩‍💻 Tech Manager ({_n('Tech Manager')})",
+        f"🧑‍🔬 CTO ({_n('CTO')})",
+        f"👑 CEO ({_n('CEO')})",
     ])
-
     with tabs[0]: _view_submit()
     with tabs[1]: _view_role("Team Lead")
     with tabs[2]: _view_role("Tech Manager")
@@ -792,7 +692,7 @@ def page_approval_pipeline():
     with tabs[4]: _view_role("CEO")
 
 
-# ── Submit + tracker ──────────────────────────────────────────────────────────
+# ── Submit tab ────────────────────────────────────────────────────────────────
 
 def _view_submit():
     _render_ai_assistant()
@@ -801,424 +701,261 @@ def _view_submit():
     prefill      = st.session_state.get("ap_ai_prefill") or {}
     show_prefill = st.session_state.get("ap_show_prefill_form", False)
 
-    if show_prefill and prefill:
-        st.markdown(
-            "### Submit Request  "
-            "<small style='background:#d1fae5;color:#065f46;border-radius:8px;"
-            "padding:2px 10px;font-size:12px;font-weight:600;'>✨ Pre-filled by AI</small>",
-            unsafe_allow_html=True,
-        )
-    else:
-        st.markdown("### Submit Request")
+    st.markdown(
+        "### Submit Request" + (
+            "  <small style='background:#d1fae5;color:#065f46;border-radius:8px;"
+            "padding:2px 10px;font-size:12px;font-weight:600;'>✨ Pre-filled by AI</small>"
+            if show_prefill and prefill else ""
+        ), unsafe_allow_html=True,
+    )
 
-    prefill_category = prefill.get("category", list(DOC_CATEGORIES.keys())[0])
-    if prefill_category not in DOC_CATEGORIES:
-        prefill_category = list(DOC_CATEGORIES.keys())[0]
-    cat_keys        = list(DOC_CATEGORIES.keys())
-    prefill_cat_idx = cat_keys.index(prefill_category) if prefill_category in cat_keys else 0
+    cat_keys    = list(DOC_CATEGORIES.keys())
+    pre_cat     = prefill.get("category", cat_keys[0])
+    if pre_cat not in cat_keys: pre_cat = cat_keys[0]
+    pre_cat_idx = cat_keys.index(pre_cat)
 
     with st.form("ap_form", clear_on_submit=True):
-        col1, col2 = st.columns(2)
-        with col1:
+        c1, c2 = st.columns(2)
+        with c1:
             requester = st.text_input("Your Name / Employee ID", placeholder="e.g. Priya K · EMP-042")
-            category  = st.selectbox(
-                "Document Category", cat_keys, index=prefill_cat_idx,
-                format_func=lambda c: DOC_CATEGORIES[c]["label"],
-            )
-        with col2:
-            title = st.text_input(
-                "Document Title", value=prefill.get("title", ""),
-                placeholder="e.g. Database Backup Procedure",
-            )
-            urgency_opts  = ["Normal", "URGENT", "CRITICAL"]
-            prefill_urgency = prefill.get("urgency", "Normal")
-            urgency_idx   = urgency_opts.index(prefill_urgency) if prefill_urgency in urgency_opts else 0
-            urgency = st.selectbox("Urgency", urgency_opts, index=urgency_idx)
+            category  = st.selectbox("Document Category", cat_keys, index=pre_cat_idx,
+                                     format_func=lambda c: DOC_CATEGORIES[c]["label"])
+        with c2:
+            title   = st.text_input("Document Title", value=prefill.get("title",""),
+                                    placeholder="e.g. Database Backup Procedure")
+            urg_opts = ["Normal","URGENT","CRITICAL"]
+            urg_idx  = urg_opts.index(prefill.get("urgency","Normal")) if prefill.get("urgency") in urg_opts else 0
+            urgency  = st.selectbox("Urgency", urg_opts, index=urg_idx)
 
-        available_subtypes = DOC_CATEGORIES[category]["subtypes"]
-        prefill_subtype    = prefill.get("subtype", "")
-        subtype_idx        = 0
-        if prefill_subtype in available_subtypes:
-            subtype_idx = available_subtypes.index(prefill_subtype)
-        subtype = st.selectbox("Document Subtype", available_subtypes, index=subtype_idx)
+        avail_sub = DOC_CATEGORIES[category]["subtypes"]
+        pre_sub   = prefill.get("subtype","")
+        subtype   = st.selectbox("Document Subtype", avail_sub,
+                                 index=avail_sub.index(pre_sub) if pre_sub in avail_sub else 0)
+        description = st.text_area("What does this document need to cover?",
+                                   placeholder="Describe the purpose and scope…", height=90)
 
-        description = st.text_area(
-            "What does this document need to cover?",
-            placeholder="Describe the purpose and scope…", height=90,
-        )
+        cfg   = DOC_CATEGORIES[category]
+        chain = _build_chain(category)
+        route = ("Auto-approved instantly" if cfg["auto"]
+                 else "  →  ".join(chain) + f"  ·  {_escalation_label()} per level (auto-escalates)")
+        st.caption(f"Approval route: {route}")
 
-        cfg       = DOC_CATEGORIES[category]
-        chain     = _build_chain(category)
-        route_str = (
-            "Auto-approved instantly"
-            if cfg["auto"]
-            else "  →  ".join(chain) + f"  ·  {ESCALATION_HOURS}h per level (auto-escalates if no response)"
-        )
-        st.caption(f"Approval route: {route_str}")
+        bc1, bc2, _ = st.columns([2,1,3])
+        with bc1: submitted    = st.form_submit_button("🚀 Submit Request", type="primary", use_container_width=True)
+        with bc2: cancel       = st.form_submit_button("✖ Clear Prefill", use_container_width=True) if show_prefill else False
 
-        btn_cols = st.columns([2, 1, 3])
-        with btn_cols[0]:
-            submitted = st.form_submit_button("Submit Request", type="primary", use_container_width=True)
-        with btn_cols[1]:
-            cancel_prefill = st.form_submit_button("✖ Clear Prefill", use_container_width=True) if show_prefill else False
-
-    if cancel_prefill:
-        st.session_state.ap_ai_prefill        = None
-        st.session_state.ap_show_prefill_form = False
-        st.rerun()
+    if cancel:
+        st.session_state.ap_ai_prefill = None; st.session_state.ap_show_prefill_form = False; st.rerun()
 
     if submitted:
-        errors = []
-        if not requester.strip():   errors.append("Name / Employee ID required.")
-        if not title.strip():       errors.append("Document title required.")
-        if not description.strip(): errors.append("Description required.")
-        for e in errors:
-            st.error(e)
-        if not errors:
+        errs = []
+        if not requester.strip(): errs.append("Name / Employee ID required.")
+        if not title.strip():     errs.append("Document title required.")
+        if not description.strip(): errs.append("Description required.")
+        for e in errs: st.error(e)
+        if not errs:
             req = _create(title.strip(), category, subtype, description.strip(), urgency, requester.strip())
-            st.session_state.ap_ai_prefill        = None
-            st.session_state.ap_show_prefill_form = False
+            st.session_state.ap_ai_prefill = None; st.session_state.ap_show_prefill_form = False
             if req["done"]:
-                st.success(f"**{req['id']}** auto-approved instantly. ✅")
+                st.success(f"✅ **{req['id']}** auto-approved instantly.")
             else:
                 st.success(
-                    f"**{req['id']}** submitted — first stop: **{req['chain'][0]}** "
-                    f"(auto-escalates in {ESCALATION_HOURS}h if no response)"
+                    f"✅ **{req['id']}** submitted → **{req['chain'][0]}** must respond by "
+                    f"**{_fmt(req['expires_at'])}** or it auto-escalates to "
+                    f"**{req['chain'][1] if len(req['chain']) > 1 else 'next level'}**."
                 )
 
     all_reqs = list(reversed(st.session_state.ap_requests))
-    if not all_reqs:
-        st.info("No requests yet.")
-        return
+    if not all_reqs: st.info("No requests yet."); return
 
     st.divider()
-
-    counts = {"Pending": 0, "Approved": 0, "Rejected": 0, "Expired": 0}
-    for r in all_reqs:
-        counts[r["status"]] = counts.get(r["status"], 0) + 1
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Pending",  counts["Pending"])
-    c2.metric("Approved", counts["Approved"])
-    c3.metric("Rejected", counts["Rejected"])
-    c4.metric("Expired",  counts["Expired"])
+    counts = {"Pending":0,"Approved":0,"Rejected":0,"Expired":0}
+    for r in all_reqs: counts[r["status"]] = counts.get(r["status"],0) + 1
+    c1,c2,c3,c4 = st.columns(4)
+    c1.metric("🟡 Pending",  counts["Pending"])
+    c2.metric("🟢 Approved", counts["Approved"])
+    c3.metric("🔴 Rejected", counts["Rejected"])
+    c4.metric("⏰ Expired",  counts["Expired"])
 
     st.divider()
     st.markdown("### 📋 All Requests")
-
-    bulk_col1, bulk_col2, bulk_col3 = st.columns([2, 2, 4])
-    with bulk_col1:
+    bc1, bc2, _ = st.columns([2,2,4])
+    with bc1:
         if st.button("🗑️ Delete All Rejected", use_container_width=True):
-            rejected_ids = [r["id"] for r in all_reqs if r["status"] == "Rejected"]
-            for rid in rejected_ids:
-                _delete_request(rid)
-            if rejected_ids:
-                st.success(f"Deleted {len(rejected_ids)} rejected request(s).")
-                st.rerun()
-            else:
-                st.info("No rejected requests to delete.")
-    with bulk_col2:
+            ids = [r["id"] for r in all_reqs if r["status"]=="Rejected"]
+            for rid in ids: _delete_request(rid)
+            (st.success(f"Deleted {len(ids)}.") if ids else st.info("None.")); (st.rerun() if ids else None)
+    with bc2:
         if st.button("🗑️ Delete All Expired", use_container_width=True):
-            expired_ids = [r["id"] for r in all_reqs if r["status"] == "Expired"]
-            for rid in expired_ids:
-                _delete_request(rid)
-            if expired_ids:
-                st.success(f"Deleted {len(expired_ids)} expired request(s).")
-                st.rerun()
-            else:
-                st.info("No expired requests to delete.")
+            ids = [r["id"] for r in all_reqs if r["status"]=="Expired"]
+            for rid in ids: _delete_request(rid)
+            (st.success(f"Deleted {len(ids)}.") if ids else st.info("None.")); (st.rerun() if ids else None)
 
     st.divider()
-
-    for req in all_reqs:
-        _request_card_with_delete(req, ctx="sub")
+    for req in all_reqs: _card_with_delete(req)
 
 
-# ── Request card with delete button ──────────────────────────────────────────
+# ── Cards ─────────────────────────────────────────────────────────────────────
 
-def _request_card_with_delete(req: dict, ctx: str = "sub"):
-    stage    = req["chain"][req["stage_idx"]] if not req["done"] else "—"
-    timer    = _time_left(req["expires_at"]) if not req["done"] else ""
-    urg_icon = {"URGENT": "🟡", "CRITICAL": "🔴"}.get(req["urgency"], "")
-    rid      = req["id"]
-    k        = f"{ctx}_{rid}"
-
-    status_icon = {
-        "Pending":  "🟡",
-        "Approved": "🟢",
-        "Rejected": "🔴",
-        "Expired":  "⏰",
-    }.get(req["status"], "⚪")
-
-    # Check if any escalation has occurred for this request
-    escalation_count = sum(
-        1 for e in req.get("history", [])
-        if "Auto-escalated" in e.get("action", "")
-    )
-
-    label = f"{status_icon} {rid}  ·  {req['title']}  {urg_icon}"
-    if escalation_count:
-        label += f"  ·  ⚠️ {escalation_count} escalation(s)"
-    if timer:
-        label += f"  ·  {timer}"
-
+def _card_with_delete(req: dict):
+    rid   = req["id"]; k = f"sub_{rid}"
+    label = _card_label(req)
     with st.expander(label, expanded=False):
-        c1, c2, c3, c4 = st.columns(4)
-        c1.markdown(f"**Requester**  \n{req['requester']}")
-        c2.markdown(f"**Category**  \n{req.get('category','—')} › {req.get('subtype','—')}")
-        c3.markdown(f"**Stage**  \n{stage}")
-        c4.markdown(f"**Status**  \n{req['status']}")
-
-        st.markdown(f"> {req['description']}")
-
-        # ── Escalation trail banner ───────────────────────────────────────────
-        escalation_entries = [
-            e for e in req.get("history", [])
-            if "Auto-escalated" in e.get("action", "")
-        ]
-        if escalation_entries:
-            esc_html = "".join(
-                f"<div class='escalation-history-item'>"
-                f"⚠️ <b>{_fmt(e['time'])}</b> — {e['action']}"
-                f"</div>"
-                for e in escalation_entries
-            )
-            st.markdown(
-                f"<div style='margin:8px 0;'>"
-                f"<p style='font-size:13px;font-weight:700;color:#9a3412;margin-bottom:4px;'>"
-                f"⚠️ Auto-Escalation History ({len(escalation_entries)} event(s))</p>"
-                f"{esc_html}</div>",
-                unsafe_allow_html=True,
-            )
-
-        # ── Approval chain progress ───────────────────────────────────────────
-        if req["chain"]:
-            parts = []
-            for i, s in enumerate(req["chain"]):
-                # Check if this stage was skipped via escalation
-                was_escalated = any(
-                    s in e.get("action", "") and "Auto-escalated" in e.get("action", "")
-                    for e in req.get("history", [])
-                )
-                if req["status"] == "Approved" or i < req["stage_idx"]:
-                    if was_escalated:
-                        parts.append(f"~~{s}~~ ⚠️")   # skipped via escalation
-                    else:
-                        parts.append(f"~~{s}~~ ✅")   # approved normally
-                elif i == req["stage_idx"] and not req["done"]:
-                    parts.append(f"**{s} ⏳**")
-                elif req["done"] and i == req["stage_idx"]:
-                    parts.append(f"**{s} {'❌' if req['status'] == 'Rejected' else '⏰'}**")
-                else:
-                    parts.append(s)
-            st.markdown("  →  ".join(parts))
-        else:
-            st.caption("Auto-approved — no chain required.")
-
-        with st.expander("History", key=f"hist_{k}"):
-            for entry in req["history"]:
-                t    = _fmt(entry.get("time", ""))
-                note = f" — {entry['note']}" if entry.get("note") else ""
-                action = entry['action']
-                # Highlight escalation entries in the history
-                if "Auto-escalated" in action:
-                    st.markdown(
-                        f"<div class='escalation-history-item'>"
-                        f"`{t}`  **{entry['by']}**: {action}{note}"
-                        f"</div>",
-                        unsafe_allow_html=True,
-                    )
-                else:
-                    st.markdown(f"`{t}`  **{entry['by']}**: {action}{note}")
-
+        _card_body(req)
         st.divider()
-
-        confirm_key        = f"confirm_del_{rid}"
-        is_pending_confirm = st.session_state.ap_confirm_delete.get(rid, False)
-
-        if not is_pending_confirm:
-            del_col, _ = st.columns([1, 5])
-            with del_col:
-                if st.button("🗑️ Delete", key=f"del_btn_{k}", use_container_width=True):
-                    st.session_state.ap_confirm_delete[rid] = True
-                    st.rerun()
+        if not st.session_state.ap_confirm_delete.get(rid):
+            dc, _ = st.columns([1,5])
+            with dc:
+                if st.button("🗑️ Delete", key=f"del_{k}", use_container_width=True):
+                    st.session_state.ap_confirm_delete[rid] = True; st.rerun()
         else:
-            st.warning(f"⚠️ Are you sure you want to delete **{rid} — {req['title']}**? This cannot be undone.")
-            conf_col1, conf_col2, _ = st.columns([1, 1, 4])
-            with conf_col1:
-                if st.button("✅ Yes, Delete", key=f"confirm_yes_{k}", use_container_width=True):
-                    _delete_request(rid)
-                    st.success(f"{rid} deleted.")
-                    st.rerun()
-            with conf_col2:
-                if st.button("✖ Cancel", key=f"confirm_no_{k}", use_container_width=True):
-                    st.session_state.ap_confirm_delete[rid] = False
-                    st.rerun()
+            st.warning(f"⚠️ Delete **{rid}**? Cannot be undone.")
+            yc, nc, _ = st.columns([1,1,4])
+            with yc:
+                if st.button("✅ Yes", key=f"dy_{k}", use_container_width=True):
+                    _delete_request(rid); st.rerun()
+            with nc:
+                if st.button("✖ No",  key=f"dn_{k}", use_container_width=True):
+                    st.session_state.ap_confirm_delete[rid] = False; st.rerun()
+
+
+def _request_card(req: dict, show_actions: bool, ctx: str = ""):
+    k = f"{ctx}_{req['id']}"
+    with st.expander(_card_label(req), expanded=(show_actions and not req["done"])):
+        _card_body(req)
+        if show_actions and not req["done"]:
+            note = st.text_input("Note (optional)", key=f"note_{k}", placeholder="Reason or comment…")
+            ac, rc, _ = st.columns([1,1,4])
+            with ac:
+                if st.button("✅ Approve", key=f"ap_{k}", type="primary", use_container_width=True):
+                    _approve(req, note); st.rerun()
+            with rc:
+                if st.button("❌ Reject", key=f"rj_{k}", use_container_width=True):
+                    _reject(req, note); st.rerun()
+
+
+def _card_label(req: dict) -> str:
+    status_icon = {"Pending":"🟡","Approved":"🟢","Rejected":"🔴","Expired":"⏰"}.get(req["status"],"⚪")
+    urg_icon    = {"URGENT":"🟡","CRITICAL":"🔴"}.get(req["urgency"],"")
+    esc_count   = sum(1 for e in req.get("history",[]) if "AUTO-ESCALATED" in e.get("action",""))
+    label = f"{status_icon} {req['id']}  ·  {req['title']}  {urg_icon}"
+    if esc_count: label += f"  ·  ⚠️ {esc_count} escalation(s)"
+    if not req["done"]: label += f"  ·  {_time_left(req['expires_at'])}"
+    return label
+
+
+def _card_body(req: dict):
+    stage = req["chain"][req["stage_idx"]] if not req["done"] else "—"
+    c1,c2,c3,c4 = st.columns(4)
+    c1.markdown(f"**Requester**  \n{req['requester']}")
+    c2.markdown(f"**Category**  \n{req.get('category','—')} › {req.get('subtype','—')}")
+    c3.markdown(f"**Stage**  \n{stage}")
+    c4.markdown(f"**Status**  \n{req['status']}")
+
+    if not req["done"]:
+        st.markdown(f"<span class='deadline-chip'>📅 {_deadline_str(req['expires_at'])}</span>",
+                    unsafe_allow_html=True)
+
+    st.markdown(f"> {req['description']}")
+
+    # Escalation trail
+    esc_entries = [e for e in req.get("history",[]) if "AUTO-ESCALATED" in e.get("action","")]
+    if esc_entries:
+        esc_html = "".join(
+            f"<div class='esc-item'>⚠️ <b>{_fmt(e['time'])}</b> — {e['action']}</div>"
+            for e in esc_entries
+        )
+        st.markdown(
+            f"<div style='margin:8px 0'>"
+            f"<p style='font-size:13px;font-weight:700;color:#9a3412;margin-bottom:4px'>"
+            f"⚠️ Auto-Escalation History ({len(esc_entries)} event(s))</p>"
+            f"{esc_html}</div>",
+            unsafe_allow_html=True,
+        )
+
+    # Chain progress
+    if req["chain"]:
+        parts = []
+        for i, s in enumerate(req["chain"]):
+            was_esc = any(s in e.get("action","") and "AUTO-ESCALATED" in e.get("action","")
+                          for e in req.get("history",[]))
+            if req["status"] == "Approved" or i < req["stage_idx"]:
+                parts.append(f"~~{s}~~ {'⚠️' if was_esc else '✅'}")
+            elif i == req["stage_idx"] and not req["done"]:
+                parts.append(f"**{s} ⏳**")
+            elif req["done"] and i == req["stage_idx"]:
+                parts.append(f"**{s} {'❌' if req['status']=='Rejected' else '⏰'}**")
+            else:
+                parts.append(s)
+        st.markdown("  →  ".join(parts))
+    else:
+        st.caption("Auto-approved — no chain required.")
+
+    with st.expander("📜 History", key=f"hist_{req['id']}_{id(req)}"):
+        for entry in req["history"]:
+            t      = _fmt(entry.get("time",""))
+            note   = f" — {entry['note']}" if entry.get("note") else ""
+            action = entry["action"]
+            if "AUTO-ESCALATED" in action:
+                st.markdown(f"<div class='esc-item'>`{t}`  **{entry['by']}**: {action}{note}</div>",
+                            unsafe_allow_html=True)
+            else:
+                st.markdown(f"`{t}`  **{entry['by']}**: {action}{note}")
 
 
 # ── Role tab ──────────────────────────────────────────────────────────────────
 
 def _view_role(role: str):
-    authed = st.session_state.ap_role_auth.get(role, False)
-
-    if not authed:
+    if not st.session_state.ap_role_auth.get(role):
         st.subheader(f"{role} Login")
-        col, _ = st.columns([1.5, 3])
+        col, _ = st.columns([1.5,3])
         with col:
             pwd = st.text_input("Password", type="password", key=f"pwd_{role}")
             if st.button("Log in", type="primary", use_container_width=True, key=f"login_{role}"):
-                if pwd == ROLE_PASSWORDS.get(role, ""):
-                    st.session_state.ap_role_auth[role] = True
-                    st.rerun()
+                if pwd == ROLE_PASSWORDS.get(role,""):
+                    st.session_state.ap_role_auth[role] = True; st.rerun()
                 else:
                     st.error("Incorrect password.")
         return
 
-    hcol, lcol = st.columns([6, 1])
-    with hcol:
-        st.subheader(f"Inbox — {role}")
-    with lcol:
+    hc, lc = st.columns([6,1])
+    with hc: st.subheader(f"Inbox — {role}")
+    with lc:
         if st.button("Log out", key=f"logout_{role}"):
-            st.session_state.ap_role_auth[role] = False
-            st.rerun()
+            st.session_state.ap_role_auth[role] = False; st.rerun()
 
-    # Show escalation policy reminder inside each role tab
-    st.info(
-        f"⏳ You have **{ESCALATION_HOURS} hours (2 days)** to approve or reject each request. "
-        f"If you don't respond in time, it will be automatically escalated to the next level.",
-        icon="⚠️",
-    )
+    st.markdown(f"""
+    <div class="role-reminder">
+      ⏳ <strong>You have {_escalation_label()} to respond to each request.</strong>
+      If you don't approve or reject in time, it will be
+      <strong>automatically escalated to the next level</strong> — no action needed from you.
+    </div>
+    """, unsafe_allow_html=True)
 
-    ctx = role.replace(" ", "_").lower()
+    ctx = role.replace(" ","_").lower()
 
-    mine = [
-        r for r in reversed(st.session_state.ap_requests)
-        if not r["done"] and r["chain"] and r["chain"][r["stage_idx"]] == role
-    ]
-    handled = [
-        r for r in reversed(st.session_state.ap_requests)
-        if r["done"] and any(e.get("by") == role for e in r["history"])
-    ]
-    # Requests that were escalated PAST this role (this role timed out)
-    escalated_past = [
-        r for r in reversed(st.session_state.ap_requests)
-        if any(
-            role in e.get("action", "") and "Auto-escalated" in e.get("action", "")
-            for e in r.get("history", [])
-        )
-    ]
+    mine = [r for r in reversed(st.session_state.ap_requests)
+            if not r["done"] and r["chain"] and r["chain"][r["stage_idx"]] == role]
+    handled = [r for r in reversed(st.session_state.ap_requests)
+               if r["done"] and any(e.get("by") == role for e in r["history"])]
+    esc_past = [r for r in reversed(st.session_state.ap_requests)
+                if any(role in e.get("action","") and "AUTO-ESCALATED" in e.get("action","")
+                       for e in r.get("history",[]))]
 
     if not mine:
-        st.success("Nothing waiting for your approval right now.")
+        st.success("✅ Nothing waiting for your approval right now.")
     else:
         st.markdown(f"**{len(mine)} request(s) awaiting your decision**")
-        for req in mine:
-            _request_card(req, show_actions=True, ctx=ctx)
+        for req in mine: _request_card(req, show_actions=True, ctx=ctx)
 
-    # Show escalated-past section
-    if escalated_past:
+    if esc_past:
         st.divider()
-        with st.expander(f"⚠️ Escalated past your level ({len(escalated_past)}) — you did not respond in time"):
-            for req in escalated_past:
-                _request_card(req, show_actions=False, ctx=f"{ctx}_esc")
+        with st.expander(f"⚠️ Escalated past your level ({len(esc_past)}) — timed out"):
+            st.markdown(f"<small style='color:#9a3412'>No response received within {_escalation_label()}.</small>",
+                        unsafe_allow_html=True)
+            for req in esc_past: _request_card(req, show_actions=False, ctx=f"{ctx}_esc")
 
     if handled:
         st.divider()
         with st.expander(f"Previously handled ({len(handled)})"):
-            for req in handled:
-                _request_card(req, show_actions=False, ctx=f"{ctx}_done")
-
-
-# ── Original request card (used in role tabs — no delete) ─────────────────────
-
-def _request_card(req: dict, show_actions: bool, ctx: str = ""):
-    stage    = req["chain"][req["stage_idx"]] if not req["done"] else "—"
-    timer    = _time_left(req["expires_at"]) if not req["done"] else ""
-    urg_icon = {"URGENT": "🟡", "CRITICAL": "🔴"}.get(req["urgency"], "")
-    rid      = req["id"]
-    k        = f"{ctx}_{rid}"
-
-    escalation_count = sum(
-        1 for e in req.get("history", [])
-        if "Auto-escalated" in e.get("action", "")
-    )
-
-    label = f"{rid}  ·  {req['title']}  {urg_icon}"
-    if escalation_count:
-        label += f"  ·  ⚠️ {escalation_count} escalation(s)"
-    if timer:
-        label += f"  ·  {timer}"
-
-    with st.expander(label, expanded=(show_actions and not req["done"])):
-        c1, c2, c3, c4 = st.columns(4)
-        c1.markdown(f"**Requester**  \n{req['requester']}")
-        c2.markdown(f"**Category**  \n{req.get('category','—')} › {req.get('subtype','—')}")
-        c3.markdown(f"**Stage**  \n{stage}")
-        c4.markdown(f"**Status**  \n{req['status']}")
-
-        st.markdown(f"> {req['description']}")
-
-        # Escalation trail
-        escalation_entries = [
-            e for e in req.get("history", [])
-            if "Auto-escalated" in e.get("action", "")
-        ]
-        if escalation_entries:
-            esc_html = "".join(
-                f"<div class='escalation-history-item'>"
-                f"⚠️ <b>{_fmt(e['time'])}</b> — {e['action']}"
-                f"</div>"
-                for e in escalation_entries
-            )
-            st.markdown(
-                f"<div style='margin:8px 0;'>"
-                f"<p style='font-size:13px;font-weight:700;color:#9a3412;margin-bottom:4px;'>"
-                f"⚠️ Auto-Escalation History</p>"
-                f"{esc_html}</div>",
-                unsafe_allow_html=True,
-            )
-
-        if req["chain"]:
-            parts = []
-            for i, s in enumerate(req["chain"]):
-                was_escalated = any(
-                    s in e.get("action", "") and "Auto-escalated" in e.get("action", "")
-                    for e in req.get("history", [])
-                )
-                if req["status"] == "Approved" or i < req["stage_idx"]:
-                    parts.append(f"~~{s}~~ {'⚠️' if was_escalated else '✅'}")
-                elif i == req["stage_idx"] and not req["done"]:
-                    parts.append(f"**{s} ⏳**")
-                elif req["done"] and i == req["stage_idx"]:
-                    parts.append(f"**{s} {'❌' if req['status'] == 'Rejected' else '⏰'}**")
-                else:
-                    parts.append(s)
-            st.markdown("  →  ".join(parts))
-        else:
-            st.caption("Auto-approved — no chain required.")
-
-        with st.expander("History", key=f"hist_{k}"):
-            for entry in req["history"]:
-                t      = _fmt(entry.get("time", ""))
-                note   = f" — {entry['note']}" if entry.get("note") else ""
-                action = entry["action"]
-                if "Auto-escalated" in action:
-                    st.markdown(
-                        f"<div class='escalation-history-item'>"
-                        f"`{t}`  **{entry['by']}**: {action}{note}"
-                        f"</div>",
-                        unsafe_allow_html=True,
-                    )
-                else:
-                    st.markdown(f"`{t}`  **{entry['by']}**: {action}{note}")
-
-        if show_actions and not req["done"]:
-            note = st.text_input("Note (optional)", key=f"note_{k}", placeholder="Reason or comment…")
-            ca, cr, _ = st.columns([1, 1, 4])
-            with ca:
-                if st.button("✅ Approve", key=f"ap_{k}", type="primary", use_container_width=True):
-                    _approve(req, note)
-                    st.rerun()
-            with cr:
-                if st.button("❌ Reject", key=f"rj_{k}", use_container_width=True):
-                    _reject(req, note)
-                    st.rerun()
+            for req in handled: _request_card(req, show_actions=False, ctx=f"{ctx}_done")
