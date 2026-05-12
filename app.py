@@ -25,110 +25,560 @@ st.set_page_config(page_title="HelpDesk Pro", page_icon="🤖", layout="wide", i
 
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap');
-html, body, [class*="css"] { font-family: 'DM Sans', sans-serif; }
-h1, h2, h3 { font-family: 'Syne', sans-serif !important; }
-section[data-testid="stSidebar"] { background: linear-gradient(180deg, #0f0c29, #302b63, #24243e); }
-section[data-testid="stSidebar"] * { color: white !important; }
-.main { background: #eaf6ff; }
-.stApp { background: #eaf6ff; }
-[data-testid="stAppViewContainer"] { background: #eaf6ff; }
-[data-testid="stMain"] { background: #eaf6ff; }
-.answer-box { background: linear-gradient(135deg, #ede9fe, #ddd6fe); border-radius: 12px; padding: 20px; border-left: 4px solid #7c3aed; font-size: 15px; line-height: 1.7; color: #1e1b4b; }
-.no-answer-box { background: #fff7ed; border-radius: 12px; padding: 16px 20px; border-left: 4px solid #f97316; color: #7c2d12; font-size: 14px; }
-.learned-box { background: linear-gradient(135deg, #d1fae5, #a7f3d0); border-radius: 12px; padding: 20px; border-left: 4px solid #059669; font-size: 15px; line-height: 1.7; color: #064e3b; }
-.badge-open { background:#fef3c7;color:#92400e;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600; }
-.badge-inprogress { background:#dbeafe;color:#1e40af;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600; }
-.badge-resolved { background:#d1fae5;color:#065f46;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600; }
-.badge-overdue { background:#fee2e2;color:#991b1b;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600; }
-.prio-high { background:#fee2e2;color:#991b1b;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700; }
-.prio-medium { background: #eaf6ff;color:#854d0e;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700; }
-.prio-low { background:#dcfce7;color:#166534;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700; }
-div.stButton > button { background: linear-gradient(135deg, #7c3aed, #5b21b6); color: white; border: none; border-radius: 10px; padding: 10px 24px; font-weight: 600; font-size: 14px; }
-div.stButton > button:hover { background: linear-gradient(135deg, #6d28d9, #4c1d95); }
-.metric-card { background:white;border-radius:14px;padding:20px;text-align:center;box-shadow:0 2px 12px rgba(0,0,0,0.06); }
-.metric-number { font-family:'Syne',sans-serif;font-size:36px;font-weight:800;color:#7c3aed; }
-.metric-label { font-size:13px;color:#6b7280;margin-top:4px; }
-.gap-card { background:white;border-radius:12px;padding:16px;margin-bottom:10px;border-left:4px solid #f97316;box-shadow:0 2px 8px rgba(0,0,0,0.05); }
-.gap-count { font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:#f97316; }
-.timeline-dot { width:12px;height:12px;border-radius:50%;display:inline-block;margin-right:8px; }
+/* ── Quarry-inspired Design System ── */
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=DM+Mono:wght@400;500&display=swap');
 
-/* Doc Validator styles */
+/* ── CSS Variables ── */
+:root {
+    --cream:       #f5f0e8;
+    --cream-dark:  #ede7d9;
+    --cream-mid:   #e8e0d0;
+    --paper:       #faf7f2;
+    --ink:         #1a1612;
+    --ink-light:   #3d3530;
+    --ink-muted:   #6b5f55;
+    --ink-faint:   #9c8e82;
+    --rust:        #8b3a2a;
+    --rust-light:  #c4543a;
+    --rust-pale:   #f0e0db;
+    --sage:        #3d5a4a;
+    --sage-light:  #d4e8dc;
+    --amber:       #8b6914;
+    --amber-light: #f0e2b0;
+    --slate:       #2d3d4f;
+    --slate-light: #c8d8e8;
+    --border:      #d4c9bc;
+    --border-dark: #b8a898;
+    --shadow:      rgba(26,22,18,0.08);
+    --shadow-md:   rgba(26,22,18,0.14);
+}
+
+/* ── Base Reset ── */
+html, body, [class*="css"] {
+    font-family: 'EB Garamond', Georgia, serif;
+    color: var(--ink);
+    background: var(--cream);
+}
+
+h1, h2, h3, h4, h5 {
+    font-family: 'Playfair Display', Georgia, serif !important;
+    color: var(--ink) !important;
+    letter-spacing: -0.01em;
+}
+
+code, pre, .stCode {
+    font-family: 'DM Mono', monospace !important;
+}
+
+/* ── App Background ── */
+.stApp,
+[data-testid="stAppViewContainer"],
+[data-testid="stMain"],
+.main {
+    background: var(--cream) !important;
+}
+
+/* ── Sidebar ── */
+section[data-testid="stSidebar"] {
+    background: var(--ink) !important;
+    border-right: 1px solid #2a2420;
+}
+
+section[data-testid="stSidebar"] * {
+    color: var(--cream) !important;
+}
+
+section[data-testid="stSidebar"] .stRadio label {
+    font-family: 'EB Garamond', serif !important;
+    font-size: 15px !important;
+    letter-spacing: 0.02em;
+    color: var(--cream-mid) !important;
+    padding: 6px 0;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+section[data-testid="stSidebar"] .stRadio label:hover {
+    color: white !important;
+}
+
+section[data-testid="stSidebar"] hr {
+    border-color: #3a3028 !important;
+    margin: 12px 0;
+}
+
+section[data-testid="stSidebar"] .stButton > button {
+    background: transparent !important;
+    border: 1px solid #3a3028 !important;
+    color: var(--cream-mid) !important;
+    font-family: 'EB Garamond', serif !important;
+    font-size: 14px !important;
+    letter-spacing: 0.04em;
+    transition: all 0.2s;
+}
+
+section[data-testid="stSidebar"] .stButton > button:hover {
+    background: #2a2420 !important;
+    border-color: #6b5f55 !important;
+    color: white !important;
+}
+
+/* ── Main content padding ── */
+[data-testid="stMainBlockContainer"] {
+    padding: 2rem 3rem;
+    max-width: 1400px;
+}
+
+/* ── Answer / Content boxes ── */
+.answer-box {
+    background: var(--paper);
+    border-radius: 3px;
+    padding: 22px 26px;
+    border-left: 3px solid var(--rust);
+    font-size: 16px;
+    line-height: 1.85;
+    color: var(--ink-light);
+    font-family: 'EB Garamond', serif;
+    box-shadow: 0 1px 8px var(--shadow);
+    margin: 8px 0;
+}
+
+.no-answer-box {
+    background: var(--rust-pale);
+    border-radius: 3px;
+    padding: 16px 20px;
+    border-left: 3px solid var(--rust-light);
+    color: var(--rust);
+    font-size: 15px;
+    font-family: 'EB Garamond', serif;
+}
+
+.learned-box {
+    background: var(--paper);
+    border-radius: 3px;
+    padding: 22px 26px;
+    border-left: 3px solid var(--sage);
+    font-size: 16px;
+    line-height: 1.85;
+    color: var(--ink-light);
+    font-family: 'EB Garamond', serif;
+    box-shadow: 0 1px 8px var(--shadow);
+}
+
+/* ── Status Badges ── */
+.badge-open {
+    background: var(--amber-light);
+    color: var(--amber);
+    padding: 3px 12px;
+    border-radius: 2px;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-family: 'DM Mono', monospace;
+    border: 1px solid #d4b830;
+}
+
+.badge-inprogress {
+    background: var(--slate-light);
+    color: var(--slate);
+    padding: 3px 12px;
+    border-radius: 2px;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-family: 'DM Mono', monospace;
+    border: 1px solid #8ab0cc;
+}
+
+.badge-resolved {
+    background: var(--sage-light);
+    color: var(--sage);
+    padding: 3px 12px;
+    border-radius: 2px;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-family: 'DM Mono', monospace;
+    border: 1px solid #7ab898;
+}
+
+.badge-overdue {
+    background: var(--rust-pale);
+    color: var(--rust);
+    padding: 3px 12px;
+    border-radius: 2px;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-family: 'DM Mono', monospace;
+    border: 1px solid #c4543a;
+}
+
+/* ── Priority Pills ── */
+.prio-high {
+    background: var(--rust-pale);
+    color: var(--rust);
+    padding: 2px 9px;
+    border-radius: 2px;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-family: 'DM Mono', monospace;
+}
+
+.prio-medium {
+    background: var(--amber-light);
+    color: var(--amber);
+    padding: 2px 9px;
+    border-radius: 2px;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-family: 'DM Mono', monospace;
+}
+
+.prio-low {
+    background: var(--sage-light);
+    color: var(--sage);
+    padding: 2px 9px;
+    border-radius: 2px;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-family: 'DM Mono', monospace;
+}
+
+/* ── Buttons ── */
+div.stButton > button {
+    background: var(--ink) !important;
+    color: var(--cream) !important;
+    border: 1px solid var(--ink) !important;
+    border-radius: 2px !important;
+    padding: 9px 22px !important;
+    font-family: 'EB Garamond', serif !important;
+    font-size: 15px !important;
+    font-weight: 400 !important;
+    letter-spacing: 0.04em !important;
+    transition: all 0.18s ease !important;
+    box-shadow: none !important;
+}
+
+div.stButton > button:hover {
+    background: var(--rust) !important;
+    border-color: var(--rust) !important;
+    color: white !important;
+}
+
+div.stButton > button[kind="primary"] {
+    background: var(--rust) !important;
+    border-color: var(--rust) !important;
+}
+
+div.stButton > button[kind="primary"]:hover {
+    background: var(--rust-light) !important;
+    border-color: var(--rust-light) !important;
+}
+
+/* ── Metric Cards ── */
+.metric-card {
+    background: var(--paper);
+    border-radius: 3px;
+    padding: 22px 20px;
+    text-align: left;
+    border: 1px solid var(--border);
+    box-shadow: 0 1px 6px var(--shadow);
+    position: relative;
+    overflow: hidden;
+}
+
+.metric-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--rust);
+}
+
+.metric-number {
+    font-family: 'Playfair Display', serif !important;
+    font-size: 38px !important;
+    font-weight: 700 !important;
+    color: var(--ink) !important;
+    line-height: 1;
+    margin-bottom: 6px;
+}
+
+.metric-label {
+    font-size: 11px;
+    color: var(--ink-muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-family: 'DM Mono', monospace;
+}
+
+/* ── Knowledge Gap cards ── */
+.gap-card {
+    background: var(--paper);
+    border-radius: 3px;
+    padding: 18px 20px;
+    margin-bottom: 10px;
+    border-left: 3px solid var(--rust);
+    border: 1px solid var(--border);
+    box-shadow: 0 1px 4px var(--shadow);
+}
+
+.gap-count {
+    font-family: 'Playfair Display', serif;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--rust);
+}
+
+.timeline-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 8px;
+    vertical-align: middle;
+}
+
+/* ── Inputs & Forms ── */
+.stTextInput > div > div > input,
+.stTextArea > div > div > textarea,
+.stSelectbox > div > div {
+    background: var(--paper) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 2px !important;
+    color: var(--ink) !important;
+    font-family: 'EB Garamond', serif !important;
+    font-size: 15px !important;
+}
+
+.stTextInput > div > div > input:focus,
+.stTextArea > div > div > textarea:focus {
+    border-color: var(--rust) !important;
+    box-shadow: 0 0 0 1px var(--rust) !important;
+}
+
+label[data-testid="stWidgetLabel"] {
+    font-family: 'DM Mono', monospace !important;
+    font-size: 11px !important;
+    letter-spacing: 0.08em !important;
+    text-transform: uppercase !important;
+    color: var(--ink-muted) !important;
+}
+
+/* ── Expanders ── */
+[data-testid="stExpander"] {
+    background: var(--paper) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 3px !important;
+    margin-bottom: 8px;
+}
+
+[data-testid="stExpander"] > div:first-child {
+    font-family: 'EB Garamond', serif !important;
+    font-size: 15px !important;
+    color: var(--ink-light) !important;
+}
+
+/* ── Tabs ── */
+.stTabs [data-baseweb="tab-list"] {
+    background: transparent !important;
+    border-bottom: 1px solid var(--border) !important;
+    gap: 0 !important;
+}
+
+.stTabs [data-baseweb="tab"] {
+    background: transparent !important;
+    border-radius: 0 !important;
+    border-bottom: 2px solid transparent !important;
+    color: var(--ink-muted) !important;
+    font-family: 'DM Mono', monospace !important;
+    font-size: 12px !important;
+    letter-spacing: 0.06em !important;
+    text-transform: uppercase !important;
+    padding: 10px 18px !important;
+    margin-bottom: -1px;
+    transition: all 0.15s;
+}
+
+.stTabs [aria-selected="true"] {
+    border-bottom-color: var(--rust) !important;
+    color: var(--rust) !important;
+}
+
+/* ── Alerts / Info boxes ── */
+.stAlert {
+    border-radius: 3px !important;
+    border-left-width: 3px !important;
+    font-family: 'EB Garamond', serif !important;
+    font-size: 15px !important;
+}
+
+/* ── Success / Error / Warning ── */
+[data-testid="stNotification"] {
+    font-family: 'EB Garamond', serif !important;
+    border-radius: 3px !important;
+}
+
+/* ── Divider ── */
+hr {
+    border: none !important;
+    border-top: 1px solid var(--border) !important;
+    margin: 20px 0 !important;
+}
+
+/* ── Captions & small text ── */
+small, .stCaption {
+    font-family: 'DM Mono', monospace !important;
+    font-size: 11px !important;
+    color: var(--ink-faint) !important;
+    letter-spacing: 0.04em;
+}
+
+/* ── Markdown paragraph text ── */
+[data-testid="stMarkdownContainer"] p {
+    font-family: 'EB Garamond', serif;
+    font-size: 16px;
+    line-height: 1.75;
+    color: var(--ink-light);
+}
+
+/* ── Doc Validator styles (Quarry-fied) ── */
 .validator-card {
-    background: white;
-    border-radius: 16px;
+    background: var(--paper);
+    border-radius: 3px;
     padding: 24px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    border: 1px solid var(--border);
+    box-shadow: 0 2px 10px var(--shadow);
     margin-bottom: 20px;
 }
+
 .sensitive-badge {
     display: inline-block;
-    background: linear-gradient(135deg, #fee2e2, #fecaca);
-    color: #991b1b;
-    border: 1.5px solid #fca5a5;
-    border-radius: 20px;
+    background: var(--rust-pale);
+    color: var(--rust);
+    border: 1px solid #c4543a;
+    border-radius: 2px;
     padding: 4px 14px;
-    font-size: 13px;
-    font-weight: 700;
-    letter-spacing: 0.3px;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-family: 'DM Mono', monospace;
 }
+
 .normal-badge {
     display: inline-block;
-    background: linear-gradient(135deg, #d1fae5, #a7f3d0);
-    color: #065f46;
-    border: 1.5px solid #6ee7b7;
-    border-radius: 20px;
+    background: var(--sage-light);
+    color: var(--sage);
+    border: 1px solid #7ab898;
+    border-radius: 2px;
     padding: 4px 14px;
-    font-size: 13px;
-    font-weight: 700;
-    letter-spacing: 0.3px;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-family: 'DM Mono', monospace;
 }
+
 .chain-step {
     display: inline-flex;
     align-items: center;
-    background: #eff6ff;
-    border: 1.5px solid #bfdbfe;
-    border-radius: 10px;
-    padding: 8px 16px;
-    font-size: 14px;
-    font-weight: 600;
-    color: #1e40af;
+    background: var(--cream-dark);
+    border: 1px solid var(--border-dark);
+    border-radius: 2px;
+    padding: 7px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ink-light);
     margin: 4px;
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 0.03em;
 }
+
 .chain-arrow {
-    font-size: 20px;
-    color: #9ca3af;
+    font-size: 16px;
+    color: var(--ink-faint);
     margin: 0 2px;
 }
+
 .auto-approve-box {
-    background: linear-gradient(135deg, #f0fdf4, #dcfce7);
-    border: 2px solid #86efac;
-    border-radius: 14px;
+    background: var(--paper);
+    border: 1px solid #7ab898;
+    border-left: 3px solid var(--sage);
+    border-radius: 3px;
     padding: 20px 24px;
-    text-align: center;
 }
+
 .sensitive-box {
-    background: linear-gradient(135deg, #fff1f2, #ffe4e6);
-    border: 2px solid #fda4af;
-    border-radius: 14px;
+    background: var(--paper);
+    border: 1px solid #c4543a;
+    border-left: 3px solid var(--rust);
+    border-radius: 3px;
     padding: 20px 24px;
 }
+
 .validator-title {
-    font-family: 'Syne', sans-serif;
-    font-size: 22px;
-    font-weight: 800;
-    color: #1e1b4b;
+    font-family: 'Playfair Display', serif;
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--ink);
     margin-bottom: 4px;
 }
+
 .keyword-tag {
     display: inline-block;
-    background: #f3f4f6;
-    color: #374151;
-    border-radius: 8px;
+    background: var(--cream-dark);
+    color: var(--ink-muted);
+    border-radius: 2px;
     padding: 2px 10px;
-    font-size: 12px;
+    font-size: 11px;
     margin: 2px;
-    border: 1px solid #e5e7eb;
+    border: 1px solid var(--border);
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 0.03em;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--cream); }
+::-webkit-scrollbar-thumb { background: var(--border-dark); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--ink-muted); }
+
+/* ── Spinner ── */
+.stSpinner > div {
+    border-top-color: var(--rust) !important;
+}
+
+/* ── Metric native ── */
+[data-testid="stMetric"] {
+    background: var(--paper);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 16px 20px;
+}
+
+[data-testid="stMetricValue"] {
+    font-family: 'Playfair Display', serif !important;
+    color: var(--ink) !important;
+}
+
+[data-testid="stMetricLabel"] {
+    font-family: 'DM Mono', monospace !important;
+    font-size: 11px !important;
+    letter-spacing: 0.06em !important;
+    text-transform: uppercase !important;
+    color: var(--ink-muted) !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -497,31 +947,22 @@ def tickets_to_csv(tickets: list) -> bytes:
 # ════════════════════════════════════════════════════════
 #  DOC VALIDATOR LOGIC
 # ════════════════════════════════════════════════════════
-
-# Keywords that flag a document as SENSITIVE → must go through pipeline
 _SENSITIVE_KEYWORDS = [
-    # Network / Access
     "vpn", "virtual private network", "network access", "firewall", "proxy",
     "remote access", "zero trust", "ssl vpn", "ipsec",
-    # Security
     "security", "cybersecurity", "penetration test", "pentest", "vulnerability",
     "encryption", "cryptography", "access control", "identity", "iam",
     "sso", "single sign-on", "mfa", "multi-factor", "certificate", "ssl", "tls",
-    # Legal / Compliance
     "legal", "contract", "nda", "agreement", "gdpr", "compliance", "audit",
     "regulation", "policy", "terms of service", "data protection", "privacy",
-    # Financial
     "financial", "budget", "invoice", "payment", "salary", "payroll",
     "revenue", "expense", "accounting", "tax", "billing",
-    # Infrastructure
     "infrastructure", "cloud", "aws", "gcp", "azure", "kubernetes", "k8s",
     "server", "database schema", "production", "disaster recovery", "backup",
-    # Sensitive data
     "pii", "personal data", "sensitive data", "confidential", "classified",
     "secret", "restricted", "privileged",
 ]
 
-# Keywords that flag a document as NORMAL → auto-approved
 _NORMAL_KEYWORDS = [
     "faq", "onboarding", "general", "guide", "how to", "tutorial",
     "overview", "introduction", "readme", "changelog", "release notes",
@@ -529,24 +970,15 @@ _NORMAL_KEYWORDS = [
 ]
 
 def classify_doc_sensitivity(title: str, description: str) -> dict:
-    """
-    Classifies whether a document is SENSITIVE (needs pipeline) or NORMAL (auto-approved).
-    Returns a dict with: is_sensitive, reason, matched_keywords, chain, category
-    """
     combined = (title + " " + description).lower()
-
-    # Check sensitive keywords first
     matched_sensitive = [kw for kw in _SENSITIVE_KEYWORDS if kw in combined]
     matched_normal    = [kw for kw in _NORMAL_KEYWORDS    if kw in combined]
 
     if matched_sensitive:
-        # Determine which category from approval_pipeline
         if PIPELINE_AVAILABLE:
             result     = _classify_request(f"I need to create a document about {title}. {description}")
             category   = result.get("category", "Security")
             chain      = _build_chain(category)
-            cat_config = DOC_CATEGORIES.get(category, {})
-            # Force sensitive docs to always go through chain even if category is General
             if not chain:
                 chain    = ["Team Lead", "Tech Manager", "CTO", "CEO"]
                 category = "Security"
@@ -557,7 +989,7 @@ def classify_doc_sensitivity(title: str, description: str) -> dict:
         return {
             "is_sensitive":       True,
             "category":           category,
-            "matched_keywords":   matched_sensitive[:6],   # show up to 6
+            "matched_keywords":   matched_sensitive[:6],
             "chain":              chain,
             "reason":             f"This document contains sensitive content ({', '.join(matched_sensitive[:3])}…) and must go through the full approval pipeline.",
         }
@@ -575,29 +1007,33 @@ def classify_doc_sensitivity(title: str, description: str) -> dict:
 #  PAGE: EMPLOYEE PORTAL
 # ════════════════════════════════════════════════════════
 def page_employee():
-    st.markdown("# 🔍 Employee Help Portal")
-    st.markdown("<p style='color:#6b7280'>Ask any question. If no answer is found, raise a support ticket.</p>", unsafe_allow_html=True)
+    st.markdown("# Employee Help Portal")
+    st.markdown(
+        "<p style='color:#6b5f55; font-size:17px; font-family: EB Garamond, serif;'>"
+        "Ask any question. If no answer is found, raise a support ticket.</p>",
+        unsafe_allow_html=True,
+    )
     st.markdown("---")
 
     pairs = load_qa_pairs()
     if len(pairs) == 0:
         st.error("⚠️ PDF knowledge base could not be loaded.")
     else:
-        st.success(f"📚 PDF Knowledge Base: {len(pairs)} Q&A pairs", icon="✅")
+        st.success(f"📚 Knowledge Base ready — {len(pairs)} Q&A pairs indexed")
 
-    st.markdown("### 💬 Ask a Question")
+    st.markdown("### Ask a Question")
     col1, col2 = st.columns([4, 1])
     with col1:
         question = st.text_input("", placeholder="e.g. What is the difference between a list and a tuple?", label_visibility="collapsed")
     with col2:
-        search = st.button("🔎 Search", use_container_width=True)
+        search = st.button("Search →", use_container_width=True)
 
     if search and question.strip():
-        with st.spinner("🧠 Searching knowledge base…"):
+        with st.spinner("Searching knowledge base…"):
             result = answer_question(question.strip())
 
         if result.get("pdf_error") and not result["found"]:
-            st.error("❌ Knowledge base unavailable. Please raise a ticket.")
+            st.error("Knowledge base unavailable. Please raise a ticket.")
             db_log_failed_query(question.strip())
             st.session_state["show_ticket"] = True
             st.session_state["ticket_query"] = question.strip()
@@ -607,15 +1043,29 @@ def page_employee():
             match_src = result.get("match_src", "question")
 
             if source == "learned":
-                st.markdown("#### ✅ Answer Found")
-                st.markdown("<small style='color:#059669'>💡 <strong>Source: Previously resolved support ticket</strong></small>", unsafe_allow_html=True)
-                st.markdown(f"<small style='color:#6b7280'>📌 Similar question: <em>{result['matched'][:160]}</em> (similarity: {result['score']:.0%})</small>", unsafe_allow_html=True)
+                st.markdown("#### ✦ Answer Found")
+                st.markdown(
+                    "<small style='color:#3d5a4a; font-family: DM Mono, monospace; font-size:11px; letter-spacing:0.06em; text-transform:uppercase;'>"
+                    "Source: Previously resolved support ticket</small>",
+                    unsafe_allow_html=True,
+                )
+                st.markdown(
+                    f"<small style='color:#9c8e82; font-family: EB Garamond, serif;'>Similar question: <em>{result['matched'][:160]}</em> &nbsp;·&nbsp; similarity {result['score']:.0%}</small>",
+                    unsafe_allow_html=True,
+                )
                 st.markdown(f"<div class='learned-box'>{result['answer']}</div>", unsafe_allow_html=True)
             else:
-                st.markdown("#### ✅ Answer Found")
+                st.markdown("#### ✦ Answer Found")
                 match_label = "matched via question" if match_src == "question" else "matched via answer content"
-                st.markdown(f"<small style='color:#7c3aed'>📚 <strong>Source: PDF Knowledge Base</strong> <span style='color:#9ca3af'>({match_label})</span></small>", unsafe_allow_html=True)
-                st.markdown(f"<small style='color:#6b7280'>📌 Matched: <em>{result['matched'][:120]}</em> (score: {result['score']:.2f})</small>", unsafe_allow_html=True)
+                st.markdown(
+                    f"<small style='color:#8b3a2a; font-family: DM Mono, monospace; font-size:11px; letter-spacing:0.06em; text-transform:uppercase;'>"
+                    f"Source: PDF Knowledge Base &nbsp;·&nbsp; {match_label}</small>",
+                    unsafe_allow_html=True,
+                )
+                st.markdown(
+                    f"<small style='color:#9c8e82; font-family: EB Garamond, serif;'>Matched: <em>{result['matched'][:120]}</em> &nbsp;·&nbsp; score {result['score']:.2f}</small>",
+                    unsafe_allow_html=True,
+                )
                 st.markdown(f"<div class='answer-box'>{result['answer']}</div>", unsafe_allow_html=True)
 
             st.markdown("---")
@@ -631,8 +1081,12 @@ def page_employee():
                     st.warning("Sorry! Please raise a ticket below.")
 
         else:
-            st.markdown("#### ❌ No Answer Found")
-            st.markdown("<div class='no-answer-box'>⚠️ No answer found in the knowledge base. Please fill in the ticket details below and our team will help you.</div>", unsafe_allow_html=True)
+            st.markdown("#### ✦ No Answer Found")
+            st.markdown(
+                "<div class='no-answer-box'>No answer found in the knowledge base. "
+                "Please fill in the ticket details below and our team will help you.</div>",
+                unsafe_allow_html=True,
+            )
             db_log_failed_query(question.strip())
             st.session_state["show_ticket"] = True
             st.session_state["ticket_query"] = question.strip()
@@ -643,22 +1097,26 @@ def page_employee():
     st.markdown("---")
 
     if st.session_state.get("show_ticket", False):
-        st.markdown("### 📝 Support Ticket")
+        st.markdown("### Raise a Support Ticket")
         c1, c2 = st.columns(2)
         with c1:
-            user_id = st.text_input("👤 Employee ID *", placeholder="e.g. EMP-1042", key="emp_user_id")
-            job_role = st.selectbox("💼 Job Role *", ["Select…", "Software Engineer", "Data Analyst", "QA Engineer", "DevOps Engineer", "Product Manager", "HR / Operations", "Other"], key="emp_job_role")
+            user_id = st.text_input("Employee ID *", placeholder="e.g. EMP-1042", key="emp_user_id")
+            job_role = st.selectbox("Job Role *", ["Select…", "Software Engineer", "Data Analyst", "QA Engineer", "DevOps Engineer", "Product Manager", "HR / Operations", "Other"], key="emp_job_role")
         with c2:
-            priority = st.selectbox("🚨 Priority *", ["Medium", "High", "Low"], key="emp_priority")
+            priority = st.selectbox("Priority *", ["Medium", "High", "Low"], key="emp_priority")
 
         original_question = st.session_state.get("ticket_query", "")
         if original_question:
-            st.markdown(f"<small style='color:#7c3aed'>🔍 Your search question: <strong>{original_question}</strong></small>", unsafe_allow_html=True)
-        query_text = st.text_area("📋 Describe your problem in detail *", value="", placeholder="Add more details about your issue…", height=120, key="emp_query_text")
+            st.markdown(
+                f"<small style='color:#8b3a2a; font-family: DM Mono, monospace; font-size:11px; letter-spacing:0.04em;'>"
+                f"Search query: {original_question}</small>",
+                unsafe_allow_html=True,
+            )
+        query_text = st.text_area("Describe your problem in detail *", value="", placeholder="Add more details about your issue…", height=120, key="emp_query_text")
 
         col_sub, col_cancel, _ = st.columns([1, 1, 4])
         with col_sub:
-            if st.button("🚀 Submit Ticket", use_container_width=True, key="emp_submit"):
+            if st.button("Submit Ticket →", use_container_width=True, key="emp_submit"):
                 errors = []
                 if not user_id.strip():
                     errors.append("Employee ID required.")
@@ -672,52 +1130,56 @@ def page_employee():
                     final_query = original_question if original_question else query_text.strip()
                     try:
                         t = db_create_ticket(user_id.strip(), job_role, final_query, priority)
-                        st.toast(f"🎉 Ticket #{t.get('id')} submitted & stored in Supabase `tickets` table!", icon="✅")
-                        st.success(f"✅ Ticket #{t.get('id', '–')} submitted! Our team will respond shortly.", icon="🎉")
+                        st.toast(f"🎉 Ticket #{t.get('id')} submitted!", icon="✅")
+                        st.success(f"Ticket #{t.get('id', '–')} submitted. Our team will respond shortly.")
                         st.session_state["show_ticket"] = False
                     except Exception as ex:
                         st.error(f"Failed: {ex}")
         with col_cancel:
-            if st.button("✖ Cancel", use_container_width=True, key="emp_cancel"):
+            if st.button("Cancel", use_container_width=True, key="emp_cancel"):
                 st.session_state["show_ticket"] = False
                 st.rerun()
 
 
 # ════════════════════════════════════════════════════════
-#  PAGE: ADMIN PANEL  (with Doc Validator tab)
+#  PAGE: ADMIN PANEL
 # ════════════════════════════════════════════════════════
 def page_admin():
     ADMIN_PWD = st.secrets.get("ADMIN_PASSWORD", "admin123")
     if not st.session_state.get("admin_logged_in"):
-        st.markdown("# 🛡️ Admin Panel")
+        st.markdown("# Admin Panel")
         st.markdown("---")
         col, _ = st.columns([1.5, 2.5])
         with col:
+            st.markdown(
+                "<div style='background: #faf7f2; border: 1px solid #d4c9bc; border-top: 3px solid #8b3a2a; "
+                "border-radius: 3px; padding: 28px 24px;'>"
+                "<h3 style='font-family: Playfair Display, serif; margin-bottom: 20px;'>Sign In</h3>",
+                unsafe_allow_html=True,
+            )
             pwd = st.text_input("Password", type="password", key="admin_pwd_input")
-            if st.button("Login →", use_container_width=True, key="admin_login_btn"):
+            if st.button("Continue →", use_container_width=True, key="admin_login_btn"):
                 if pwd == ADMIN_PWD:
                     st.session_state["admin_logged_in"] = True
-                    st.toast("🛡️ Admin logged in successfully", icon="✅")
+                    st.toast("Logged in successfully", icon="✅")
                     st.rerun()
                 else:
                     st.error("Incorrect password.")
+            st.markdown("</div>", unsafe_allow_html=True)
         return
 
     c1, c2 = st.columns([5, 1])
     with c1:
-        st.markdown("# 🛡️ Admin Dashboard")
+        st.markdown("# Admin Dashboard")
     with c2:
-        if st.button("Logout", key="admin_logout_btn"):
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("Sign out", key="admin_logout_btn"):
             st.session_state["admin_logged_in"] = False
-            st.toast("👋 Admin logged out", icon="🔒")
+            st.toast("Signed out", icon="🔒")
             st.rerun()
 
-    # ── Admin tabs ────────────────────────────────────────────────────────────
-    admin_tab1, admin_tab2 = st.tabs(["📋 Ticket Management", "🔍 Doc Validator"])
+    admin_tab1, admin_tab2 = st.tabs(["Ticket Management", "Doc Validator"])
 
-    # ══════════════════════════════════════════
-    #  TAB 1 — Ticket Management (original)
-    # ══════════════════════════════════════════
     with admin_tab1:
         try:
             stats = db_stats()
@@ -725,15 +1187,16 @@ def page_admin():
             for col, val, label, icon in zip(
                 cols,
                 [stats["total"], stats["open"], stats["in_progress"], stats["resolved"], stats["overdue"]],
-                ["Total", "Open", "In Progress", "Resolved", "🔴 Overdue"],
-                ["📋", "🟡", "🔵", "🟢", "🔴"]
+                ["Total", "Open", "In Progress", "Resolved", "Overdue"],
+                ["📋", "○", "◑", "●", "⚠"],
             ):
                 with col:
                     st.markdown(
-                        f"<div class='metric-card'><div style='font-size:28px'>{icon}</div>"
+                        f"<div class='metric-card'>"
                         f"<div class='metric-number'>{val}</div>"
-                        f"<div class='metric-label'>{label}</div></div>",
-                        unsafe_allow_html=True
+                        f"<div class='metric-label'>{icon} {label}</div>"
+                        f"</div>",
+                        unsafe_allow_html=True,
                     )
         except Exception as e:
             st.error(f"Stats error: {e}")
@@ -746,10 +1209,10 @@ def page_admin():
         with c2:
             pf = st.selectbox("Priority", ["All", "High", "Medium", "Low"], key="admin_filter_priority")
         with c3:
-            search_term = st.text_input("🔍 Search tickets", placeholder="keyword / employee ID", key="admin_search_term")
+            search_term = st.text_input("Search tickets", placeholder="keyword / employee ID", key="admin_search_term")
         with c4:
             st.markdown("<br>", unsafe_allow_html=True)
-            export_btn = st.button("📥 Export CSV", use_container_width=True, key="admin_export_btn")
+            export_btn = st.button("Export CSV", use_container_width=True, key="admin_export_btn")
 
         try:
             tickets = db_get_tickets(sf if sf not in ["All", "Overdue"] else None)
@@ -768,13 +1231,17 @@ def page_admin():
         if export_btn:
             all_tickets = db_get_tickets()
             csv_bytes = tickets_to_csv(all_tickets)
-            st.download_button("⬇️ Download CSV", data=csv_bytes, file_name="helpdesk_tickets.csv", mime="text/csv", key="admin_download_csv")
-            st.toast("📥 CSV exported from `tickets` table", icon="✅")
+            st.download_button("⬇ Download CSV", data=csv_bytes, file_name="helpdesk_tickets.csv", mime="text/csv", key="admin_download_csv")
+            st.toast("CSV exported", icon="✅")
 
         if not tickets:
             st.info("No tickets found.", icon="📭")
         else:
-            st.markdown(f"**{len(tickets)} ticket(s)**")
+            st.markdown(
+                f"<p style='font-family: DM Mono, monospace; font-size: 12px; color: #9c8e82; "
+                f"letter-spacing: 0.06em; text-transform: uppercase;'>{len(tickets)} ticket(s)</p>",
+                unsafe_allow_html=True,
+            )
 
             for t in tickets:
                 tid = t.get("id")
@@ -790,21 +1257,25 @@ def page_admin():
                     created_fmt = created
 
                 badge_class = "badge-overdue" if overdue else {"Open": "badge-open", "In Progress": "badge-inprogress", "Resolved": "badge-resolved"}.get(status, "badge-open")
-                display_status = "🔴 OVERDUE" if overdue else status
+                display_status = "OVERDUE" if overdue else status
                 prio_class = {"High": "prio-high", "Medium": "prio-medium", "Low": "prio-low"}.get(priority, "prio-medium")
 
-                with st.expander(f"🎫 #{tid} — {t.get('user_id', '?')} ({t.get('job_role', '?')}) | {display_status} | {priority} | {created_fmt}"):
-                    st.markdown(f"<span class='{badge_class}'>{display_status}</span>&nbsp;<span class='{prio_class}'>{priority}</span>", unsafe_allow_html=True)
-                    st.markdown(f"**Employee:** {t.get('user_id', '–')} &nbsp;|&nbsp; **Role:** {t.get('job_role', '–')} &nbsp;|&nbsp; **Submitted:** {created_fmt}")
+                with st.expander(f"#{tid} — {t.get('user_id', '?')} · {t.get('job_role', '?')} · {display_status} · {priority} · {created_fmt}"):
+                    st.markdown(
+                        f"<span class='{badge_class}'>{display_status}</span>&nbsp;&nbsp;"
+                        f"<span class='{prio_class}'>{priority}</span>",
+                        unsafe_allow_html=True,
+                    )
+                    st.markdown(f"**Employee:** {t.get('user_id', '–')} &nbsp;·&nbsp; **Role:** {t.get('job_role', '–')} &nbsp;·&nbsp; **Submitted:** {created_fmt}")
 
-                    st.markdown("**📅 Ticket Timeline:**")
-                    st.markdown(f"<span class='timeline-dot' style='background:#7c3aed'></span> **Opened** — {created_fmt}", unsafe_allow_html=True)
+                    st.markdown("**Timeline:**")
+                    st.markdown(f"<span class='timeline-dot' style='background:#8b3a2a'></span> Opened — {created_fmt}", unsafe_allow_html=True)
                     if status == "In Progress":
-                        st.markdown(f"<span class='timeline-dot' style='background:#3b82f6'></span> **In Progress** — being worked on", unsafe_allow_html=True)
+                        st.markdown(f"<span class='timeline-dot' style='background:#2d3d4f'></span> In Progress", unsafe_allow_html=True)
                     if status == "Resolved":
-                        st.markdown(f"<span class='timeline-dot' style='background:#059669'></span> **Resolved** ✅", unsafe_allow_html=True)
+                        st.markdown(f"<span class='timeline-dot' style='background:#3d5a4a'></span> Resolved ✓", unsafe_allow_html=True)
                     if overdue:
-                        st.markdown(f"<span class='timeline-dot' style='background:#dc2626'></span> **⚠️ Overdue — open for more than 24 hours**", unsafe_allow_html=True)
+                        st.markdown(f"<span class='timeline-dot' style='background:#8b3a2a'></span> ⚠ Overdue — open for more than 24 hours", unsafe_allow_html=True)
 
                     st.markdown("**Problem:**")
                     st.markdown(f"<div class='answer-box'>{ticket_query}</div>", unsafe_allow_html=True)
@@ -830,17 +1301,17 @@ def page_admin():
 
                     bc1, bc2, _, _ = st.columns([1, 1, 1.5, 1])
                     with bc1:
-                        if st.button("💾 Save", key=f"admin_save_{tid}", use_container_width=True):
+                        if st.button("Save", key=f"admin_save_{tid}", use_container_width=True):
                             try:
                                 db_update_ticket(tid, new_status, note)
                                 if note.strip():
                                     auto_save_note_to_resolved(ticket_query, note)
-                                st.success("✅ Ticket updated!")
+                                st.success("Ticket updated.")
                                 st.rerun()
                             except Exception as e:
                                 st.error(str(e))
                     with bc2:
-                        if st.button("🗑️ Delete", key=f"admin_del_{tid}", use_container_width=True):
+                        if st.button("Delete", key=f"admin_del_{tid}", use_container_width=True):
                             try:
                                 db_delete_ticket(tid)
                                 st.warning("Deleted.")
@@ -848,9 +1319,6 @@ def page_admin():
                             except Exception as e:
                                 st.error(str(e))
 
-    # ══════════════════════════════════════════
-    #  TAB 2 — Doc Validator
-    # ══════════════════════════════════════════
     with admin_tab2:
         _render_doc_validator()
 
@@ -861,8 +1329,8 @@ def page_admin():
 def _render_doc_validator():
     st.markdown("""
     <div style='margin-bottom: 8px;'>
-        <p class='validator-title'>🔍 Document Sensitivity Validator</p>
-        <p style='color:#6b7280; font-size:14px; margin-top:0;'>
+        <p class='validator-title'>Document Sensitivity Validator</p>
+        <p style='color: #6b5f55; font-size: 16px; margin-top: 0; font-family: EB Garamond, serif;'>
             Enter your document details below. The system will instantly classify it as
             <strong>Sensitive</strong> (requires full approval pipeline) or
             <strong>Normal</strong> (auto-approved).
@@ -872,18 +1340,17 @@ def _render_doc_validator():
 
     st.markdown("---")
 
-    # ── Input form ────────────────────────────────────────────────────────────
     with st.form("doc_validator_form", clear_on_submit=False):
         col1, col2 = st.columns(2)
         with col1:
             doc_title = st.text_input(
-                "📄 Document Title *",
+                "Document Title *",
                 placeholder="e.g. VPN Access Policy, Employee Onboarding Guide…",
                 key="dv_title"
             )
         with col2:
             doc_type_hint = st.selectbox(
-                "📂 Document Hint (optional)",
+                "Document Hint (optional)",
                 ["— Let the system decide —", "VPN / Network", "Security Policy",
                  "Legal / Compliance", "Financial", "Infrastructure",
                  "Technical Guide", "Team Process", "FAQ / Onboarding", "General"],
@@ -891,24 +1358,22 @@ def _render_doc_validator():
             )
 
         doc_description = st.text_area(
-            "📝 Document Description *",
+            "Document Description *",
             placeholder="Briefly describe what this document covers, its purpose, and intended audience…",
             height=120,
             key="dv_description"
         )
 
         validate_btn = st.form_submit_button(
-            "🔍 Validate Document",
+            "Validate Document →",
             type="primary",
             use_container_width=False
         )
 
-    # ── Validation result ─────────────────────────────────────────────────────
     if validate_btn:
         if not doc_title.strip() or not doc_description.strip():
-            st.warning("⚠️ Please fill in both the Document Title and Description.")
+            st.warning("Please fill in both the Document Title and Description.")
         else:
-            # Append type hint to description for better classification
             hint_text = doc_description.strip()
             if doc_type_hint != "— Let the system decide —":
                 hint_text += f" {doc_type_hint}"
@@ -918,23 +1383,21 @@ def _render_doc_validator():
             st.session_state["dv_last_title"]  = doc_title.strip()
             st.session_state["dv_last_desc"]   = doc_description.strip()
 
-    # ── Show result if available ──────────────────────────────────────────────
     result = st.session_state.get("dv_result")
     if result:
         st.markdown("---")
-        st.markdown("### 📊 Validation Result")
+        st.markdown("### Validation Result")
 
         is_sensitive = result["is_sensitive"]
 
         if is_sensitive:
-            # ── SENSITIVE result ──────────────────────────────────────────────
             st.markdown(f"""
             <div class='sensitive-box'>
                 <div style='display:flex; align-items:center; gap:12px; margin-bottom:14px;'>
-                    <span style='font-size:36px;'>🔴</span>
+                    <span style='font-size:32px;'>⚠</span>
                     <div>
-                        <span class='sensitive-badge'>🔒 SENSITIVE DOCUMENT</span>
-                        <p style='margin:6px 0 0 0; color:#7f1d1d; font-size:14px;'>
+                        <span class='sensitive-badge'>Sensitive Document</span>
+                        <p style='margin:8px 0 0 0; color:#3d3530; font-size:16px; font-family: EB Garamond, serif;'>
                             {result["reason"]}
                         </p>
                     </div>
@@ -944,56 +1407,46 @@ def _render_doc_validator():
 
             st.markdown("<br>", unsafe_allow_html=True)
 
-            # Detected keywords
             if result["matched_keywords"]:
                 kw_html = "".join(
-                    f"<span class='keyword-tag'>🔑 {kw}</span>"
+                    f"<span class='keyword-tag'>{kw}</span>"
                     for kw in result["matched_keywords"]
                 )
                 st.markdown(f"""
                 <div style='margin-bottom:16px;'>
-                    <p style='font-size:13px; color:#6b7280; margin-bottom:6px;'>
-                        <strong>Detected sensitive keywords:</strong>
+                    <p style='font-size:11px; color:#9c8e82; margin-bottom:6px; font-family: DM Mono, monospace; letter-spacing: 0.06em; text-transform: uppercase;'>
+                        Detected sensitive keywords
                     </p>
                     {kw_html}
                 </div>
                 """, unsafe_allow_html=True)
 
-            # Approval chain preview
             chain = result["chain"]
             if chain:
-                st.markdown("#### 🔗 Required Approval Chain")
+                st.markdown("#### Required Approval Chain")
                 st.markdown(
-                    "<p style='color:#6b7280; font-size:13px; margin-top:-8px;'>"
+                    f"<p style='color:#6b5f55; font-size:14px; margin-top:-8px; font-family: EB Garamond, serif;'>"
                     f"This document must be approved by all {len(chain)} level(s) before it is published.</p>",
                     unsafe_allow_html=True
                 )
 
-                # Visual chain
                 chain_html = ""
                 for i, role in enumerate(chain):
-                    role_icons = {
-                        "Team Lead":    "👨‍💼",
-                        "Tech Manager": "👩‍💻",
-                        "CTO":          "🧑‍🔬",
-                        "CEO":          "👑",
-                    }
-                    icon = role_icons.get(role, "👤")
+                    role_icons = {"Team Lead": "◈", "Tech Manager": "◉", "CTO": "◎", "CEO": "◆"}
+                    icon = role_icons.get(role, "○")
                     chain_html += f"<span class='chain-step'>{icon} {role}</span>"
                     if i < len(chain) - 1:
-                        chain_html += "<span class='chain-arrow'>→</span>"
+                        chain_html += "<span class='chain-arrow'> → </span>"
 
                 st.markdown(
-                    f"<div style='display:flex; flex-wrap:wrap; align-items:center; "
-                    f"gap:4px; padding:16px; background:#eff6ff; border-radius:12px; "
-                    f"border:1.5px solid #bfdbfe;'>{chain_html}</div>",
+                    f"<div style='display:flex; flex-wrap:wrap; align-items:center; gap:4px; "
+                    f"padding:16px; background:var(--cream-dark); border-radius:3px; "
+                    f"border:1px solid var(--border);'>{chain_html}</div>",
                     unsafe_allow_html=True
                 )
 
                 st.markdown("<br>", unsafe_allow_html=True)
-
-                # Timeline breakdown
-                st.markdown("#### 📅 Approval Timeline")
+                st.markdown("#### Approval Timeline")
                 for i, role in enumerate(chain):
                     role_descs = {
                         "Team Lead":    "Reviews team-level concerns and day-to-day impact.",
@@ -1002,31 +1455,27 @@ def _render_doc_validator():
                         "CEO":          "Final sign-off for company-wide policy and risk exposure.",
                     }
                     desc   = role_descs.get(role, "Reviews and approves the document.")
-                    colors = ["#7c3aed", "#3b82f6", "#0891b2", "#059669"]
+                    colors = ["#8b3a2a", "#2d3d4f", "#3d5a4a", "#8b6914"]
                     color  = colors[i % len(colors)]
                     st.markdown(
                         f"<div style='display:flex; gap:12px; align-items:flex-start; "
-                        f"margin-bottom:10px; padding:12px 16px; background:white; "
-                        f"border-radius:10px; border-left:4px solid {color};'>"
-                        f"<span style='font-size:22px; min-width:32px; text-align:center;'>"
-                        f"{'👨‍💼' if role=='Team Lead' else '👩‍💻' if role=='Tech Manager' else '🧑‍🔬' if role=='CTO' else '👑'}"
-                        f"</span>"
+                        f"margin-bottom:8px; padding:14px 18px; background:var(--paper); "
+                        f"border-radius:3px; border-left:3px solid {color}; border:1px solid var(--border);'>"
+                        f"<div style='min-width:22px; font-family: DM Mono, monospace; color:{color}; font-weight:500;'>{i+1:02d}</div>"
                         f"<div>"
-                        f"<p style='margin:0; font-weight:700; color:{color};'>Stage {i+1}: {role}</p>"
-                        f"<p style='margin:2px 0 0 0; font-size:13px; color:#6b7280;'>{desc}</p>"
+                        f"<p style='margin:0; font-weight:600; color:{color}; font-family: Playfair Display, serif; font-size:15px;'>{role}</p>"
+                        f"<p style='margin:2px 0 0 0; font-size:14px; color:#6b5f55; font-family: EB Garamond, serif;'>{desc}</p>"
                         f"</div>"
                         f"</div>",
                         unsafe_allow_html=True
                     )
 
-            # Action buttons
             st.markdown("---")
-            st.markdown("#### ⚡ Next Steps")
+            st.markdown("#### Next Steps")
             act_col1, act_col2, _ = st.columns([2, 2, 3])
             with act_col1:
                 if PIPELINE_AVAILABLE:
-                    if st.button("🚀 Submit to Approval Pipeline", use_container_width=True, type="primary", key="dv_submit_pipeline"):
-                        # Store prefill info so the pipeline form can use it
+                    if st.button("Submit to Pipeline →", use_container_width=True, type="primary", key="dv_submit_pipeline"):
                         st.session_state["ap_ai_prefill"] = {
                             "title":    st.session_state.get("dv_last_title", ""),
                             "category": result.get("category", "Security"),
@@ -1035,23 +1484,22 @@ def _render_doc_validator():
                         }
                         st.session_state["ap_show_prefill_form"] = True
                         st.session_state["nav_page"] = "📋 Approval Pipeline"
-                        st.success("✅ Pre-filled! Navigate to the **Approval Pipeline** page to submit.")
+                        st.success("Pre-filled. Navigate to the Approval Pipeline page to submit.")
                 else:
                     st.info("Approval Pipeline not available.")
             with act_col2:
-                if st.button("🔄 Validate Another Doc", use_container_width=True, key="dv_reset"):
+                if st.button("Validate Another", use_container_width=True, key="dv_reset"):
                     st.session_state.pop("dv_result", None)
                     st.rerun()
 
         else:
-            # ── NORMAL result ─────────────────────────────────────────────────
             st.markdown(f"""
             <div class='auto-approve-box'>
                 <div style='display:flex; align-items:center; gap:12px; margin-bottom:10px;'>
-                    <span style='font-size:40px;'>✅</span>
+                    <span style='font-size:32px; color:#3d5a4a;'>✓</span>
                     <div>
-                        <span class='normal-badge'>✅ NORMAL DOCUMENT — AUTO-APPROVED</span>
-                        <p style='margin:6px 0 0 0; color:#14532d; font-size:14px;'>
+                        <span class='normal-badge'>Normal Document — Auto-Approved</span>
+                        <p style='margin:8px 0 0 0; color:#3d3530; font-size:16px; font-family: EB Garamond, serif;'>
                             {result["reason"]}
                         </p>
                     </div>
@@ -1063,21 +1511,21 @@ def _render_doc_validator():
 
             if result["matched_keywords"]:
                 kw_html = "".join(
-                    f"<span class='keyword-tag' style='background:#f0fdf4; border-color:#86efac;'>✅ {kw}</span>"
+                    f"<span class='keyword-tag' style='background:#d4e8dc; border-color:#7ab898;'>{kw}</span>"
                     for kw in result["matched_keywords"]
                 )
                 st.markdown(f"""
                 <div style='margin-bottom:16px;'>
-                    <p style='font-size:13px; color:#6b7280; margin-bottom:6px;'>
-                        <strong>Detected normal-content keywords:</strong>
+                    <p style='font-size:11px; color:#9c8e82; margin-bottom:6px; font-family: DM Mono, monospace; letter-spacing: 0.06em; text-transform: uppercase;'>
+                        Detected normal-content keywords
                     </p>
                     {kw_html}
                 </div>
                 """, unsafe_allow_html=True)
 
             st.info(
-                "💡 **No approval chain needed.** This document will be instantly approved "
-                "when submitted through the Approval Pipeline. You can proceed directly to submission.",
+                "No approval chain needed. This document will be instantly approved "
+                "when submitted through the Approval Pipeline.",
                 icon="ℹ️"
             )
 
@@ -1085,7 +1533,7 @@ def _render_doc_validator():
             act_col1, act_col2, _ = st.columns([2, 2, 3])
             with act_col1:
                 if PIPELINE_AVAILABLE:
-                    if st.button("🚀 Submit to Approval Pipeline", use_container_width=True, type="primary", key="dv_submit_normal"):
+                    if st.button("Submit to Pipeline →", use_container_width=True, type="primary", key="dv_submit_normal"):
                         st.session_state["ap_ai_prefill"] = {
                             "title":    st.session_state.get("dv_last_title", ""),
                             "category": "General",
@@ -1093,36 +1541,33 @@ def _render_doc_validator():
                             "urgency":  "Normal",
                         }
                         st.session_state["ap_show_prefill_form"] = True
-                        st.success("✅ Pre-filled! Navigate to the **Approval Pipeline** page to submit.")
+                        st.success("Pre-filled. Navigate to the Approval Pipeline page to submit.")
                 else:
                     st.info("Approval Pipeline not available.")
             with act_col2:
-                if st.button("🔄 Validate Another Doc", use_container_width=True, key="dv_reset_normal"):
+                if st.button("Validate Another", use_container_width=True, key="dv_reset_normal"):
                     st.session_state.pop("dv_result", None)
                     st.rerun()
 
     else:
-        # Empty state placeholder
         st.markdown("""
-        <div style='text-align:center; padding:48px 24px; background:white;
-                    border-radius:16px; border:2px dashed #e5e7eb; margin-top:16px;'>
-            <div style='font-size:52px; margin-bottom:12px;'>🔍</div>
-            <p style='font-size:16px; font-weight:600; color:#374151; margin:0;'>
-                Enter your document details above and click <strong>Validate Document</strong>
+        <div style='text-align:center; padding:52px 24px; background:var(--paper);
+                    border-radius:3px; border:1px solid var(--border); margin-top:16px;'>
+            <div style='font-size:48px; margin-bottom:14px; color:#d4c9bc;'>◉</div>
+            <p style='font-size:18px; font-weight:600; color:#1a1612; font-family: Playfair Display, serif; margin:0;'>
+                Enter document details above and click Validate
             </p>
-            <p style='font-size:13px; color:#9ca3af; margin-top:8px;'>
+            <p style='font-size:14px; color:#9c8e82; margin-top:10px; font-family: EB Garamond, serif;'>
                 The system will instantly classify it and show you the required approval chain.
             </p>
-            <div style='margin-top:20px; display:flex; justify-content:center; gap:24px; flex-wrap:wrap;'>
+            <div style='margin-top:24px; display:flex; justify-content:center; gap:40px; flex-wrap:wrap;'>
                 <div style='text-align:center;'>
-                    <span style='font-size:28px;'>🔴</span>
-                    <p style='font-size:12px; color:#991b1b; font-weight:600; margin:4px 0 0;'>Sensitive</p>
-                    <p style='font-size:11px; color:#9ca3af; margin:0;'>Full pipeline required</p>
+                    <p style='font-family: DM Mono, monospace; font-size:11px; color:#8b3a2a; font-weight:600; margin:4px 0 0; letter-spacing:0.08em; text-transform:uppercase;'>Sensitive</p>
+                    <p style='font-size:12px; color:#9c8e82; margin:2px 0 0; font-family: EB Garamond, serif;'>Full pipeline required</p>
                 </div>
                 <div style='text-align:center;'>
-                    <span style='font-size:28px;'>✅</span>
-                    <p style='font-size:12px; color:#065f46; font-weight:600; margin:4px 0 0;'>Normal</p>
-                    <p style='font-size:11px; color:#9ca3af; margin:0;'>Auto-approved instantly</p>
+                    <p style='font-family: DM Mono, monospace; font-size:11px; color:#3d5a4a; font-weight:600; margin:4px 0 0; letter-spacing:0.08em; text-transform:uppercase;'>Normal</p>
+                    <p style='font-size:12px; color:#9c8e82; margin:2px 0 0; font-family: EB Garamond, serif;'>Auto-approved instantly</p>
                 </div>
             </div>
         </div>
@@ -1137,7 +1582,7 @@ def page_analytics():
         st.warning("Please log in via the Admin Panel first.")
         return
 
-    st.markdown("# 📊 Analytics Dashboard")
+    st.markdown("# Analytics Dashboard")
     st.markdown("---")
 
     try:
@@ -1172,51 +1617,90 @@ def page_analytics():
         high_prio = len(df[df["priority"] == "High"])
         st.markdown(f"<div class='metric-card'><div class='metric-number'>{high_prio}</div><div class='metric-label'>High Priority</div></div>", unsafe_allow_html=True)
 
+    # Quarry-style chart color palette
+    RUST = "#8b3a2a"
+    SAGE = "#3d5a4a"
+    AMBER = "#8b6914"
+    SLATE = "#2d3d4f"
+
     st.markdown("---")
     col_a, col_b = st.columns(2)
 
     with col_a:
-        st.markdown("### 📅 Tickets Per Day")
+        st.markdown("### Tickets Per Day")
         daily = df.groupby("date").size().reset_index(name="count")
-        fig1 = px.bar(daily, x="date", y="count", color_discrete_sequence=["#7c3aed"], text="count")
-        fig1.update_layout(xaxis_title="Date", yaxis_title="Number of Tickets", plot_bgcolor="white", paper_bgcolor="white", margin=dict(t=20, b=80), bargap=0.4, xaxis=dict(tickangle=-35, type="category", tickfont=dict(size=11)), yaxis=dict(tickformat="d", dtick=1))
-        fig1.update_traces(textposition="outside", marker_line_width=0, marker_color="#7c3aed")
+        fig1 = px.bar(daily, x="date", y="count", color_discrete_sequence=[RUST], text="count")
+        fig1.update_layout(
+            xaxis_title="", yaxis_title="",
+            plot_bgcolor="#faf7f2", paper_bgcolor="#faf7f2",
+            margin=dict(t=20, b=80),
+            bargap=0.4,
+            font=dict(family="EB Garamond", color="#3d3530"),
+            xaxis=dict(tickangle=-35, type="category", tickfont=dict(size=11), gridcolor="#e8e0d0"),
+            yaxis=dict(tickformat="d", dtick=1, gridcolor="#e8e0d0"),
+        )
+        fig1.update_traces(textposition="outside", marker_line_width=0)
         st.plotly_chart(fig1, use_container_width=True)
 
     with col_b:
-        st.markdown("### 🥧 Ticket Status Breakdown")
+        st.markdown("### Ticket Status Breakdown")
         status_counts = df["status"].value_counts().reset_index()
         status_counts.columns = ["status", "count"]
-        fig2 = px.pie(status_counts, names="status", values="count", color="status", color_discrete_map={"Open": "#f59e0b", "In Progress": "#3b82f6", "Resolved": "#10b981"}, hole=0.35)
+        fig2 = px.pie(
+            status_counts, names="status", values="count", color="status",
+            color_discrete_map={"Open": AMBER, "In Progress": SLATE, "Resolved": SAGE},
+            hole=0.4,
+        )
         fig2.update_traces(textinfo="label+percent", textfont_size=13)
-        fig2.update_layout(margin=dict(t=20), legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5))
+        fig2.update_layout(
+            margin=dict(t=20),
+            paper_bgcolor="#faf7f2",
+            font=dict(family="EB Garamond", color="#3d3530"),
+            legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5),
+        )
         st.plotly_chart(fig2, use_container_width=True)
 
     col_c, col_d = st.columns(2)
 
     with col_c:
-        st.markdown("### 🚨 Tickets by Priority")
+        st.markdown("### Tickets by Priority")
         prio_order = ["High", "Medium", "Low"]
         prio_counts = df["priority"].value_counts().reindex(prio_order, fill_value=0).reset_index()
         prio_counts.columns = ["priority", "count"]
-        fig3 = px.bar(prio_counts, x="priority", y="count", color="priority", color_discrete_map={"High": "#ef4444", "Medium": "#f59e0b", "Low": "#10b981"}, text="count", category_orders={"priority": prio_order})
-        fig3.update_layout(showlegend=False, plot_bgcolor="white", paper_bgcolor="white", margin=dict(t=20), bargap=0.45, xaxis_title="Priority Level", yaxis=dict(title="Count", tickformat="d", dtick=1))
+        fig3 = px.bar(
+            prio_counts, x="priority", y="count", color="priority",
+            color_discrete_map={"High": RUST, "Medium": AMBER, "Low": SAGE},
+            text="count", category_orders={"priority": prio_order},
+        )
+        fig3.update_layout(
+            showlegend=False, plot_bgcolor="#faf7f2", paper_bgcolor="#faf7f2",
+            margin=dict(t=20), bargap=0.45,
+            font=dict(family="EB Garamond", color="#3d3530"),
+            xaxis=dict(title="", gridcolor="#e8e0d0"),
+            yaxis=dict(title="", tickformat="d", dtick=1, gridcolor="#e8e0d0"),
+        )
         fig3.update_traces(textposition="outside", marker_line_width=0)
         st.plotly_chart(fig3, use_container_width=True)
 
     with col_d:
-        st.markdown("### 💼 Tickets by Job Role")
+        st.markdown("### Tickets by Job Role")
         role_counts = df["job_role"].value_counts().reset_index()
         role_counts.columns = ["role", "count"]
-        fig4 = px.bar(role_counts, x="count", y="role", orientation="h", color_discrete_sequence=["#7c3aed"], text="count")
-        fig4.update_layout(xaxis=dict(title="Number of Tickets", tickformat="d", dtick=1), yaxis_title="", plot_bgcolor="white", paper_bgcolor="white", margin=dict(t=20, l=140), bargap=0.35, height=max(300, len(role_counts) * 50))
+        fig4 = px.bar(role_counts, x="count", y="role", orientation="h", color_discrete_sequence=[SLATE], text="count")
+        fig4.update_layout(
+            xaxis=dict(title="", tickformat="d", dtick=1, gridcolor="#e8e0d0"),
+            yaxis_title="", plot_bgcolor="#faf7f2", paper_bgcolor="#faf7f2",
+            margin=dict(t=20, l=140), bargap=0.35,
+            font=dict(family="EB Garamond", color="#3d3530"),
+            height=max(300, len(role_counts) * 50),
+        )
         fig4.update_traces(textposition="outside", marker_line_width=0)
         st.plotly_chart(fig4, use_container_width=True)
 
     st.markdown("---")
-    st.markdown("### 📥 Export Data")
+    st.markdown("### Export Data")
     csv_bytes = tickets_to_csv(tickets)
-    st.download_button("⬇️ Download All Tickets as CSV", data=csv_bytes, file_name="helpdesk_tickets.csv", mime="text/csv", key="analytics_download_csv")
+    st.download_button("⬇ Download All Tickets as CSV", data=csv_bytes, file_name="helpdesk_tickets.csv", mime="text/csv", key="analytics_download_csv")
 
 
 # ════════════════════════════════════════════════════════
@@ -1227,8 +1711,12 @@ def page_knowledge_gap():
         st.warning("Please log in via the Admin Panel first.")
         return
 
-    st.markdown("# 🕳️ Knowledge Gap Report")
-    st.markdown("<p style='color:#6b7280'>Questions employees asked that the system couldn't answer.</p>", unsafe_allow_html=True)
+    st.markdown("# Knowledge Gap Report")
+    st.markdown(
+        "<p style='color:#6b5f55; font-size:17px; font-family: EB Garamond, serif;'>"
+        "Questions employees asked that the system couldn't answer.</p>",
+        unsafe_allow_html=True,
+    )
     st.markdown("---")
 
     db = get_db()
@@ -1243,20 +1731,20 @@ def page_knowledge_gap():
         return
 
     if not rows:
-        st.success("🎉 No knowledge gaps yet! Every question has been answered.", icon="✅")
+        st.success("No knowledge gaps yet — every question has been answered.", icon="✅")
         return
 
     queries = [r["query"] for r in rows]
 
     col1, col2 = st.columns(2)
     with col1:
-        st.markdown(f"<div class='metric-card'><div class='metric-number'>{len(queries)}</div><div class='metric-label'>Total Unanswered Questions</div></div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='metric-card'><div class='metric-number'>{len(queries)}</div><div class='metric-label'>Total Unanswered</div></div>", unsafe_allow_html=True)
     with col2:
         unique = len(set(q.lower().strip() for q in queries))
         st.markdown(f"<div class='metric-card'><div class='metric-number'>{unique}</div><div class='metric-label'>Unique Questions</div></div>", unsafe_allow_html=True)
 
     st.markdown("---")
-    st.markdown("### 📋 All Unanswered Questions")
+    st.markdown("### All Unanswered Questions")
 
     for i, row in enumerate(rows, 1):
         created = row.get("created_at", "")
@@ -1266,15 +1754,15 @@ def page_knowledge_gap():
             date_fmt = created
         st.markdown(
             f"<div class='gap-card'>"
-            f"<span class='gap-count'>#{i}</span> &nbsp;"
-            f"<strong>{row['query']}</strong>"
-            f"<br><small style='color:#9ca3af'>Asked on {date_fmt}</small>"
+            f"<span class='gap-count'>#{i:02d}</span> &nbsp;"
+            f"<strong style='font-family: EB Garamond, serif; font-size:16px;'>{row['query']}</strong>"
+            f"<br><small style='color:#9c8e82; font-family: DM Mono, monospace; font-size:11px;'>Asked {date_fmt}</small>"
             f"</div>",
-            unsafe_allow_html=True
+            unsafe_allow_html=True,
         )
 
     st.markdown("---")
-    st.markdown("### 🔑 Most Requested Missing Topics")
+    st.markdown("### Most Requested Missing Topics")
     all_words = []
     for q in queries:
         all_words.extend(_content_words(q))
@@ -1285,21 +1773,27 @@ def page_knowledge_gap():
             import plotly.express as px
             import pandas as pd
             wdf = pd.DataFrame(word_freq, columns=["keyword", "count"])
-            fig = px.bar(wdf, x="count", y="keyword", orientation="h", color_discrete_sequence=["#f97316"], text="count")
-            fig.update_layout(xaxis=dict(title="Times Asked", tickformat="d", dtick=1), yaxis_title="", plot_bgcolor="white", paper_bgcolor="white", margin=dict(t=10, l=120), height=max(300, len(wdf) * 40), bargap=0.35)
+            fig = px.bar(wdf, x="count", y="keyword", orientation="h", color_discrete_sequence=["#8b3a2a"], text="count")
+            fig.update_layout(
+                xaxis=dict(title="", tickformat="d", dtick=1, gridcolor="#e8e0d0"),
+                yaxis_title="", plot_bgcolor="#faf7f2", paper_bgcolor="#faf7f2",
+                margin=dict(t=10, l=120),
+                font=dict(family="EB Garamond", color="#3d3530"),
+                height=max(300, len(wdf) * 40), bargap=0.35,
+            )
             fig.update_traces(textposition="outside", marker_line_width=0)
             fig.update_yaxes(autorange="reversed", tickfont=dict(size=12))
             st.plotly_chart(fig, use_container_width=True)
         except ImportError:
             for word, count in word_freq:
-                st.markdown(f"**{word}** — asked {count} time(s)")
+                st.markdown(f"**{word}** — {count} time(s)")
 
     st.markdown("---")
-    if st.button("🗑️ Clear All Failed Queries (after fixing KB)", key="gap_clear_btn"):
+    if st.button("Clear All Failed Queries", key="gap_clear_btn"):
         try:
             db.table("failed_queries").delete().neq("id", 0).execute()
-            st.toast("🗑️ All failed queries cleared from `failed_queries` table", icon="✅")
-            st.success("Cleared!")
+            st.toast("Cleared all failed queries", icon="✅")
+            st.success("Cleared.")
             st.rerun()
         except Exception as e:
             st.error(str(e))
@@ -1309,71 +1803,71 @@ def page_knowledge_gap():
 #  PAGE: SETUP
 # ════════════════════════════════════════════════════════
 def page_setup():
-    st.markdown("# ⚙️ Setup & Configuration")
-    with st.expander("📁 Streamlit Secrets", expanded=True):
+    st.markdown("# Setup & Configuration")
+    with st.expander("Streamlit Secrets", expanded=True):
         st.code('[secrets]\nSUPABASE_URL   = "https://xxxx.supabase.co"\nSUPABASE_KEY   = "eyJ..."\nADMIN_PASSWORD = "your_password"', language="toml")
-    with st.expander("🗄️ Create Supabase Tables (run all)", expanded=True):
+    with st.expander("Create Supabase Tables (run all)", expanded=True):
         st.code(SCHEMA_SQL, language="sql")
-    with st.expander("📦 Install Dependencies"):
+    with st.expander("Install Dependencies"):
         st.code("pip install streamlit supabase pdfplumber sentence-transformers requests torch plotly pandas", language="bash")
 
     st.markdown("---")
-    st.markdown("### 🔌 Connection Status")
+    st.markdown("### Connection Status")
     c1, c2 = st.columns(2)
     with c1:
         if st.secrets.get("SUPABASE_URL", ""):
-            st.success("✅ Supabase URL configured")
+            st.success("Supabase URL configured")
         else:
-            st.error("❌ Supabase URL missing")
+            st.error("Supabase URL missing")
     with c2:
         if st.secrets.get("SUPABASE_KEY", ""):
-            st.success("✅ Supabase Key configured")
+            st.success("Supabase Key configured")
         else:
-            st.error("❌ Supabase Key missing")
+            st.error("Supabase Key missing")
 
     st.markdown("---")
-    if st.button("🧪 Test Database", key="setup_test_db"):
+    if st.button("Test Database Connection", key="setup_test_db"):
         try:
             db = get_db()
             if db is None:
                 st.error("Not configured.")
             else:
                 db.table("tickets").select("id").limit(1).execute()
-                st.success("✅ Database connected!")
-                st.toast("✅ Successfully connected to Supabase!", icon="☁️")
+                st.success("Database connected!")
+                st.toast("Connected to Supabase successfully", icon="☁️")
         except Exception as e:
             st.error(f"Failed: {e}")
 
-    if st.button("📄 Test PDF + Q&A Extraction", key="setup_test_pdf"):
+    if st.button("Test PDF + Q&A Extraction", key="setup_test_pdf"):
         pdf_bytes = get_pdf_bytes()
         if not pdf_bytes:
-            st.error("❌ Could not download PDF.")
+            st.error("Could not download PDF.")
         else:
-            st.success(f"✅ PDF downloaded ({len(pdf_bytes) // 1024} KB)")
+            st.success(f"PDF downloaded ({len(pdf_bytes) // 1024} KB)")
             pairs = load_qa_pairs()
             if pairs:
-                st.success(f"✅ {len(pairs)} Q&A pairs extracted!")
-                st.toast(f"📄 {len(pairs)} Q&A pairs loaded from PDF into memory", icon="📚")
+                st.success(f"{len(pairs)} Q&A pairs extracted!")
+                st.toast(f"{len(pairs)} Q&A pairs loaded from PDF", icon="📚")
                 with st.expander("Preview first 5 pairs"):
                     for q, a in pairs[:5]:
                         st.markdown(f"**Q:** {q[:200]}")
                         st.markdown(f"**A:** {a[:200]}")
                         st.markdown("---")
             else:
-                st.error("❌ No Q&A pairs found.")
+                st.error("No Q&A pairs found.")
 
-    if st.button("🧠 Test Semantic Search Model", key="setup_test_model"):
+    if st.button("Test Semantic Search Model", key="setup_test_model"):
         model, q_emb, a_emb, pairs, util = load_model_and_embeddings()
         if model is None:
-            st.error("❌ Model failed to load.")
+            st.error("Model failed to load.")
         else:
-            st.success("✅ Model loaded: multi-qa-mpnet-base-dot-v1")
-            st.toast("🧠 Semantic model loaded into RAM cache", icon="⚡")
-            st.info(f"📊 {len(pairs)} Q embeddings + {len(pairs)} A embeddings ready.")
+            st.success("Model loaded: multi-qa-mpnet-base-dot-v1")
+            st.toast("Semantic model loaded into RAM cache", icon="⚡")
+            st.info(f"{len(pairs)} Q embeddings + {len(pairs)} A embeddings ready.")
 
     st.markdown("---")
-    st.markdown("### 🧠 Learned Answers (from resolved tickets)")
-    if st.button("📋 View All Learned Answers", key="setup_view_learned"):
+    st.markdown("### Learned Answers (from resolved tickets)")
+    if st.button("View All Learned Answers", key="setup_view_learned"):
         db = get_db()
         if db is None:
             st.error("Supabase not configured.")
@@ -1382,12 +1876,15 @@ def page_setup():
                 rows = db.table("resolved_issues").select("*").order("created_at", desc=True).execute().data or []
                 if rows:
                     st.success(f"{len(rows)} learned answer(s) in database.")
-                    st.toast(f"🧠 Fetched {len(rows)} learned answers from `resolved_issues` table", icon="☁️")
                     for row in rows:
-                        with st.expander(f"🟢 {row['query'][:100]}"):
+                        with st.expander(f"{row['query'][:100]}"):
                             st.markdown(f"**Original question:** {row['query']}")
                             st.markdown(f"**Admin solution:** {row['solution']}")
-                            st.markdown(f"<small style='color:#6b7280'>Saved: {_to_ist(row.get('created_at', ''))}</small>", unsafe_allow_html=True)
+                            st.markdown(
+                                f"<small style='color:#9c8e82; font-family: DM Mono, monospace; font-size:11px;'>"
+                                f"Saved: {_to_ist(row.get('created_at', ''))}</small>",
+                                unsafe_allow_html=True,
+                            )
                 else:
                     st.info("No learned answers yet.")
             except Exception as e:
@@ -1398,8 +1895,27 @@ def page_setup():
 #  MAIN — SIDEBAR + ROUTING
 # ════════════════════════════════════════════════════════
 with st.sidebar:
-    st.markdown("## 🤖 HelpDesk Pro")
-    st.markdown("---")
+    # Logo / wordmark
+    st.markdown("""
+    <div style='padding: 8px 0 20px;'>
+        <div style='display: flex; align-items: center; gap: 10px;'>
+            <div style='width: 28px; height: 28px; background: #8b3a2a; border-radius: 2px;
+                        display: flex; align-items: center; justify-content: center;'>
+                <span style='color: white; font-size: 14px; font-weight: 700; font-family: Playfair Display, serif;'>H</span>
+            </div>
+            <div>
+                <p style='margin:0; font-family: Playfair Display, serif; font-size:16px; font-weight:700; color: #f5f0e8; letter-spacing: -0.01em;'>HelpDesk Pro</p>
+                <p style='margin:0; font-family: DM Mono, monospace; font-size:9px; color: #6b5f55; letter-spacing: 0.1em; text-transform: uppercase;'>Knowledge · Support</p>
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown(
+        "<p style='font-family: DM Mono, monospace; font-size: 9px; color: #3a3028; "
+        "letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 8px;'>Navigate</p>",
+        unsafe_allow_html=True,
+    )
 
     page = st.radio("Navigation", [
         "🔍 Employee Portal",
@@ -1408,12 +1924,18 @@ with st.sidebar:
         "🕳️ Knowledge Gap Report",
         "📋 Approval Pipeline",
         "⚙️ Setup / Config",
-    ])
+    ], label_visibility="collapsed")
 
     st.markdown("---")
+
     if not PIPELINE_AVAILABLE:
-        st.warning("⚠️ approval_pipeline.py not found.", icon="⚠️")
-    st.markdown("<small style='opacity:0.6'>Powered by Supabase + pdfplumber</small>", unsafe_allow_html=True)
+        st.warning("approval_pipeline.py not found.", icon="⚠️")
+
+    st.markdown(
+        "<p style='font-family: DM Mono, monospace; font-size: 9px; color: #3a3028; "
+        "letter-spacing: 0.06em; margin-top: 16px;'>Powered by Supabase + pdfplumber</p>",
+        unsafe_allow_html=True,
+    )
 
 
 if page == "🔍 Employee Portal":
@@ -1428,6 +1950,6 @@ elif page == "📋 Approval Pipeline":
     if PIPELINE_AVAILABLE:
         page_approval_pipeline()
     else:
-        st.error("❌ `approval_pipeline.py` is missing from your project folder.")
+        st.error("`approval_pipeline.py` is missing from your project folder.")
 elif page == "⚙️ Setup / Config":
     page_setup()
