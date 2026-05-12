@@ -162,6 +162,38 @@ def _deserialize(row: dict) -> dict:
         req["chain"] = json.loads(req["chain"]) if req.get("chain") else []
     return req
 
+def _migrate_chain(req: dict) -> bool:
+    """
+    Fix records created with the old broken chains (e.g. Technical had ["Team Lead","CTO"],
+    skipping Tech Manager). Repairs the chain in-place and patches stage_idx if needed.
+    Returns True if a fix was applied (so caller can persist it).
+    """
+    if req.get("done"):
+        return False
+    category = req.get("category","")
+    correct  = _build_chain(category)
+    current  = req.get("chain", [])
+    if current == correct:
+        return False  # already correct
+
+    old_role = current[req["stage_idx"]] if req["stage_idx"] < len(current) else None
+    req["chain"] = correct
+    # Keep stage_idx pointing at the same role if possible, else reset to 0
+    if old_role and old_role in correct:
+        req["stage_idx"] = correct.index(old_role)
+    else:
+        req["stage_idx"] = 0
+    req["history"].append({
+        "time":   _now(),
+        "by":     "System",
+        "action": (
+            f"🔧 Chain auto-corrected from [{', '.join(current)}] "
+            f"to [{', '.join(correct)}]. Stage: {correct[req['stage_idx']]}."
+        ),
+    })
+    return True
+
+
 def _db_insert(req):
     try:
         res = _get_sb().table(TABLE).insert(_serialize(req)).execute()
@@ -238,6 +270,7 @@ def _init():
         "ap_role_auth": {}, "ap_loaded": False, "ap_confirm_delete": {},
         "ap_ai_chat_history": [], "ap_ai_result": None,
         "ap_ai_prefill": None, "ap_show_prefill_form": False,
+        "ap_escalation_msgs": [],   # banners to show after rerun
     }.items():
         if k not in st.session_state:
             st.session_state[k] = v
@@ -715,7 +748,12 @@ def page_approval_pipeline():
     if not st.session_state.ap_loaded:
         _load_requests()
 
-    # Run auto-escalation on every load
+    # ── Step 1: migrate any records with stale/wrong chains ───────────────────
+    for r in st.session_state.ap_requests:
+        if _migrate_chain(r):
+            _db_update(r)
+
+    # ── Step 2: run auto-escalation on every load ─────────────────────────────
     escalated = []
     for r in st.session_state.ap_requests:
         bi, bd = r.get("stage_idx",0), r.get("done",False)
@@ -723,14 +761,19 @@ def page_approval_pipeline():
         if r.get("stage_idx",0) != bi or (r.get("done") and not bd):
             escalated.append(r)
 
-    for r in escalated:
-        last = r["history"][-1] if r["history"] else {}
-        st.markdown(
-            f"<div class='escalation-banner'>"
-            f"⚠️ <b>Auto-escalation fired — {r['id']}: {r['title']}</b><br>"
-            f"{last.get('action','')}</div>",
-            unsafe_allow_html=True,
-        )
+    # ── Step 3: if anything changed, rerun so tabs/inboxes reflect new state ──
+    if escalated:
+        msgs = []
+        for r in escalated:
+            last = r["history"][-1] if r["history"] else {}
+            msgs.append(f"⚠️ **Auto-escalated {r['id']}: {r['title']}** — {last.get('action','')}")
+        st.session_state.ap_escalation_msgs = msgs
+        st.rerun()  # forces tabs + inbox counts to update immediately
+
+    # ── Step 4: show any escalation banners carried over from the rerun ───────
+    for msg in st.session_state.get("ap_escalation_msgs", []):
+        st.markdown(f"<div class='escalation-banner'>{msg}</div>", unsafe_allow_html=True)
+    st.session_state.ap_escalation_msgs = []  # clear after displaying
 
     hc, rc = st.columns([5,1])
     with hc: st.title("📋 Document Approval Pipeline")
