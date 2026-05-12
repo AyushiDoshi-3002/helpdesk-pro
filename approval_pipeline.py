@@ -58,31 +58,31 @@ def _escalation_label():
 # ── Document taxonomy ─────────────────────────────────────────────────────────
 DOC_CATEGORIES = {
     "Security": {
-        "label":    "🔒 Security",
+        "label":    " Security",
         "subtypes": ["Legal", "Compliance", "Public API", "Financial"],
         "approver": "CEO",
         "auto":     False,
     },
     "Technical": {
-        "label":    "⚙️ Technical",
+        "label":    " Technical",
         "subtypes": ["Architecture", "Database", "Tech Stack", "Infrastructure", "Code Standards"],
         "approver": "CTO",
         "auto":     False,
     },
     "Operations": {
-        "label":    "🔧 Operations",
+        "label":    " Operations",
         "subtypes": ["Runbooks", "Deployment", "Monitoring", "Setup Guides"],
         "approver": "Tech Manager",
         "auto":     False,
     },
     "Team": {
-        "label":    "👥 Team",
+        "label":    " Team",
         "subtypes": ["Internal Processes", "Troubleshooting", "Setup Guides"],
         "approver": "Team Lead",
         "auto":     False,
     },
     "General": {
-        "label":    "📄 General",
+        "label":    " General",
         "subtypes": ["FAQs", "Onboarding", "General Info"],
         "approver": "Admin",
         "auto":     True,
@@ -213,7 +213,7 @@ def _db_update(req):
 def _db_delete(rid):
     try:
         _get_sb().table(TABLE).delete().eq("id", rid).execute()
-        st.toast(f"🗑️ Deleted {rid}", icon="🗄️")
+        st.toast(f" Deleted {rid}", icon="🗄️")
     except Exception as e:
         st.error(f"DB delete error: {e}")
 
@@ -221,7 +221,7 @@ def _db_load_all():
     try:
         res = _get_sb().table(TABLE).select("*").order("created_at", desc=False).execute()
         rows = res.data or []
-        st.caption(f"🗄️ Loaded {len(rows)} record(s) from Supabase.")
+        st.caption(f" Loaded {len(rows)} record(s) from Supabase.")
         return [_deserialize(r) for r in rows]
     except Exception as e:
         st.error(f"DB load error: {e}")
@@ -246,7 +246,7 @@ def _time_left(expires_at):
         expires_at = _str_to_dt(expires_at)
     secs = int((expires_at - _now()).total_seconds())
     if secs <= 0:
-        return "⚠️ Escalating now…"
+        return " Escalating now…"
     h, rem = divmod(secs, 3600)
     m      = rem // 60
     if h >= 24:
@@ -414,7 +414,7 @@ def _check_expiry(req):
     req["history"].append({
         "time": _now(), "by": "System",
         "action": (
-            f"⚠️ AUTO-ESCALATED — {current} did not respond within "
+            f" AUTO-ESCALATED — {current} did not respond within "
             f"{_escalation_label()}. Automatically forwarded to {next_role}. "
             f"New deadline: {_fmt(deadline)}."
         ),
@@ -614,7 +614,7 @@ def _render_ai_assistant():
                 st.session_state.ap_show_prefill_form = True
                 st.rerun()
         with c2:
-            if st.button("🗑️ Clear", key="ai_clear_btn", use_container_width=True):
+            if st.button(" Clear", key="ai_clear_btn", use_container_width=True):
                 st.session_state.ap_ai_chat_history   = []
                 st.session_state.ap_ai_result         = None
                 st.session_state.ap_ai_prefill        = None
@@ -626,7 +626,7 @@ def _render_ai_assistant():
             placeholder='e.g. "I need a deployment guide" or "Create a security compliance doc"')
         c, _ = st.columns([1,4])
         with c:
-            go = st.form_submit_button("🔍 Check & Route", use_container_width=True, type="primary")
+            go = st.form_submit_button(" Check & Route", use_container_width=True, type="primary")
 
     if go and user_input.strip():
         res = _classify_request(user_input.strip())
