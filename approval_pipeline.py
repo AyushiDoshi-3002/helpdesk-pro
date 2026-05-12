@@ -14,7 +14,7 @@ ESCALATION RULE:
     CTO ignores for 7 days          → Expired
 
 TO TEST QUICKLY (without waiting a week):
-  Change ESCALATION_HOURS = 0.05  (fires in ~3 minutes)
+  Change ESCALATION_HOURS = 168  (fires in ~3 minutes)
   Submit a request, wait 3 min, click Refresh → escalation fires instantly.
   Change back to 168 before going live.
 """
