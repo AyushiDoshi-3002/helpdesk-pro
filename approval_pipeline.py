@@ -914,7 +914,7 @@ def _card_with_delete(req: dict):
     rid   = req["id"]; k = f"sub_{rid}"
     label = _card_label(req)
     with st.expander(label, expanded=False):
-        _card_body(req)
+        _card_body(req, ctx=f"sub_{rid}")
         st.divider()
         if not st.session_state.ap_confirm_delete.get(rid):
             dc, _ = st.columns([1,5])
@@ -935,7 +935,7 @@ def _card_with_delete(req: dict):
 def _request_card(req: dict, show_actions: bool, ctx: str = ""):
     k = f"{ctx}_{req['id']}"
     with st.expander(_card_label(req), expanded=(show_actions and not req["done"])):
-        _card_body(req)
+        _card_body(req, ctx=k)
         if show_actions and not req["done"]:
             note = st.text_input("Note (optional)", key=f"note_{k}", placeholder="Reason or comment…")
             ac, rc, _ = st.columns([1,1,4])
@@ -957,7 +957,7 @@ def _card_label(req: dict) -> str:
     return label
 
 
-def _card_body(req: dict):
+def _card_body(req: dict, ctx: str = ""):
     stage = req["chain"][req["stage_idx"]] if not req["done"] else "—"
     c1,c2,c3,c4 = st.columns(4)
     c1.markdown(f"**Requester**  \n{req['requester']}")
@@ -1004,7 +1004,7 @@ def _card_body(req: dict):
     else:
         st.caption("Auto-approved — no chain required.")
 
-    with st.expander("📜 History", key=f"hist_{req['id']}_{id(req)}"):
+    with st.expander("📜 History", key=f"hist_{req['id']}_{ctx}"):
         for entry in req["history"]:
             t      = _fmt(entry.get("time",""))
             note   = f" — {entry['note']}" if entry.get("note") else ""
