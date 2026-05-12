@@ -256,8 +256,7 @@ section[data-testid="stSidebar"] .stButton > button:hover {
 }
 
 /* ── Buttons ── */
-div.stButton > button,
-div.stButton > button * {
+div.stButton > button {
     background: var(--ink) !important;
     color: #f5f0e8 !important;
     border: 1px solid var(--ink) !important;
@@ -269,6 +268,8 @@ div.stButton > button * {
     letter-spacing: 0.04em !important;
     transition: all 0.18s ease !important;
     box-shadow: none !important;
+    min-height: 38px !important;
+    line-height: 1.4 !important;
 }
 
 div.stButton > button p,
@@ -276,42 +277,43 @@ div.stButton > button span,
 div.stButton > button div {
     color: #f5f0e8 !important;
     background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    font-size: inherit !important;
+    font-family: inherit !important;
+    letter-spacing: inherit !important;
+    line-height: inherit !important;
 }
 
-div.stButton > button:hover,
-div.stButton > button:hover * {
+div.stButton > button:hover {
     background: var(--rust) !important;
     border-color: var(--rust) !important;
     color: #ffffff !important;
 }
 
-div.stButton > button[kind="primary"],
-div.stButton > button[kind="primary"] * {
+div.stButton > button:hover p,
+div.stButton > button:hover span,
+div.stButton > button:hover div {
+    color: #ffffff !important;
+}
+
+div.stButton > button[kind="primary"] {
     background: var(--rust) !important;
     border-color: var(--rust) !important;
     color: #ffffff !important;
 }
 
-div.stButton > button[kind="primary"]:hover,
-div.stButton > button[kind="primary"]:hover * {
+div.stButton > button[kind="primary"] p,
+div.stButton > button[kind="primary"] span,
+div.stButton > button[kind="primary"] div {
+    color: #ffffff !important;
+}
+
+div.stButton > button[kind="primary"]:hover {
     background: var(--rust-light) !important;
     border-color: var(--rust-light) !important;
     color: #ffffff !important;
-}
-
-/* Secondary / outlined buttons (Delete, Cancel etc.) */
-div.stButton > button[kind="secondary"],
-div.stButton > button[kind="secondary"] * {
-    background: var(--cream-dark) !important;
-    border: 1px solid var(--border-dark) !important;
-    color: var(--ink) !important;
-}
-
-div.stButton > button[kind="secondary"]:hover,
-div.stButton > button[kind="secondary"]:hover * {
-    background: var(--ink) !important;
-    border-color: var(--ink) !important;
-    color: #f5f0e8 !important;
 }
 
 /* ── Metric Cards ── */
