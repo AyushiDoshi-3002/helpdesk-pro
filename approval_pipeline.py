@@ -251,8 +251,8 @@ def _time_left(expires_at):
     m      = rem // 60
     if h >= 24:
         d = h // 24; hr = h % 24
-        return f"⏳ {d}d {hr}h before auto-escalation"
-    return f"⏳ {h}h {m}m before auto-escalation" if h else f"⏳ {m}m before auto-escalation"
+        return f" {d}d {hr}h before auto-escalation"
+    return f" {h}h {m}m before auto-escalation" if h else f"⏳ {m}m before auto-escalation"
 
 def _deadline_str(expires_at):
     try:
