@@ -382,14 +382,41 @@ div.stButton > button[kind="primary"]:hover {
 
 /* ── Inputs & Forms ── */
 .stTextInput > div > div > input,
-.stTextArea > div > div > textarea,
-.stSelectbox > div > div {
+.stTextArea > div > div > textarea {
     background: var(--paper) !important;
     border: 1px solid var(--border) !important;
     border-radius: 2px !important;
     color: var(--ink) !important;
     font-family: 'EB Garamond', serif !important;
-    font-size: 15px !important;
+    font-size: 18px !important;
+    padding: 10px 14px !important;
+    line-height: 1.6 !important;
+}
+
+.stTextInput > div > div > input::placeholder,
+.stTextArea > div > div > textarea::placeholder {
+    color: var(--ink-faint) !important;
+    font-size: 16px !important;
+    font-style: italic !important;
+    font-family: 'EB Garamond', serif !important;
+}
+
+.stSelectbox > div > div,
+.stSelectbox > div > div > div {
+    background: var(--paper) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 2px !important;
+    color: var(--ink) !important;
+    font-family: 'EB Garamond', serif !important;
+    font-size: 18px !important;
+    min-height: 44px !important;
+}
+
+[data-baseweb="select"] span,
+[data-baseweb="select"] div {
+    font-family: 'EB Garamond', serif !important;
+    font-size: 17px !important;
+    color: var(--ink) !important;
 }
 
 .stTextInput > div > div > input:focus,
@@ -398,12 +425,14 @@ div.stButton > button[kind="primary"]:hover {
     box-shadow: 0 0 0 1px var(--rust) !important;
 }
 
-label[data-testid="stWidgetLabel"] {
-    font-family: 'DM Mono', monospace !important;
-    font-size: 11px !important;
-    letter-spacing: 0.08em !important;
-    text-transform: uppercase !important;
-    color: var(--ink-muted) !important;
+label[data-testid="stWidgetLabel"],
+label[data-testid="stWidgetLabel"] p {
+    font-family: 'EB Garamond', serif !important;
+    font-size: 16px !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.01em !important;
+    text-transform: none !important;
+    color: var(--ink) !important;
 }
 
 /* ── Expanders ── */
@@ -451,12 +480,18 @@ label[data-testid="stWidgetLabel"] {
     border-radius: 3px !important;
     border-left-width: 3px !important;
     font-family: 'EB Garamond', serif !important;
-    font-size: 15px !important;
+    font-size: 18px !important;
+}
+
+.stAlert p, .stAlert div, .stAlert span {
+    font-family: 'EB Garamond', serif !important;
+    font-size: 18px !important;
 }
 
 /* ── Success / Error / Warning ── */
 [data-testid="stNotification"] {
     font-family: 'EB Garamond', serif !important;
+    font-size: 18px !important;
     border-radius: 3px !important;
 }
 
@@ -470,16 +505,16 @@ hr {
 /* ── Captions & small text ── */
 small, .stCaption {
     font-family: 'DM Mono', monospace !important;
-    font-size: 11px !important;
+    font-size: 13px !important;
     color: var(--ink-faint) !important;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.03em;
 }
 
 /* ── Markdown paragraph text ── */
 [data-testid="stMarkdownContainer"] p {
     font-family: 'EB Garamond', serif;
-    font-size: 16px;
-    line-height: 1.75;
+    font-size: 18px;
+    line-height: 1.8;
     color: var(--ink-light);
 }
 
