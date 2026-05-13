@@ -1034,13 +1034,40 @@ def classify_doc_sensitivity(title: str, description: str) -> dict:
 
 
 # ════════════════════════════════════════════════════════
+#  TICKET INTENT DETECTOR
+# ════════════════════════════════════════════════════════
+_TICKET_INTENT_PHRASES = [
+    # direct raise-ticket phrases
+    "raise a ticket", "raise ticket", "raise a query", "raise query",
+    "raise an issue", "raise issue", "raise a request", "raise request",
+    "submit a ticket", "submit ticket", "submit a query", "submit query",
+    "create a ticket", "create ticket", "open a ticket", "open ticket",
+    "log a ticket", "log ticket", "log an issue", "log issue",
+    "file a ticket", "file a complaint", "file a request",
+    "i want to raise", "i need to raise", "i want to submit", "i need to submit",
+    "i want to create a ticket", "i need to create a ticket",
+    "i want to report", "i need to report",
+    "report an issue", "report a problem", "report a bug",
+    "need help ticket", "need support ticket", "need a support ticket",
+    "contact support", "reach support", "get support",
+    "need human help", "talk to someone", "speak to admin",
+    "escalate", "escalate this", "escalate issue",
+]
+
+def _is_ticket_intent(text: str) -> bool:
+    """Returns True if the user is asking to raise/submit/create a ticket rather than search."""
+    lower = text.lower().strip()
+    return any(phrase in lower for phrase in _TICKET_INTENT_PHRASES)
+
+
+# ════════════════════════════════════════════════════════
 #  PAGE: EMPLOYEE PORTAL
 # ════════════════════════════════════════════════════════
 def page_employee():
     st.markdown("# Employee Help Portal")
     st.markdown(
         "<p style='color:#6b5f55; font-size:17px; font-family: EB Garamond, serif;'>"
-        "Ask any question. If no answer is found, raise a support ticket.</p>",
+        "Ask any question — or type <em>raise a ticket</em> to go straight to support.</p>",
         unsafe_allow_html=True,
     )
     st.markdown("---")
@@ -1054,72 +1081,92 @@ def page_employee():
     st.markdown("### Ask a Question")
     col1, col2 = st.columns([4, 1])
     with col1:
-        question = st.text_input("", placeholder="e.g. What is the difference between a list and a tuple?", label_visibility="collapsed")
+        question = st.text_input(
+            "",
+            placeholder="e.g. What is the difference between a list and a tuple?  ·  or: raise a ticket",
+            label_visibility="collapsed",
+        )
     with col2:
         search = st.button("Search →", use_container_width=True)
 
     if search and question.strip():
-        with st.spinner("Searching knowledge base…"):
-            result = answer_question(question.strip())
 
-        if result.get("pdf_error") and not result["found"]:
-            st.error("Knowledge base unavailable. Please raise a ticket.")
-            db_log_failed_query(question.strip())
-            st.session_state["show_ticket"] = True
-            st.session_state["ticket_query"] = question.strip()
-
-        elif result["found"]:
-            source    = result.get("source", "pdf")
-            match_src = result.get("match_src", "question")
-
-            if source == "learned":
-                st.markdown("#### ✦ Answer Found")
-                st.markdown(
-                    "<small style='color:#3d5a4a; font-family: DM Mono, monospace; font-size:11px; letter-spacing:0.06em; text-transform:uppercase;'>"
-                    "Source: Previously resolved support ticket</small>",
-                    unsafe_allow_html=True,
-                )
-                st.markdown(
-                    f"<small style='color:#9c8e82; font-family: EB Garamond, serif;'>Similar question: <em>{result['matched'][:160]}</em> &nbsp;·&nbsp; similarity {result['score']:.0%}</small>",
-                    unsafe_allow_html=True,
-                )
-                st.markdown(f"<div class='learned-box'>{result['answer']}</div>", unsafe_allow_html=True)
-            else:
-                st.markdown("#### ✦ Answer Found")
-                match_label = "matched via question" if match_src == "question" else "matched via answer content"
-                st.markdown(
-                    f"<small style='color:#8b3a2a; font-family: DM Mono, monospace; font-size:11px; letter-spacing:0.06em; text-transform:uppercase;'>"
-                    f"Source: PDF Knowledge Base &nbsp;·&nbsp; {match_label}</small>",
-                    unsafe_allow_html=True,
-                )
-                st.markdown(
-                    f"<small style='color:#9c8e82; font-family: EB Garamond, serif;'>Matched: <em>{result['matched'][:120]}</em> &nbsp;·&nbsp; score {result['score']:.2f}</small>",
-                    unsafe_allow_html=True,
-                )
-                st.markdown(f"<div class='answer-box'>{result['answer']}</div>", unsafe_allow_html=True)
-
-            st.markdown("---")
-            col_a, col_b, _ = st.columns([1, 1, 4])
-            with col_a:
-                if st.button("👍 Helpful", key="emp_helpful"):
-                    st.success("Great! Glad it helped.")
-            with col_b:
-                if st.button("👎 Not helpful", key="emp_not_helpful"):
-                    db_log_failed_query(question.strip())
-                    st.session_state["show_ticket"] = True
-                    st.session_state["ticket_query"] = question.strip()
-                    st.warning("Sorry! Please raise a ticket below.")
-
-        else:
-            st.markdown("#### ✦ No Answer Found")
+        # ── Ticket-intent shortcut: skip search entirely ──────────────────────
+        if _is_ticket_intent(question.strip()):
             st.markdown(
-                "<div class='no-answer-box'>No answer found in the knowledge base. "
-                "Please fill in the ticket details below and our team will help you.</div>",
+                "<div style='background: var(--paper); border: 1px solid var(--border); "
+                "border-left: 3px solid var(--rust); border-radius: 3px; padding: 16px 20px; margin-bottom: 8px;'>"
+                "<p style='margin:0; font-family: EB Garamond, serif; font-size:16px; color: var(--ink-light);'>"
+                "Sure — fill in the form below and our team will get back to you."
+                "</p></div>",
                 unsafe_allow_html=True,
             )
-            db_log_failed_query(question.strip())
             st.session_state["show_ticket"] = True
-            st.session_state["ticket_query"] = question.strip()
+            st.session_state["ticket_query"] = ""   # blank — user didn't search anything
+
+        else:
+            # ── Normal search flow ────────────────────────────────────────────
+            with st.spinner("Searching knowledge base…"):
+                result = answer_question(question.strip())
+
+            if result.get("pdf_error") and not result["found"]:
+                st.error("Knowledge base unavailable. Please raise a ticket.")
+                db_log_failed_query(question.strip())
+                st.session_state["show_ticket"] = True
+                st.session_state["ticket_query"] = question.strip()
+
+            elif result["found"]:
+                source    = result.get("source", "pdf")
+                match_src = result.get("match_src", "question")
+
+                if source == "learned":
+                    st.markdown("#### ✦ Answer Found")
+                    st.markdown(
+                        "<small style='color:#3d5a4a; font-family: DM Mono, monospace; font-size:11px; letter-spacing:0.06em; text-transform:uppercase;'>"
+                        "Source: Previously resolved support ticket</small>",
+                        unsafe_allow_html=True,
+                    )
+                    st.markdown(
+                        f"<small style='color:#9c8e82; font-family: EB Garamond, serif;'>Similar question: <em>{result['matched'][:160]}</em> &nbsp;·&nbsp; similarity {result['score']:.0%}</small>",
+                        unsafe_allow_html=True,
+                    )
+                    st.markdown(f"<div class='learned-box'>{result['answer']}</div>", unsafe_allow_html=True)
+                else:
+                    st.markdown("#### ✦ Answer Found")
+                    match_label = "matched via question" if match_src == "question" else "matched via answer content"
+                    st.markdown(
+                        f"<small style='color:#8b3a2a; font-family: DM Mono, monospace; font-size:11px; letter-spacing:0.06em; text-transform:uppercase;'>"
+                        f"Source: PDF Knowledge Base &nbsp;·&nbsp; {match_label}</small>",
+                        unsafe_allow_html=True,
+                    )
+                    st.markdown(
+                        f"<small style='color:#9c8e82; font-family: EB Garamond, serif;'>Matched: <em>{result['matched'][:120]}</em> &nbsp;·&nbsp; score {result['score']:.2f}</small>",
+                        unsafe_allow_html=True,
+                    )
+                    st.markdown(f"<div class='answer-box'>{result['answer']}</div>", unsafe_allow_html=True)
+
+                st.markdown("---")
+                col_a, col_b, _ = st.columns([1, 1, 4])
+                with col_a:
+                    if st.button("👍 Helpful", key="emp_helpful"):
+                        st.success("Great! Glad it helped.")
+                with col_b:
+                    if st.button("👎 Not helpful", key="emp_not_helpful"):
+                        db_log_failed_query(question.strip())
+                        st.session_state["show_ticket"] = True
+                        st.session_state["ticket_query"] = question.strip()
+                        st.warning("Sorry! Please raise a ticket below.")
+
+            else:
+                st.markdown("#### ✦ No Answer Found")
+                st.markdown(
+                    "<div class='no-answer-box'>No answer found in the knowledge base. "
+                    "Please fill in the ticket details below and our team will help you.</div>",
+                    unsafe_allow_html=True,
+                )
+                db_log_failed_query(question.strip())
+                st.session_state["show_ticket"] = True
+                st.session_state["ticket_query"] = question.strip()
 
     elif search:
         st.warning("Please enter a question.")
