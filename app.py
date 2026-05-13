@@ -2488,16 +2488,11 @@ def page_doc_visibility():
     # ════════════════════════════════════════════════════
     #  TAB 3 — ADMIN: MANAGE LIBRARY
     # ════════════════════════════════════════════════════
-    with dv_tab3:
+   with dv_tab3:
         if not st.session_state.get("admin_logged_in"):
-        st.warning("Please log in via the Admin Panel to manage the document library.")
-    else:
-        st.markdown("### Admin — Document Library")
-
-        lib_tab1, lib_tab2, lib_tab3 = st.tabs(["Add Document", "All Documents", "Access Requests"])
-        
-        # ... rest of the code inside this else block
-
+            st.warning("Please log in via the Admin Panel to manage the document library.")
+        else:
+            pass
         # ── ADD DOCUMENT ─────────────────────────────────────────────────────
         with lib_tab1:
             st.markdown("#### Add a New Document")
