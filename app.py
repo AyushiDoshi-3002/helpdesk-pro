@@ -614,6 +614,52 @@ small, .stCaption {
     letter-spacing: 0.03em;
 }
 
+/* ── Doc Library Cards ── */
+.doc-card {
+    background: var(--paper);
+    border-radius: 3px;
+    padding: 18px 22px;
+    margin-bottom: 10px;
+    border: 1px solid var(--border);
+    box-shadow: 0 1px 4px var(--shadow);
+    position: relative;
+}
+
+.doc-card-restricted {
+    border-left: 3px solid var(--rust);
+}
+
+.doc-card-accessible {
+    border-left: 3px solid var(--sage);
+}
+
+.doc-card-pending {
+    border-left: 3px solid var(--amber);
+}
+
+.role-badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 2px;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-family: 'DM Mono', monospace;
+}
+
+.role-ceo    { background: #1a1612; color: #f5f0e8; }
+.role-cto    { background: var(--slate); color: #f5f0e8; }
+.role-tech   { background: var(--slate-light); color: var(--slate); border: 1px solid #8ab0cc; }
+.role-mgr    { background: var(--amber-light); color: var(--amber); border: 1px solid #d4b830; }
+.role-emp    { background: var(--sage-light); color: var(--sage); border: 1px solid #7ab898; }
+.role-all    { background: var(--cream-dark); color: var(--ink-muted); border: 1px solid var(--border); }
+
+.access-granted  { color: var(--sage); font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; }
+.access-denied   { color: var(--rust); font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; }
+.access-pending  { color: var(--amber); font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; }
+.access-expiring { color: #8b6914; font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; }
+
 /* ── Scrollbar ── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: var(--cream); }
@@ -693,9 +739,51 @@ CREATE TABLE IF NOT EXISTS failed_queries (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- ── Document Library ──────────────────────────────────
+CREATE TABLE IF NOT EXISTS documents (
+    id              BIGSERIAL PRIMARY KEY,
+    title           TEXT NOT NULL,
+    description     TEXT,
+    category        TEXT NOT NULL DEFAULT 'General',
+    sensitivity     TEXT NOT NULL DEFAULT 'Normal',   -- Normal | Restricted | Confidential | Top Secret
+    min_role        TEXT NOT NULL DEFAULT 'Employee', -- Employee | Manager | Tech Manager | CTO | CEO
+    owner_id        TEXT,
+    file_url        TEXT,
+    content_preview TEXT,
+    created_at      TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ── Document Access Grants (7-day expiry) ─────────────
+CREATE TABLE IF NOT EXISTS doc_access (
+    id          BIGSERIAL PRIMARY KEY,
+    doc_id      BIGINT NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+    user_id     TEXT NOT NULL,
+    user_role   TEXT NOT NULL,
+    granted_by  TEXT,
+    granted_at  TIMESTAMPTZ DEFAULT NOW(),
+    expires_at  TIMESTAMPTZ DEFAULT (NOW() + INTERVAL '7 days'),
+    status      TEXT NOT NULL DEFAULT 'Approved'  -- Approved | Revoked
+);
+
+-- ── Document Access Requests ─────────────────────────
+CREATE TABLE IF NOT EXISTS doc_access_requests (
+    id           BIGSERIAL PRIMARY KEY,
+    doc_id       BIGINT NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+    user_id      TEXT NOT NULL,
+    user_role    TEXT NOT NULL,
+    reason       TEXT,
+    status       TEXT NOT NULL DEFAULT 'Pending',  -- Pending | Approved | Rejected
+    reviewed_by  TEXT,
+    reviewed_at  TIMESTAMPTZ,
+    created_at   TIMESTAMPTZ DEFAULT NOW()
+);
+
 ALTER TABLE tickets DISABLE ROW LEVEL SECURITY;
 ALTER TABLE resolved_issues DISABLE ROW LEVEL SECURITY;
 ALTER TABLE failed_queries DISABLE ROW LEVEL SECURITY;
+ALTER TABLE documents DISABLE ROW LEVEL SECURITY;
+ALTER TABLE doc_access DISABLE ROW LEVEL SECURITY;
+ALTER TABLE doc_access_requests DISABLE ROW LEVEL SECURITY;
 """
 
 @st.cache_resource(show_spinner=False)
@@ -1072,7 +1160,6 @@ def classify_doc_sensitivity(title: str, description: str) -> dict:
 #  TICKET INTENT DETECTOR
 # ════════════════════════════════════════════════════════
 _TICKET_INTENT_PHRASES = [
-    # direct raise-ticket phrases
     "raise a ticket", "raise ticket", "raise a query", "raise query",
     "raise an issue", "raise issue", "raise a request", "raise request",
     "submit a ticket", "submit ticket", "submit a query", "submit query",
@@ -1090,9 +1177,189 @@ _TICKET_INTENT_PHRASES = [
 ]
 
 def _is_ticket_intent(text: str) -> bool:
-    """Returns True if the user is asking to raise/submit/create a ticket rather than search."""
     lower = text.lower().strip()
     return any(phrase in lower for phrase in _TICKET_INTENT_PHRASES)
+
+
+# ════════════════════════════════════════════════════════
+#  DOC VISIBILITY — ROLE HIERARCHY
+# ════════════════════════════════════════════════════════
+# Higher index = higher rank. A role can see docs for their level and below.
+ROLE_HIERARCHY = ["Employee", "Manager", "Tech Manager", "CTO", "CEO"]
+
+# Roles that get instant access (no approval needed)
+AUTO_ACCESS_ROLES = {"CTO", "CEO"}
+
+# Roles that can approve access requests
+APPROVER_ROLES = {"Tech Manager", "CTO", "CEO"}
+
+def _role_level(role: str) -> int:
+    try:
+        return ROLE_HIERARCHY.index(role)
+    except ValueError:
+        return 0
+
+def _can_auto_access(user_role: str, doc_min_role: str) -> bool:
+    """Returns True if user's role auto-grants access without approval."""
+    user_level = _role_level(user_role)
+    doc_level  = _role_level(doc_min_role)
+    # CTO and CEO can always view everything
+    if user_role in AUTO_ACCESS_ROLES:
+        return True
+    # User's role is at or above the required minimum
+    return user_level >= doc_level
+
+def _needs_approval(user_role: str, doc_min_role: str) -> bool:
+    """Returns True if the user needs to request approval to view this doc."""
+    if _can_auto_access(user_role, doc_min_role):
+        return False
+    return True
+
+def _sensitivity_color(sensitivity: str) -> str:
+    return {
+        "Normal":       "var(--sage)",
+        "Restricted":   "var(--amber)",
+        "Confidential": "var(--rust)",
+        "Top Secret":   "#1a1612",
+    }.get(sensitivity, "var(--ink-muted)")
+
+def _sensitivity_bg(sensitivity: str) -> str:
+    return {
+        "Normal":       "var(--sage-light)",
+        "Restricted":   "var(--amber-light)",
+        "Confidential": "var(--rust-pale)",
+        "Top Secret":   "#e8e0d0",
+    }.get(sensitivity, "var(--cream-dark)")
+
+def _role_badge_class(role: str) -> str:
+    return {
+        "CEO":          "role-ceo",
+        "CTO":          "role-cto",
+        "Tech Manager": "role-tech",
+        "Manager":      "role-mgr",
+        "Employee":     "role-emp",
+    }.get(role, "role-all")
+
+
+# ─── DB helpers for Doc Library ────────────────────────
+def db_get_documents():
+    db = get_db()
+    if db is None:
+        return []
+    try:
+        return db.table("documents").select("*").order("created_at", desc=True).execute().data or []
+    except Exception as e:
+        st.error(f"Doc fetch error: {e}")
+        return []
+
+def db_add_document(title, description, category, sensitivity, min_role, owner_id, file_url, content_preview):
+    db = get_db()
+    if db is None:
+        raise ConnectionError("Supabase not configured.")
+    row = {
+        "title": title, "description": description, "category": category,
+        "sensitivity": sensitivity, "min_role": min_role, "owner_id": owner_id,
+        "file_url": file_url, "content_preview": content_preview,
+    }
+    result = db.table("documents").insert(row).execute()
+    if result.data:
+        st.toast(f"📄 Document '{title}' added to `documents` table", icon="☁️")
+        return result.data[0]
+    raise Exception("Insert failed")
+
+def db_delete_document(doc_id):
+    db = get_db()
+    if db:
+        db.table("documents").delete().eq("id", doc_id).execute()
+        st.toast(f"🗑️ Document #{doc_id} deleted", icon="☁️")
+
+def db_get_access_grants(user_id=None, doc_id=None):
+    db = get_db()
+    if db is None:
+        return []
+    try:
+        q = db.table("doc_access").select("*")
+        if user_id:
+            q = q.eq("user_id", user_id)
+        if doc_id:
+            q = q.eq("doc_id", doc_id)
+        return q.execute().data or []
+    except Exception:
+        return []
+
+def db_check_active_grant(user_id: str, doc_id: int) -> dict | None:
+    """Returns the grant row if user has an active, non-expired grant for this doc."""
+    grants = db_get_access_grants(user_id=user_id, doc_id=doc_id)
+    now = datetime.now(timezone.utc)
+    for g in grants:
+        if g.get("status") != "Approved":
+            continue
+        try:
+            exp = datetime.fromisoformat(g["expires_at"].replace("Z", "+00:00"))
+            if exp > now:
+                return g
+        except Exception:
+            pass
+    return None
+
+def db_grant_access(doc_id, user_id, user_role, granted_by="System"):
+    db = get_db()
+    if db is None:
+        return
+    expires = (datetime.now(timezone.utc) + timedelta(days=7)).isoformat()
+    row = {
+        "doc_id": doc_id, "user_id": user_id, "user_role": user_role,
+        "granted_by": granted_by, "expires_at": expires, "status": "Approved"
+    }
+    db.table("doc_access").insert(row).execute()
+    st.toast(f"🔓 Access granted to {user_id} for doc #{doc_id} (7 days)", icon="☁️")
+
+def db_revoke_access(grant_id):
+    db = get_db()
+    if db:
+        db.table("doc_access").update({"status": "Revoked"}).eq("id", grant_id).execute()
+        st.toast(f"🔒 Access grant #{grant_id} revoked", icon="☁️")
+
+def db_get_access_requests(status_filter=None, doc_id=None):
+    db = get_db()
+    if db is None:
+        return []
+    try:
+        q = db.table("doc_access_requests").select("*").order("created_at", desc=True)
+        if status_filter and status_filter != "All":
+            q = q.eq("status", status_filter)
+        if doc_id:
+            q = q.eq("doc_id", doc_id)
+        return q.execute().data or []
+    except Exception:
+        return []
+
+def db_submit_access_request(doc_id, user_id, user_role, reason):
+    db = get_db()
+    if db is None:
+        raise ConnectionError("Supabase not configured.")
+    # Check if a pending request already exists
+    existing = db.table("doc_access_requests").select("id, status").eq("doc_id", doc_id).eq("user_id", user_id).eq("status", "Pending").execute().data or []
+    if existing:
+        return None  # Already pending
+    row = {"doc_id": doc_id, "user_id": user_id, "user_role": user_role, "reason": reason, "status": "Pending"}
+    result = db.table("doc_access_requests").insert(row).execute()
+    if result.data:
+        st.toast(f"📩 Access request submitted for doc #{doc_id}", icon="☁️")
+        return result.data[0]
+    return None
+
+def db_review_access_request(req_id, action, reviewed_by, doc_id=None, user_id=None, user_role=None):
+    db = get_db()
+    if db is None:
+        return
+    now_str = datetime.now(timezone.utc).isoformat()
+    db.table("doc_access_requests").update({
+        "status": action, "reviewed_by": reviewed_by, "reviewed_at": now_str
+    }).eq("id", req_id).execute()
+    if action == "Approved" and doc_id and user_id and user_role:
+        db_grant_access(doc_id, user_id, user_role, granted_by=reviewed_by)
+    st.toast(f"✅ Request #{req_id} {action}", icon="☁️")
 
 
 # ════════════════════════════════════════════════════════
@@ -1126,7 +1393,6 @@ def page_employee():
 
     if search and question.strip():
 
-        # ── Ticket-intent shortcut: skip search entirely ──────────────────────
         if _is_ticket_intent(question.strip()):
             st.markdown(
                 "<div style='background: var(--paper); border: 1px solid var(--border); "
@@ -1137,10 +1403,9 @@ def page_employee():
                 unsafe_allow_html=True,
             )
             st.session_state["show_ticket"] = True
-            st.session_state["ticket_query"] = ""   # blank — user didn't search anything
+            st.session_state["ticket_query"] = ""
 
         else:
-            # ── Normal search flow ────────────────────────────────────────────
             with st.spinner("Searching knowledge base…"):
                 result = answer_question(question.strip())
 
@@ -1729,7 +1994,6 @@ def page_analytics():
         high_prio = len(df[df["priority"] == "High"])
         st.markdown(f"<div class='metric-card'><div class='metric-number'>{high_prio}</div><div class='metric-label'>High Priority</div></div>", unsafe_allow_html=True)
 
-    # Quarry-style chart color palette
     RUST = "#8b3a2a"
     SAGE = "#3d5a4a"
     AMBER = "#8b6914"
@@ -1912,6 +2176,525 @@ def page_knowledge_gap():
 
 
 # ════════════════════════════════════════════════════════
+#  PAGE: DOC VISIBILITY
+# ════════════════════════════════════════════════════════
+def page_doc_visibility():
+    st.markdown("# Document Visibility")
+    st.markdown(
+        "<p style='color:#6b5f55; font-size:17px; font-family: EB Garamond, serif;'>"
+        "Role-based document library. Access is governed by your rank in the hierarchy. "
+        "CTO and CEO can view all documents instantly — Managers and below must request access for restricted content.</p>",
+        unsafe_allow_html=True,
+    )
+
+    # ── Hierarchy visual ──────────────────────────────────────────────────────
+    st.markdown("""
+    <div style='display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:20px; padding:16px 20px;
+                background:var(--paper); border:1px solid var(--border); border-radius:3px;'>
+        <span style='font-family:DM Mono,monospace; font-size:10px; color:var(--ink-faint); letter-spacing:0.1em; text-transform:uppercase; margin-right:4px;'>Hierarchy</span>
+        <span class='role-badge role-emp'>Employee</span>
+        <span style='color:var(--ink-faint);'>→</span>
+        <span class='role-badge role-mgr'>Manager</span>
+        <span style='color:var(--ink-faint);'>→</span>
+        <span class='role-badge role-tech'>Tech Manager</span>
+        <span style='color:var(--ink-faint);'>→</span>
+        <span class='role-badge role-cto'>CTO</span>
+        <span style='color:var(--ink-faint);'>→</span>
+        <span class='role-badge role-ceo'>CEO</span>
+        &nbsp;&nbsp;
+        <span style='font-family:DM Mono,monospace; font-size:10px; color:#3d5a4a; letter-spacing:0.06em;'>CTO &amp; CEO: instant access to all docs · Others: request required for restricted docs</span>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("---")
+
+    dv_tab1, dv_tab2, dv_tab3 = st.tabs(["Browse Documents", "My Access", "Admin — Manage Library"])
+
+    # ════════════════════════════════════════════════════
+    #  TAB 1 — BROWSE DOCUMENTS (Employee/Manager view)
+    # ════════════════════════════════════════════════════
+    with dv_tab1:
+        st.markdown("### Browse Document Library")
+
+        ic1, ic2, ic3 = st.columns(3)
+        with ic1:
+            viewer_id   = st.text_input("Your Employee ID *", placeholder="e.g. EMP-1042", key="dv_viewer_id")
+        with ic2:
+            viewer_role = st.selectbox(
+                "Your Role *",
+                ROLE_HIERARCHY,
+                index=0,
+                key="dv_viewer_role"
+            )
+        with ic3:
+            cat_filter = st.selectbox(
+                "Filter by Category",
+                ["All", "General", "Security", "HR", "Finance", "Engineering", "Legal", "Operations"],
+                key="dv_cat_filter"
+            )
+
+        if not viewer_id.strip():
+            st.info("Enter your Employee ID to browse documents.", icon="🔍")
+            return
+
+        docs = db_get_documents()
+        if cat_filter != "All":
+            docs = [d for d in docs if d.get("category") == cat_filter]
+
+        if not docs:
+            st.info("No documents in the library yet. Ask an admin to add some.")
+            return
+
+        # Segregate
+        accessible, needs_req, pending_req = [], [], []
+        for doc in docs:
+            doc_id    = doc["id"]
+            min_role  = doc.get("min_role", "Employee")
+            can_auto  = _can_auto_access(viewer_role, min_role)
+            grant     = db_check_active_grant(viewer_id.strip(), doc_id) if not can_auto else None
+            req_rows  = db_get_access_requests(doc_id=doc_id)
+            my_reqs   = [r for r in req_rows if r["user_id"] == viewer_id.strip()]
+            pending   = [r for r in my_reqs if r["status"] == "Pending"]
+
+            if can_auto:
+                accessible.append((doc, "auto", None))
+            elif grant:
+                accessible.append((doc, "granted", grant))
+            elif pending:
+                pending_req.append((doc, pending[-1]))
+            else:
+                needs_req.append(doc)
+
+        total = len(docs)
+        a_count = len(accessible)
+        p_count = len(pending_req)
+        r_count = len(needs_req)
+
+        m1, m2, m3 = st.columns(3)
+        with m1:
+            st.markdown(f"<div class='metric-card'><div class='metric-number'>{a_count}</div><div class='metric-label'>✓ Accessible</div></div>", unsafe_allow_html=True)
+        with m2:
+            st.markdown(f"<div class='metric-card'><div class='metric-number'>{p_count}</div><div class='metric-label'>◑ Pending</div></div>", unsafe_allow_html=True)
+        with m3:
+            st.markdown(f"<div class='metric-card'><div class='metric-number'>{r_count}</div><div class='metric-label'>✗ Request Required</div></div>", unsafe_allow_html=True)
+
+        st.markdown("---")
+
+        # ── ACCESSIBLE DOCS ──────────────────────────────────────────────────
+        if accessible:
+            st.markdown("#### ✦ Documents You Can View")
+            for doc, access_type, grant in accessible:
+                doc_id       = doc["id"]
+                sensitivity  = doc.get("sensitivity", "Normal")
+                min_role     = doc.get("min_role", "Employee")
+                role_cls     = _role_badge_class(min_role)
+                s_color      = _sensitivity_color(sensitivity)
+                s_bg         = _sensitivity_bg(sensitivity)
+
+                if access_type == "auto":
+                    access_label = f"<span class='access-granted'>✓ Auto-access ({viewer_role})</span>"
+                else:
+                    exp_str = ""
+                    if grant:
+                        try:
+                            exp = datetime.fromisoformat(grant["expires_at"].replace("Z", "+00:00"))
+                            days_left = (exp - datetime.now(timezone.utc)).days
+                            if days_left <= 2:
+                                access_label = f"<span class='access-expiring'>⚠ Granted — expires in {days_left}d</span>"
+                            else:
+                                access_label = f"<span class='access-granted'>✓ Granted — {days_left}d remaining</span>"
+                        except Exception:
+                            access_label = "<span class='access-granted'>✓ Granted</span>"
+                    else:
+                        access_label = "<span class='access-granted'>✓ Granted</span>"
+
+                with st.expander(f"📄 {doc['title']}  —  {doc.get('category','General')}"):
+                    st.markdown(
+                        f"<div style='display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:12px;'>"
+                        f"<span class='role-badge {role_cls}'>{min_role}+</span>"
+                        f"<span style='display:inline-block; background:{s_bg}; color:{s_color}; border-radius:2px; "
+                        f"padding:2px 10px; font-size:10px; font-family:DM Mono,monospace; font-weight:500; letter-spacing:0.08em; text-transform:uppercase;'>{sensitivity}</span>"
+                        f"&nbsp;{access_label}"
+                        f"</div>",
+                        unsafe_allow_html=True,
+                    )
+                    if doc.get("description"):
+                        st.markdown(f"**Description:** {doc['description']}")
+                    if doc.get("content_preview"):
+                        st.markdown(
+                            f"<div class='answer-box' style='font-size:15px;'>{doc['content_preview']}</div>",
+                            unsafe_allow_html=True
+                        )
+                    if doc.get("file_url"):
+                        st.markdown(f"📎 [Open Document]({doc['file_url']})")
+                    st.markdown(
+                        f"<small style='color:#9c8e82; font-family:DM Mono,monospace;'>Added {_to_ist(doc.get('created_at',''))} · Owner: {doc.get('owner_id','—')}</small>",
+                        unsafe_allow_html=True
+                    )
+
+        # ── PENDING REQUESTS ─────────────────────────────────────────────────
+        if pending_req:
+            st.markdown("---")
+            st.markdown("#### ◑ Pending Access Requests")
+            for doc, req in pending_req:
+                sensitivity = doc.get("sensitivity", "Normal")
+                min_role    = doc.get("min_role", "Employee")
+                role_cls    = _role_badge_class(min_role)
+                st.markdown(
+                    f"<div class='doc-card doc-card-pending'>"
+                    f"<span class='role-badge {role_cls}'>{min_role}+</span>&nbsp;"
+                    f"<strong style='font-family:EB Garamond,serif; font-size:16px;'>{doc['title']}</strong>"
+                    f"&nbsp;&nbsp;<span class='access-pending'>◑ Request pending — submitted {_to_ist(req.get('created_at',''))}</span>"
+                    f"<br><small style='color:#9c8e82; font-family:DM Mono,monospace; font-size:11px;'>Awaiting approval from Tech Manager / CTO / CEO</small>"
+                    f"</div>",
+                    unsafe_allow_html=True,
+                )
+
+        # ── RESTRICTED DOCS (request form) ───────────────────────────────────
+        if needs_req:
+            st.markdown("---")
+            st.markdown("#### ✗ Restricted Documents — Request Access")
+            for doc in needs_req:
+                doc_id      = doc["id"]
+                sensitivity = doc.get("sensitivity", "Normal")
+                min_role    = doc.get("min_role", "Employee")
+                role_cls    = _role_badge_class(min_role)
+                s_color     = _sensitivity_color(sensitivity)
+                s_bg        = _sensitivity_bg(sensitivity)
+
+                with st.expander(f"🔒 {doc['title']}  —  {doc.get('category','General')} · min role: {min_role}"):
+                    st.markdown(
+                        f"<div style='display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:10px;'>"
+                        f"<span class='role-badge {role_cls}'>{min_role}+</span>"
+                        f"<span style='display:inline-block; background:{s_bg}; color:{s_color}; border-radius:2px; "
+                        f"padding:2px 10px; font-size:10px; font-family:DM Mono,monospace; font-weight:500; letter-spacing:0.08em; text-transform:uppercase;'>{sensitivity}</span>"
+                        f"<span class='access-denied'>✗ Access restricted</span>"
+                        f"</div>",
+                        unsafe_allow_html=True,
+                    )
+                    if doc.get("description"):
+                        st.markdown(f"**Description:** {doc['description']}")
+
+                    st.markdown(
+                        "<div style='background:var(--rust-pale); border-left:3px solid var(--rust); border-radius:3px; "
+                        "padding:12px 16px; margin:10px 0; font-family:EB Garamond,serif; font-size:15px; color:var(--rust);'>"
+                        "You need approval from a Tech Manager, CTO, or CEO to view this document. "
+                        "Access will be granted for 7 days.</div>",
+                        unsafe_allow_html=True
+                    )
+
+                    reason = st.text_area(
+                        "Reason for access *",
+                        placeholder="Briefly explain why you need access to this document…",
+                        height=80,
+                        key=f"req_reason_{doc_id}"
+                    )
+                    if st.button(f"Request Access →", key=f"req_btn_{doc_id}", use_container_width=False):
+                        if not reason.strip():
+                            st.warning("Please provide a reason for the request.")
+                        else:
+                            try:
+                                result = db_submit_access_request(doc_id, viewer_id.strip(), viewer_role, reason.strip())
+                                if result is None:
+                                    st.info("You already have a pending request for this document.")
+                                else:
+                                    st.success("Request submitted. You will be notified when approved.")
+                                    st.rerun()
+                            except Exception as ex:
+                                st.error(f"Failed: {ex}")
+
+    # ════════════════════════════════════════════════════
+    #  TAB 2 — MY ACCESS (personal dashboard)
+    # ════════════════════════════════════════════════════
+    with dv_tab2:
+        st.markdown("### My Access Dashboard")
+
+        my_id   = st.text_input("Your Employee ID", placeholder="e.g. EMP-1042", key="dv_my_id")
+        my_role = st.selectbox("Your Role", ROLE_HIERARCHY, key="dv_my_role")
+
+        if not my_id.strip():
+            st.info("Enter your Employee ID to see your access status.")
+        else:
+            grants   = db_get_access_grants(user_id=my_id.strip())
+            requests = db_get_access_requests()
+            my_reqs  = [r for r in requests if r["user_id"] == my_id.strip()]
+            docs     = db_get_documents()
+            docs_map = {d["id"]: d for d in docs}
+            now      = datetime.now(timezone.utc)
+
+            # Active grants
+            active_grants = []
+            for g in grants:
+                if g.get("status") != "Approved":
+                    continue
+                try:
+                    exp = datetime.fromisoformat(g["expires_at"].replace("Z", "+00:00"))
+                    if exp > now:
+                        active_grants.append((g, exp))
+                except Exception:
+                    pass
+
+            # Auto-accessible (by role)
+            auto_docs = [d for d in docs if _can_auto_access(my_role, d.get("min_role", "Employee"))]
+
+            g1, g2, g3 = st.columns(3)
+            with g1:
+                st.markdown(f"<div class='metric-card'><div class='metric-number'>{len(auto_docs)}</div><div class='metric-label'>Auto-accessible</div></div>", unsafe_allow_html=True)
+            with g2:
+                st.markdown(f"<div class='metric-card'><div class='metric-number'>{len(active_grants)}</div><div class='metric-label'>Granted (active)</div></div>", unsafe_allow_html=True)
+            with g3:
+                pending_count = sum(1 for r in my_reqs if r["status"] == "Pending")
+                st.markdown(f"<div class='metric-card'><div class='metric-number'>{pending_count}</div><div class='metric-label'>Pending requests</div></div>", unsafe_allow_html=True)
+
+            st.markdown("---")
+
+            if active_grants:
+                st.markdown("#### Active Access Grants")
+                for grant, exp in active_grants:
+                    doc = docs_map.get(grant["doc_id"])
+                    if not doc:
+                        continue
+                    days_left = (exp - now).days
+                    expiring  = days_left <= 2
+                    exp_label = f"Expires in {days_left}d" if days_left > 0 else "Expires today"
+                    color     = "#8b6914" if expiring else "#3d5a4a"
+                    st.markdown(
+                        f"<div class='doc-card doc-card-accessible'>"
+                        f"<strong style='font-family:EB Garamond,serif; font-size:16px;'>{doc['title']}</strong>"
+                        f"&nbsp;&nbsp;<span style='color:{color}; font-family:DM Mono,monospace; font-size:11px; text-transform:uppercase; letter-spacing:0.06em;'>{'⚠ ' if expiring else '✓ '}{exp_label}</span>"
+                        f"<br><small style='color:#9c8e82; font-family:DM Mono,monospace; font-size:11px;'>Granted by: {grant.get('granted_by','—')} · {_to_ist(grant.get('granted_at',''))}</small>"
+                        f"</div>",
+                        unsafe_allow_html=True
+                    )
+
+            if my_reqs:
+                st.markdown("---")
+                st.markdown("#### My Access Requests")
+                for req in my_reqs:
+                    doc = docs_map.get(req["doc_id"])
+                    doc_title = doc["title"] if doc else f"Doc #{req['doc_id']}"
+                    status = req["status"]
+                    status_colors = {"Pending": "#8b6914", "Approved": "#3d5a4a", "Rejected": "#8b3a2a"}
+                    s_color = status_colors.get(status, "#6b5f55")
+                    st.markdown(
+                        f"<div class='doc-card'>"
+                        f"<strong style='font-family:EB Garamond,serif;'>{doc_title}</strong>&nbsp;&nbsp;"
+                        f"<span style='color:{s_color}; font-family:DM Mono,monospace; font-size:11px; text-transform:uppercase; letter-spacing:0.06em;'>{status}</span>"
+                        f"<br><small style='color:#9c8e82; font-family:DM Mono,monospace; font-size:11px;'>Requested {_to_ist(req.get('created_at',''))} · Reason: {req.get('reason','—')[:80]}</small>"
+                        f"</div>",
+                        unsafe_allow_html=True
+                    )
+
+    # ════════════════════════════════════════════════════
+    #  TAB 3 — ADMIN: MANAGE LIBRARY
+    # ════════════════════════════════════════════════════
+    with dv_tab3:
+        if not st.session_state.get("admin_logged_in"):
+            st.warning("Please log in via the Admin Panel to manage the document library.")
+            return
+
+        st.markdown("### Admin — Document Library")
+
+        lib_tab1, lib_tab2, lib_tab3 = st.tabs(["Add Document", "All Documents", "Access Requests"])
+
+        # ── ADD DOCUMENT ─────────────────────────────────────────────────────
+        with lib_tab1:
+            st.markdown("#### Add a New Document")
+            with st.form("add_doc_form", clear_on_submit=True):
+                fa1, fa2 = st.columns(2)
+                with fa1:
+                    doc_title   = st.text_input("Document Title *", placeholder="e.g. VPN Access Policy")
+                    doc_cat     = st.selectbox("Category", ["General", "Security", "HR", "Finance", "Engineering", "Legal", "Operations"])
+                    doc_sens    = st.selectbox("Sensitivity Level", ["Normal", "Restricted", "Confidential", "Top Secret"])
+                with fa2:
+                    doc_min_role = st.selectbox("Minimum Role to View", ROLE_HIERARCHY, index=0)
+                    doc_owner   = st.text_input("Owner ID", placeholder="e.g. EMP-0001")
+                    doc_url     = st.text_input("File URL (optional)", placeholder="https://…")
+                doc_desc    = st.text_area("Description", placeholder="What does this document cover?", height=80)
+                doc_preview = st.text_area("Content Preview (shown to authorised users)", placeholder="A summary or excerpt of the document…", height=100)
+
+                submit_doc = st.form_submit_button("Add Document →", type="primary")
+
+            if submit_doc:
+                if not doc_title.strip():
+                    st.warning("Document title is required.")
+                else:
+                    try:
+                        added = db_add_document(
+                            doc_title.strip(), doc_desc.strip(), doc_cat,
+                            doc_sens, doc_min_role, doc_owner.strip(),
+                            doc_url.strip(), doc_preview.strip()
+                        )
+                        st.success(f"Document '{added['title']}' added (ID #{added['id']}).")
+                        st.rerun()
+                    except Exception as ex:
+                        st.error(f"Failed: {ex}")
+
+        # ── ALL DOCUMENTS ─────────────────────────────────────────────────────
+        with lib_tab2:
+            st.markdown("#### All Documents in Library")
+            docs = db_get_documents()
+            if not docs:
+                st.info("No documents yet.")
+            else:
+                st.markdown(
+                    f"<p style='font-family:DM Mono,monospace; font-size:12px; color:#9c8e82; letter-spacing:0.06em; text-transform:uppercase;'>{len(docs)} document(s)</p>",
+                    unsafe_allow_html=True
+                )
+                for doc in docs:
+                    doc_id      = doc["id"]
+                    sensitivity = doc.get("sensitivity", "Normal")
+                    min_role    = doc.get("min_role", "Employee")
+                    role_cls    = _role_badge_class(min_role)
+                    s_color     = _sensitivity_color(sensitivity)
+                    s_bg        = _sensitivity_bg(sensitivity)
+
+                    with st.expander(f"#{doc_id} — {doc['title']}  ·  {doc.get('category','General')}  ·  {min_role}+  ·  {sensitivity}"):
+                        st.markdown(
+                            f"<div style='display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;'>"
+                            f"<span class='role-badge {role_cls}'>{min_role}+</span>"
+                            f"<span style='display:inline-block; background:{s_bg}; color:{s_color}; border-radius:2px; "
+                            f"padding:2px 10px; font-size:10px; font-family:DM Mono,monospace; font-weight:500; letter-spacing:0.08em; text-transform:uppercase;'>{sensitivity}</span>"
+                            f"</div>",
+                            unsafe_allow_html=True
+                        )
+                        if doc.get("description"):
+                            st.markdown(f"**Description:** {doc['description']}")
+                        if doc.get("content_preview"):
+                            st.markdown(f"**Preview:** {doc['content_preview'][:200]}…")
+                        if doc.get("file_url"):
+                            st.markdown(f"📎 **URL:** {doc['file_url']}")
+                        st.markdown(
+                            f"<small style='color:#9c8e82; font-family:DM Mono,monospace;'>Owner: {doc.get('owner_id','—')} · Added: {_to_ist(doc.get('created_at',''))}</small>",
+                            unsafe_allow_html=True
+                        )
+
+                        # Active grants for this doc
+                        grants_for_doc = db_get_access_grants(doc_id=doc_id)
+                        now = datetime.now(timezone.utc)
+                        active_here = []
+                        for g in grants_for_doc:
+                            if g.get("status") != "Approved":
+                                continue
+                            try:
+                                exp = datetime.fromisoformat(g["expires_at"].replace("Z", "+00:00"))
+                                if exp > now:
+                                    active_here.append((g, exp))
+                            except Exception:
+                                pass
+                        if active_here:
+                            st.markdown(f"**Active grants ({len(active_here)}):**")
+                            for g, exp in active_here:
+                                days_left = (exp - now).days
+                                gc1, gc2 = st.columns([4, 1])
+                                with gc1:
+                                    st.markdown(
+                                        f"<small style='font-family:DM Mono,monospace; font-size:11px;'>"
+                                        f"👤 {g['user_id']} ({g['user_role']}) — {days_left}d left — granted by {g.get('granted_by','—')}"
+                                        f"</small>",
+                                        unsafe_allow_html=True
+                                    )
+                                with gc2:
+                                    if st.button("Revoke", key=f"revoke_{g['id']}", use_container_width=True):
+                                        db_revoke_access(g["id"])
+                                        st.rerun()
+
+                        dc1, dc2, _ = st.columns([1, 1, 4])
+                        with dc1:
+                            if st.button("Delete Document", key=f"del_doc_{doc_id}", use_container_width=True):
+                                try:
+                                    db_delete_document(doc_id)
+                                    st.warning("Deleted.")
+                                    st.rerun()
+                                except Exception as ex:
+                                    st.error(str(ex))
+
+        # ── ACCESS REQUESTS ───────────────────────────────────────────────────
+        with lib_tab3:
+            st.markdown("#### Document Access Requests")
+
+            rf1, rf2 = st.columns(2)
+            with rf1:
+                req_status_filter = st.selectbox("Filter by Status", ["All", "Pending", "Approved", "Rejected"], key="req_status_filter")
+            with rf2:
+                reviewer_id = st.text_input("Reviewer ID (your ID)", placeholder="e.g. CTO-001", key="reviewer_id")
+
+            reqs = db_get_access_requests(status_filter=req_status_filter)
+            docs_map = {d["id"]: d for d in db_get_documents()}
+
+            if not reqs:
+                st.info("No access requests found.")
+            else:
+                pending_reqs = [r for r in reqs if r["status"] == "Pending"]
+                other_reqs   = [r for r in reqs if r["status"] != "Pending"]
+
+                if pending_reqs:
+                    st.markdown(f"<p style='font-family:DM Mono,monospace; font-size:12px; color:#8b6914; letter-spacing:0.06em;'>{len(pending_reqs)} pending request(s) awaiting review</p>", unsafe_allow_html=True)
+                    for req in pending_reqs:
+                        doc    = docs_map.get(req["doc_id"])
+                        doc_title = doc["title"] if doc else f"Doc #{req['doc_id']}"
+                        req_id = req["id"]
+
+                        with st.expander(f"⏳ #{req_id} — {req['user_id']} ({req['user_role']}) → {doc_title}"):
+                            st.markdown(f"**Employee:** {req['user_id']} &nbsp;·&nbsp; **Role:** {req['user_role']}")
+                            st.markdown(f"**Document:** {doc_title} &nbsp;·&nbsp; Min role: {doc.get('min_role','?') if doc else '?'}")
+                            st.markdown(f"**Reason:** {req.get('reason','—')}")
+                            st.markdown(f"**Requested:** {_to_ist(req.get('created_at',''))}")
+
+                            if doc:
+                                sens = doc.get("sensitivity","Normal")
+                                min_r = doc.get("min_role","Employee")
+                                s_color = _sensitivity_color(sens)
+                                s_bg    = _sensitivity_bg(sens)
+                                st.markdown(
+                                    f"<div style='margin:8px 0; display:flex; gap:8px;'>"
+                                    f"<span class='role-badge {_role_badge_class(min_r)}'>{min_r}+</span>"
+                                    f"<span style='background:{s_bg}; color:{s_color}; border-radius:2px; padding:2px 10px; font-size:10px; font-family:DM Mono,monospace; font-weight:500; letter-spacing:0.08em; text-transform:uppercase;'>{sens}</span>"
+                                    f"</div>",
+                                    unsafe_allow_html=True
+                                )
+
+                            ac1, ac2, _ = st.columns([1, 1, 4])
+                            with ac1:
+                                if st.button("Approve — Grant 7-day Access", key=f"approve_{req_id}", use_container_width=True):
+                                    if not reviewer_id.strip():
+                                        st.warning("Enter your Reviewer ID first.")
+                                    else:
+                                        db_review_access_request(
+                                            req_id, "Approved", reviewer_id.strip(),
+                                            doc_id=req["doc_id"], user_id=req["user_id"], user_role=req["user_role"]
+                                        )
+                                        st.success(f"Access approved. {req['user_id']} has 7-day access.")
+                                        st.rerun()
+                            with ac2:
+                                if st.button("Reject", key=f"reject_{req_id}", use_container_width=True):
+                                    if not reviewer_id.strip():
+                                        st.warning("Enter your Reviewer ID first.")
+                                    else:
+                                        db_review_access_request(req_id, "Rejected", reviewer_id.strip())
+                                        st.warning("Request rejected.")
+                                        st.rerun()
+
+                if other_reqs and req_status_filter != "Pending":
+                    st.markdown("---")
+                    st.markdown("#### Past Requests")
+                    for req in other_reqs:
+                        doc = docs_map.get(req["doc_id"])
+                        doc_title = doc["title"] if doc else f"Doc #{req['doc_id']}"
+                        status = req["status"]
+                        status_colors = {"Approved": "#3d5a4a", "Rejected": "#8b3a2a"}
+                        s_color = status_colors.get(status, "#6b5f55")
+                        st.markdown(
+                            f"<div class='doc-card' style='padding:12px 16px;'>"
+                            f"#{req['id']} &nbsp;·&nbsp; <strong>{req['user_id']}</strong> ({req['user_role']}) → {doc_title} &nbsp;&nbsp;"
+                            f"<span style='color:{s_color}; font-family:DM Mono,monospace; font-size:11px; text-transform:uppercase;'>{status}</span>"
+                            f"<br><small style='color:#9c8e82; font-family:DM Mono,monospace; font-size:11px;'>Reviewed by {req.get('reviewed_by','—')} on {_to_ist(req.get('reviewed_at',''))}</small>"
+                            f"</div>",
+                            unsafe_allow_html=True
+                        )
+
+
+# ════════════════════════════════════════════════════════
 #  PAGE: SETUP
 # ════════════════════════════════════════════════════════
 def page_setup():
@@ -2007,7 +2790,6 @@ def page_setup():
 #  MAIN — SIDEBAR + ROUTING
 # ════════════════════════════════════════════════════════
 with st.sidebar:
-    # Logo / wordmark
     st.markdown("""
     <div style='padding: 8px 0 20px;'>
         <div style='display: flex; align-items: center; gap: 10px;'>
@@ -2034,6 +2816,7 @@ with st.sidebar:
         "🛡️ Admin Panel",
         "📊 Analytics",
         "🕳️ Knowledge Gap Report",
+        "📁 Doc Visibility",
         "📋 Approval Pipeline",
         "⚙️ Setup / Config",
     ], label_visibility="collapsed")
@@ -2058,6 +2841,8 @@ elif page == "📊 Analytics":
     page_analytics()
 elif page == "🕳️ Knowledge Gap Report":
     page_knowledge_gap()
+elif page == "📁 Doc Visibility":
+    page_doc_visibility()
 elif page == "📋 Approval Pipeline":
     if PIPELINE_AVAILABLE:
         page_approval_pipeline()
