@@ -2489,7 +2489,7 @@ def page_doc_visibility():
     #  TAB 3 — ADMIN: MANAGE LIBRARY
     # ════════════════════════════════════════════════════
    with dv_tab3:
-        if not st.session_state.get("admin_logged_in"):
+       if not st.session_state.get("admin_logged_in"):
             st.warning("Please log in via the Admin Panel to manage the document library.")
         else:
             pass
