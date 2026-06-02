@@ -53,12 +53,160 @@ st.markdown("""
     --shadow-md:   rgba(26,22,18,0.14);
 }
 
+/* ══════════════════════════════════════
+   AGGRESSIVE GLOBAL FONT OVERRIDES
+   Streamlit scopes styles deeply so we
+   target every known selector explicitly
+   ══════════════════════════════════════ */
+
+/* Universal base */
+html, body {
+    font-size: 22px !important;
+    font-family: 'EB Garamond', Georgia, serif !important;
+}
+
+/* Every element inside the app */
+.stApp *, .main *, .block-container * {
+    font-family: 'EB Garamond', Georgia, serif !important;
+}
+
+/* Paragraph / markdown text */
+p, li, span, div,
+[data-testid="stMarkdownContainer"] p,
+[data-testid="stMarkdownContainer"] li,
+[data-testid="stMarkdownContainer"] ul,
+[data-testid="stMarkdownContainer"] ol,
+[data-testid="stMarkdownContainer"] span,
+[data-testid="stText"] p {
+    font-family: 'EB Garamond', Georgia, serif !important;
+    font-size: 22px !important;
+    line-height: 1.85 !important;
+}
+
+/* Widget labels — the small text above inputs */
+label,
+label p,
+label span,
+[data-testid="stWidgetLabel"] p,
+[data-testid="stWidgetLabel"] span,
+.stSelectbox label p,
+.stTextInput label p,
+.stTextArea label p,
+.stRadio label,
+.stRadio label p {
+    font-family: 'EB Garamond', Georgia, serif !important;
+    font-size: 22px !important;
+    font-weight: 600 !important;
+}
+
+/* Text inputs */
+input,
+textarea,
+.stTextInput input,
+.stTextArea textarea,
+[data-baseweb="input"] input,
+[data-baseweb="textarea"] textarea,
+[data-testid="stTextInput"] input,
+[data-testid="stTextArea"] textarea {
+    font-family: 'EB Garamond', Georgia, serif !important;
+    font-size: 22px !important;
+    padding: 14px 18px !important;
+}
+
+input::placeholder, textarea::placeholder {
+    font-size: 20px !important;
+    font-style: italic !important;
+    font-family: 'EB Garamond', Georgia, serif !important;
+}
+
+/* Selectbox dropdown text */
+[data-baseweb="select"] *,
+[data-baseweb="select"] span,
+[data-baseweb="select"] div,
+[data-baseweb="select"] li,
+[data-baseweb="select"] p,
+[role="listbox"] *,
+[role="option"],
+[role="option"] span {
+    font-family: 'EB Garamond', Georgia, serif !important;
+    font-size: 22px !important;
+}
+
+/* Buttons */
+button,
+.stButton button,
+button p,
+button span,
+[data-testid="baseButton-secondary"],
+[data-testid="baseButton-primary"],
+[data-testid="baseButton-secondary"] p,
+[data-testid="baseButton-primary"] p {
+    font-family: 'EB Garamond', Georgia, serif !important;
+    font-size: 22px !important;
+}
+
+/* Sidebar */
+[data-testid="stSidebar"] *,
+[data-testid="stSidebar"] p,
+[data-testid="stSidebar"] span,
+[data-testid="stSidebar"] label,
+[data-testid="stSidebar"] label p,
+[data-testid="stSidebar"] .stRadio label,
+[data-testid="stSidebar"] .stRadio label p {
+    font-family: 'EB Garamond', Georgia, serif !important;
+    font-size: 22px !important;
+}
+
+/* Expanders */
+[data-testid="stExpander"] summary p,
+[data-testid="stExpander"] summary span,
+details summary p {
+    font-family: 'EB Garamond', Georgia, serif !important;
+    font-size: 22px !important;
+}
+
+/* Tabs */
+[data-baseweb="tab"] *,
+[data-baseweb="tab-list"] * {
+    font-family: 'DM Mono', monospace !important;
+    font-size: 18px !important;
+}
+
+/* Alerts / info / warning / success / error */
+[data-testid="stAlert"] *,
+[data-testid="stAlert"] p,
+[data-testid="stAlert"] span,
+.stAlert *,
+.stAlert p {
+    font-family: 'EB Garamond', Georgia, serif !important;
+    font-size: 22px !important;
+}
+
+/* Metric label & value */
+[data-testid="stMetricValue"],
+[data-testid="stMetricValue"] * {
+    font-family: 'Playfair Display', serif !important;
+    font-size: 42px !important;
+}
+
+[data-testid="stMetricLabel"],
+[data-testid="stMetricLabel"] * {
+    font-family: 'DM Mono', monospace !important;
+    font-size: 16px !important;
+}
+
+/* Download / file buttons */
+[data-testid="stDownloadButton"] button,
+[data-testid="stDownloadButton"] button span {
+    font-size: 22px !important;
+}
+
 /* ── Base Reset ── */
 html, body, [class*="css"] {
     font-family: 'EB Garamond', Georgia, serif;
     color: var(--ink);
     background: var(--cream);
-    font-size: 28px;
+    font-size: 22px;
 }
 
 h1, h2, h3, h4, h5 {
