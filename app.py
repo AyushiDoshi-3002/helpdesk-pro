@@ -58,6 +58,7 @@ html, body, [class*="css"] {
     font-family: 'EB Garamond', Georgia, serif;
     color: var(--ink);
     background: var(--cream);
+    font-size: 18px;
 }
 
 h1, h2, h3, h4, h5 {
@@ -68,6 +69,7 @@ h1, h2, h3, h4, h5 {
 
 code, pre, .stCode {
     font-family: 'DM Mono', monospace !important;
+    font-size: 15px !important;
 }
 
 /* ── App Background ── */
@@ -90,7 +92,7 @@ section[data-testid="stSidebar"] * {
 
 section[data-testid="stSidebar"] .stRadio label {
     font-family: 'EB Garamond', serif !important;
-    font-size: 15px !important;
+    font-size: 17px !important;
     letter-spacing: 0.02em;
     color: var(--cream-mid) !important;
     padding: 6px 0;
@@ -112,7 +114,7 @@ section[data-testid="stSidebar"] .stButton > button {
     border: 1px solid #3a3028 !important;
     color: var(--cream-mid) !important;
     font-family: 'EB Garamond', serif !important;
-    font-size: 14px !important;
+    font-size: 16px !important;
     letter-spacing: 0.04em;
     transition: all 0.2s;
 }
@@ -133,10 +135,10 @@ section[data-testid="stSidebar"] .stButton > button:hover {
 .answer-box {
     background: var(--paper);
     border-radius: 3px;
-    padding: 22px 26px;
+    padding: 24px 28px;
     border-left: 3px solid var(--rust);
-    font-size: 16px;
-    line-height: 1.85;
+    font-size: 18px;
+    line-height: 1.9;
     color: var(--ink-light);
     font-family: 'EB Garamond', serif;
     box-shadow: 0 1px 8px var(--shadow);
@@ -146,20 +148,20 @@ section[data-testid="stSidebar"] .stButton > button:hover {
 .no-answer-box {
     background: var(--rust-pale);
     border-radius: 3px;
-    padding: 16px 20px;
+    padding: 18px 22px;
     border-left: 3px solid var(--rust-light);
     color: var(--rust);
-    font-size: 15px;
+    font-size: 17px;
     font-family: 'EB Garamond', serif;
 }
 
 .learned-box {
     background: var(--paper);
     border-radius: 3px;
-    padding: 22px 26px;
+    padding: 24px 28px;
     border-left: 3px solid var(--sage);
-    font-size: 16px;
-    line-height: 1.85;
+    font-size: 18px;
+    line-height: 1.9;
     color: var(--ink-light);
     font-family: 'EB Garamond', serif;
     box-shadow: 0 1px 8px var(--shadow);
@@ -171,7 +173,7 @@ section[data-testid="stSidebar"] .stButton > button:hover {
     color: var(--amber);
     padding: 3px 12px;
     border-radius: 2px;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 500;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -184,7 +186,7 @@ section[data-testid="stSidebar"] .stButton > button:hover {
     color: var(--slate);
     padding: 3px 12px;
     border-radius: 2px;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 500;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -197,7 +199,7 @@ section[data-testid="stSidebar"] .stButton > button:hover {
     color: var(--sage);
     padding: 3px 12px;
     border-radius: 2px;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 500;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -210,7 +212,7 @@ section[data-testid="stSidebar"] .stButton > button:hover {
     color: var(--rust);
     padding: 3px 12px;
     border-radius: 2px;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 500;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -222,9 +224,9 @@ section[data-testid="stSidebar"] .stButton > button:hover {
 .prio-high {
     background: var(--rust-pale);
     color: var(--rust);
-    padding: 2px 9px;
+    padding: 2px 10px;
     border-radius: 2px;
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 500;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -234,9 +236,9 @@ section[data-testid="stSidebar"] .stButton > button:hover {
 .prio-medium {
     background: var(--amber-light);
     color: var(--amber);
-    padding: 2px 9px;
+    padding: 2px 10px;
     border-radius: 2px;
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 500;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -246,9 +248,9 @@ section[data-testid="stSidebar"] .stButton > button:hover {
 .prio-low {
     background: var(--sage-light);
     color: var(--sage);
-    padding: 2px 9px;
+    padding: 2px 10px;
     border-radius: 2px;
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 500;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -261,14 +263,14 @@ div.stButton > button {
     color: #f5f0e8 !important;
     border: 1px solid var(--ink) !important;
     border-radius: 2px !important;
-    padding: 9px 22px !important;
+    padding: 10px 24px !important;
     font-family: 'EB Garamond', serif !important;
-    font-size: 15px !important;
+    font-size: 17px !important;
     font-weight: 500 !important;
     letter-spacing: 0.04em !important;
     transition: all 0.18s ease !important;
     box-shadow: none !important;
-    min-height: 38px !important;
+    min-height: 42px !important;
     line-height: 1.4 !important;
 }
 
@@ -320,7 +322,7 @@ div.stButton > button[kind="primary"]:hover {
 .metric-card {
     background: var(--paper);
     border-radius: 3px;
-    padding: 22px 20px;
+    padding: 24px 22px;
     text-align: left;
     border: 1px solid var(--border);
     box-shadow: 0 1px 6px var(--shadow);
@@ -338,15 +340,15 @@ div.stButton > button[kind="primary"]:hover {
 
 .metric-number {
     font-family: 'Playfair Display', serif !important;
-    font-size: 38px !important;
+    font-size: 42px !important;
     font-weight: 700 !important;
     color: var(--ink) !important;
     line-height: 1;
-    margin-bottom: 6px;
+    margin-bottom: 8px;
 }
 
 .metric-label {
-    font-size: 11px;
+    font-size: 12px;
     color: var(--ink-muted);
     letter-spacing: 0.1em;
     text-transform: uppercase;
@@ -357,7 +359,7 @@ div.stButton > button[kind="primary"]:hover {
 .gap-card {
     background: var(--paper);
     border-radius: 3px;
-    padding: 18px 20px;
+    padding: 18px 22px;
     margin-bottom: 10px;
     border-left: 3px solid var(--rust);
     border: 1px solid var(--border);
@@ -366,7 +368,7 @@ div.stButton > button[kind="primary"]:hover {
 
 .gap-count {
     font-family: 'Playfair Display', serif;
-    font-size: 20px;
+    font-size: 22px;
     font-weight: 700;
     color: var(--rust);
 }
@@ -388,15 +390,15 @@ div.stButton > button[kind="primary"]:hover {
     border-radius: 2px !important;
     color: var(--ink) !important;
     font-family: 'EB Garamond', serif !important;
-    font-size: 18px !important;
-    padding: 10px 14px !important;
+    font-size: 19px !important;
+    padding: 12px 16px !important;
     line-height: 1.6 !important;
 }
 
 .stTextInput > div > div > input::placeholder,
 .stTextArea > div > div > textarea::placeholder {
     color: var(--ink-faint) !important;
-    font-size: 16px !important;
+    font-size: 17px !important;
     font-style: italic !important;
     font-family: 'EB Garamond', serif !important;
 }
@@ -408,14 +410,14 @@ div.stButton > button[kind="primary"]:hover {
     border-radius: 2px !important;
     color: var(--ink) !important;
     font-family: 'EB Garamond', serif !important;
-    font-size: 18px !important;
-    min-height: 44px !important;
+    font-size: 19px !important;
+    min-height: 48px !important;
 }
 
 [data-baseweb="select"] span,
 [data-baseweb="select"] div {
     font-family: 'EB Garamond', serif !important;
-    font-size: 17px !important;
+    font-size: 18px !important;
     color: var(--ink) !important;
 }
 
@@ -428,7 +430,7 @@ div.stButton > button[kind="primary"]:hover {
 label[data-testid="stWidgetLabel"],
 label[data-testid="stWidgetLabel"] p {
     font-family: 'EB Garamond', serif !important;
-    font-size: 16px !important;
+    font-size: 18px !important;
     font-weight: 600 !important;
     letter-spacing: 0.01em !important;
     text-transform: none !important;
@@ -445,7 +447,7 @@ label[data-testid="stWidgetLabel"] p {
 
 [data-testid="stExpander"] > div:first-child {
     font-family: 'EB Garamond', serif !important;
-    font-size: 15px !important;
+    font-size: 17px !important;
     color: var(--ink-light) !important;
 }
 
@@ -462,7 +464,7 @@ label[data-testid="stWidgetLabel"] p {
     border-bottom: 2px solid transparent !important;
     color: var(--ink-muted) !important;
     font-family: 'DM Mono', monospace !important;
-    font-size: 12px !important;
+    font-size: 13px !important;
     letter-spacing: 0.06em !important;
     text-transform: uppercase !important;
     padding: 10px 18px !important;
@@ -480,18 +482,18 @@ label[data-testid="stWidgetLabel"] p {
     border-radius: 3px !important;
     border-left-width: 3px !important;
     font-family: 'EB Garamond', serif !important;
-    font-size: 18px !important;
+    font-size: 19px !important;
 }
 
 .stAlert p, .stAlert div, .stAlert span {
     font-family: 'EB Garamond', serif !important;
-    font-size: 18px !important;
+    font-size: 19px !important;
 }
 
 /* ── Success / Error / Warning ── */
 [data-testid="stNotification"] {
     font-family: 'EB Garamond', serif !important;
-    font-size: 18px !important;
+    font-size: 19px !important;
     border-radius: 3px !important;
 }
 
@@ -505,7 +507,7 @@ hr {
 /* ── Captions & small text ── */
 small, .stCaption {
     font-family: 'DM Mono', monospace !important;
-    font-size: 13px !important;
+    font-size: 14px !important;
     color: var(--ink-faint) !important;
     letter-spacing: 0.03em;
 }
@@ -513,12 +515,21 @@ small, .stCaption {
 /* ── Markdown paragraph text ── */
 [data-testid="stMarkdownContainer"] p {
     font-family: 'EB Garamond', serif;
-    font-size: 18px;
-    line-height: 1.8;
+    font-size: 19px;
+    line-height: 1.85;
     color: var(--ink-light);
 }
 
-/* ── Doc Validator styles (Quarry-fied) ── */
+[data-testid="stMarkdownContainer"] li,
+[data-testid="stMarkdownContainer"] ul,
+[data-testid="stMarkdownContainer"] ol {
+    font-family: 'EB Garamond', serif;
+    font-size: 19px;
+    line-height: 1.85;
+    color: var(--ink-light);
+}
+
+/* ── Doc Validator styles ── */
 .validator-card {
     background: var(--paper);
     border-radius: 3px;
@@ -535,7 +546,7 @@ small, .stCaption {
     border: 1px solid #c4543a;
     border-radius: 2px;
     padding: 4px 14px;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 500;
     letter-spacing: 0.1em;
     text-transform: uppercase;
@@ -549,7 +560,7 @@ small, .stCaption {
     border: 1px solid #7ab898;
     border-radius: 2px;
     padding: 4px 14px;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 500;
     letter-spacing: 0.1em;
     text-transform: uppercase;
@@ -562,8 +573,8 @@ small, .stCaption {
     background: var(--cream-dark);
     border: 1px solid var(--border-dark);
     border-radius: 2px;
-    padding: 7px 14px;
-    font-size: 13px;
+    padding: 8px 16px;
+    font-size: 14px;
     font-weight: 500;
     color: var(--ink-light);
     margin: 4px;
@@ -572,7 +583,7 @@ small, .stCaption {
 }
 
 .chain-arrow {
-    font-size: 16px;
+    font-size: 18px;
     color: var(--ink-faint);
     margin: 0 2px;
 }
@@ -595,7 +606,7 @@ small, .stCaption {
 
 .validator-title {
     font-family: 'Playfair Display', serif;
-    font-size: 24px;
+    font-size: 26px;
     font-weight: 700;
     color: var(--ink);
     margin-bottom: 4px;
@@ -607,7 +618,7 @@ small, .stCaption {
     color: var(--ink-muted);
     border-radius: 2px;
     padding: 2px 10px;
-    font-size: 11px;
+    font-size: 12px;
     margin: 2px;
     border: 1px solid var(--border);
     font-family: 'DM Mono', monospace;
@@ -625,23 +636,15 @@ small, .stCaption {
     position: relative;
 }
 
-.doc-card-restricted {
-    border-left: 3px solid var(--rust);
-}
-
-.doc-card-accessible {
-    border-left: 3px solid var(--sage);
-}
-
-.doc-card-pending {
-    border-left: 3px solid var(--amber);
-}
+.doc-card-restricted  { border-left: 3px solid var(--rust); }
+.doc-card-accessible  { border-left: 3px solid var(--sage); }
+.doc-card-pending     { border-left: 3px solid var(--amber); }
 
 .role-badge {
     display: inline-block;
     padding: 2px 10px;
     border-radius: 2px;
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 500;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -655,10 +658,10 @@ small, .stCaption {
 .role-emp    { background: var(--sage-light); color: var(--sage); border: 1px solid #7ab898; }
 .role-all    { background: var(--cream-dark); color: var(--ink-muted); border: 1px solid var(--border); }
 
-.access-granted  { color: var(--sage); font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; }
-.access-denied   { color: var(--rust); font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; }
-.access-pending  { color: var(--amber); font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; }
-.access-expiring { color: #8b6914; font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; }
+.access-granted  { color: var(--sage);  font-family: 'DM Mono', monospace; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; }
+.access-denied   { color: var(--rust);  font-family: 'DM Mono', monospace; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; }
+.access-pending  { color: var(--amber); font-family: 'DM Mono', monospace; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; }
+.access-expiring { color: #8b6914;      font-family: 'DM Mono', monospace; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; }
 
 /* ── Scrollbar ── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -667,9 +670,7 @@ small, .stCaption {
 ::-webkit-scrollbar-thumb:hover { background: var(--ink-muted); }
 
 /* ── Spinner ── */
-.stSpinner > div {
-    border-top-color: var(--rust) !important;
-}
+.stSpinner > div { border-top-color: var(--rust) !important; }
 
 /* ── Metric native ── */
 [data-testid="stMetric"] {
@@ -681,12 +682,13 @@ small, .stCaption {
 
 [data-testid="stMetricValue"] {
     font-family: 'Playfair Display', serif !important;
+    font-size: 32px !important;
     color: var(--ink) !important;
 }
 
 [data-testid="stMetricLabel"] {
     font-family: 'DM Mono', monospace !important;
-    font-size: 11px !important;
+    font-size: 12px !important;
     letter-spacing: 0.06em !important;
     text-transform: uppercase !important;
     color: var(--ink-muted) !important;
@@ -739,7 +741,6 @@ CREATE TABLE IF NOT EXISTS failed_queries (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- ── Document Library ──────────────────────────────────
 CREATE TABLE IF NOT EXISTS documents (
     id              BIGSERIAL PRIMARY KEY,
     title           TEXT NOT NULL,
@@ -753,7 +754,6 @@ CREATE TABLE IF NOT EXISTS documents (
     created_at      TIMESTAMPTZ DEFAULT NOW()
 );
 
--- ── Document Access Grants (7-day expiry) ─────────────
 CREATE TABLE IF NOT EXISTS doc_access (
     id          BIGSERIAL PRIMARY KEY,
     doc_id      BIGINT NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
@@ -765,7 +765,6 @@ CREATE TABLE IF NOT EXISTS doc_access (
     status      TEXT NOT NULL DEFAULT 'Approved'
 );
 
--- ── Document Access Requests ─────────────────────────
 CREATE TABLE IF NOT EXISTS doc_access_requests (
     id           BIGSERIAL PRIMARY KEY,
     doc_id       BIGINT NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
@@ -897,13 +896,15 @@ def auto_save_note_to_resolved(ticket_query: str, note: str):
 
 
 # ════════════════════════════════════════════════════════
-#  LEARNED ANSWERS LOOKUP
+#  LEARNED ANSWERS LOOKUP  ← FIXED KEYWORD MATCHING
 # ════════════════════════════════════════════════════════
+
 _STOP_WORDS = {
     "what", "is", "are", "the", "a", "an", "of", "in", "on", "at",
     "to", "for", "and", "or", "how", "why", "when", "where", "who",
     "does", "do", "can", "could", "would", "should", "explain",
-    "tell", "me", "about", "difference", "between", "use", "using"
+    "tell", "me", "about", "difference", "between", "use", "using",
+    "means", "mean", "define", "definition", "describe", "give",
 }
 
 def _normalize(text: str) -> str:
@@ -914,28 +915,69 @@ def _content_words(text: str) -> set:
     return {w for w in words if w not in _STOP_WORDS}
 
 def _keyword_score(query: str, stored_query: str) -> float:
+    """
+    Multi-signal keyword matching so partial queries like 'cobra' still
+    match stored questions like 'what is cobra' or 'cobra means'.
+
+    Signals (highest wins):
+      1. Exact normalised match → 1.0
+      2. One text fully contains the other (substring) → 0.85
+      3. Every content word of the shorter query appears in the longer → 0.80
+      4. Jaccard on content-word sets → raw Jaccard (can be low for short queries)
+      5. Any single content word shared → 0.35 floor (ensures partial hits surface)
+    """
     q_norm = _normalize(query)
     s_norm = _normalize(stored_query)
+
+    # Signal 1 — exact match
     if q_norm == s_norm:
         return 1.0
+
+    # Signal 2 — substring containment
+    if q_norm in s_norm or s_norm in q_norm:
+        return 0.85
+
     q_words = _content_words(query)
     s_words = _content_words(stored_query)
+
     if not q_words or not s_words:
         return 0.0
-    return len(q_words & s_words) / len(q_words | s_words)
 
-_LEARNED_THRESHOLD = 0.55
+    intersection = q_words & s_words
+
+    # Signal 3 — all words of the shorter set are contained in the larger
+    shorter = q_words if len(q_words) <= len(s_words) else s_words
+    if intersection == shorter and len(shorter) >= 1:
+        return 0.80
+
+    # Signal 4 — Jaccard
+    jaccard = len(intersection) / len(q_words | s_words)
+
+    # Signal 5 — any single keyword shared → floor of 0.35
+    if intersection:
+        return max(jaccard, 0.35)
+
+    return 0.0
+
+
+# Lower threshold so partial/keyword matches surface correctly.
+# 0.30 means even a single shared keyword (floor=0.35) will pass.
+_LEARNED_THRESHOLD = 0.30
+
 
 def check_learned_answers(query: str):
     db = get_db()
     if db is None:
         return None
+
     best_score, best_solution, best_matched = 0.0, None, None
+
+    # ── Check tickets with admin notes ────────────────────────────────────────
     try:
         resp = db.table("tickets").select("query, admin_note").not_.is_("admin_note", "null").execute()
         for row in (resp.data or []):
             note = (row.get("admin_note") or "").strip()
-            q = (row.get("query") or "").strip()
+            q    = (row.get("query") or "").strip()
             if not note or not q:
                 continue
             score = _keyword_score(query, q)
@@ -943,11 +985,13 @@ def check_learned_answers(query: str):
                 best_score, best_solution, best_matched = score, note, q
     except Exception:
         pass
+
+    # ── Check resolved_issues table ───────────────────────────────────────────
     try:
         resp2 = db.table("resolved_issues").select("query, solution").execute()
         for row in (resp2.data or []):
             sol = (row.get("solution") or "").strip()
-            q = (row.get("query") or "").strip()
+            q   = (row.get("query") or "").strip()
             if not sol or not q:
                 continue
             score = _keyword_score(query, q)
@@ -955,8 +999,14 @@ def check_learned_answers(query: str):
                 best_score, best_solution, best_matched = score, sol, q
     except Exception:
         pass
+
     if best_solution and best_score >= _LEARNED_THRESHOLD:
-        return {"solution": best_solution, "matched_query": best_matched, "score": best_score, "source": "learned"}
+        return {
+            "solution":     best_solution,
+            "matched_query": best_matched,
+            "score":        best_score,
+            "source":       "learned",
+        }
     return None
 
 
@@ -1005,7 +1055,7 @@ def load_qa_pairs():
         try:
             q_part, a_part = part.split("answer", 1)
             question = q_part.strip()
-            answer = a_part.strip()
+            answer   = a_part.strip()
             if "enroll" in answer or "course" in answer:
                 continue
             if len(answer) < 30 or len(question) < 5:
@@ -1030,9 +1080,9 @@ def load_model_and_embeddings():
         pairs = load_qa_pairs()
         if not pairs:
             return None, None, None, None, None
-        model = SentenceTransformer('multi-qa-mpnet-base-dot-v1')
-        questions = [q for q, _ in pairs]
-        answers   = [a for _, a in pairs]
+        model        = SentenceTransformer('multi-qa-mpnet-base-dot-v1')
+        questions    = [q for q, _ in pairs]
+        answers      = [a for _, a in pairs]
         q_embeddings = model.encode(questions, convert_to_tensor=True, show_progress_bar=False)
         a_embeddings = model.encode(answers,   convert_to_tensor=True, show_progress_bar=False)
         return model, q_embeddings, a_embeddings, pairs, util
@@ -1049,12 +1099,12 @@ def answer_question(query: str) -> dict:
     if model is not None and q_embeddings is not None and a_embeddings is not None and pairs is not None and util is not None:
         try:
             query_embedding = model.encode(query.lower(), convert_to_tensor=True)
-            q_scores = util.cos_sim(query_embedding, q_embeddings)[0]
-            best_q_idx   = int(q_scores.argmax())
-            best_q_score = float(q_scores[best_q_idx])
-            a_scores = util.cos_sim(query_embedding, a_embeddings)[0]
-            best_a_idx   = int(a_scores.argmax())
-            best_a_score = float(a_scores[best_a_idx])
+            q_scores        = util.cos_sim(query_embedding, q_embeddings)[0]
+            best_q_idx      = int(q_scores.argmax())
+            best_q_score    = float(q_scores[best_q_idx])
+            a_scores        = util.cos_sim(query_embedding, a_embeddings)[0]
+            best_a_idx      = int(a_scores.argmax())
+            best_a_score    = float(a_scores[best_a_idx])
             weighted_a_score = best_a_score * _ANSWER_WEIGHT
             if best_q_score >= _Q_THRESHOLD or best_a_score >= _A_THRESHOLD:
                 if best_q_score >= weighted_a_score:
@@ -1065,23 +1115,24 @@ def answer_question(query: str) -> dict:
                 return {
                     "found": True, "answer": answer.strip(), "matched": question.strip(),
                     "score": chosen_score, "match_src": match_source,
-                    "pdf_error": False, "source": "pdf"
+                    "pdf_error": False, "source": "pdf",
                 }
         except Exception:
             pass
 
+    # Fall back to learned answers
     learned = check_learned_answers(query)
     if learned:
         return {
             "found": True, "answer": learned["solution"], "matched": learned["matched_query"],
             "score": learned["score"], "match_src": "learned", "pdf_error": False,
-            "source": learned.get("source", "learned")
+            "source": learned.get("source", "learned"),
         }
 
     pdf_unavailable = (model is None or q_embeddings is None)
     return {
         "found": False, "answer": "", "matched": "", "score": 0,
-        "match_src": "none", "pdf_error": pdf_unavailable, "source": "none"
+        "match_src": "none", "pdf_error": pdf_unavailable, "source": "none",
     }
 
 
@@ -1090,7 +1141,7 @@ def answer_question(query: str) -> dict:
 # ════════════════════════════════════════════════════════
 def tickets_to_csv(tickets: list) -> bytes:
     output = io.StringIO()
-    writer = csv.DictWriter(output, fieldnames=["id", "user_id", "job_role", "query", "priority", "status", "admin_note", "created_at"])
+    writer = csv.DictWriter(output, fieldnames=["id","user_id","job_role","query","priority","status","admin_note","created_at"])
     writer.writeheader()
     for t in tickets:
         writer.writerow({k: t.get(k, "") for k in writer.fieldnames})
@@ -1101,25 +1152,25 @@ def tickets_to_csv(tickets: list) -> bytes:
 #  DOC VALIDATOR LOGIC
 # ════════════════════════════════════════════════════════
 _SENSITIVE_KEYWORDS = [
-    "vpn", "virtual private network", "network access", "firewall", "proxy",
-    "remote access", "zero trust", "ssl vpn", "ipsec",
-    "security", "cybersecurity", "penetration test", "pentest", "vulnerability",
-    "encryption", "cryptography", "access control", "identity", "iam",
-    "sso", "single sign-on", "mfa", "multi-factor", "certificate", "ssl", "tls",
-    "legal", "contract", "nda", "agreement", "gdpr", "compliance", "audit",
-    "regulation", "policy", "terms of service", "data protection", "privacy",
-    "financial", "budget", "invoice", "payment", "salary", "payroll",
-    "revenue", "expense", "accounting", "tax", "billing",
-    "infrastructure", "cloud", "aws", "gcp", "azure", "kubernetes", "k8s",
-    "server", "database schema", "production", "disaster recovery", "backup",
-    "pii", "personal data", "sensitive data", "confidential", "classified",
-    "secret", "restricted", "privileged",
+    "vpn","virtual private network","network access","firewall","proxy",
+    "remote access","zero trust","ssl vpn","ipsec",
+    "security","cybersecurity","penetration test","pentest","vulnerability",
+    "encryption","cryptography","access control","identity","iam",
+    "sso","single sign-on","mfa","multi-factor","certificate","ssl","tls",
+    "legal","contract","nda","agreement","gdpr","compliance","audit",
+    "regulation","policy","terms of service","data protection","privacy",
+    "financial","budget","invoice","payment","salary","payroll",
+    "revenue","expense","accounting","tax","billing",
+    "infrastructure","cloud","aws","gcp","azure","kubernetes","k8s",
+    "server","database schema","production","disaster recovery","backup",
+    "pii","personal data","sensitive data","confidential","classified",
+    "secret","restricted","privileged",
 ]
 
 _NORMAL_KEYWORDS = [
-    "faq", "onboarding", "general", "guide", "how to", "tutorial",
-    "overview", "introduction", "readme", "changelog", "release notes",
-    "meeting notes", "team update", "announcement",
+    "faq","onboarding","general","guide","how to","tutorial",
+    "overview","introduction","readme","changelog","release notes",
+    "meeting notes","team update","announcement",
 ]
 
 def classify_doc_sensitivity(title: str, description: str) -> dict:
@@ -1129,9 +1180,9 @@ def classify_doc_sensitivity(title: str, description: str) -> dict:
 
     if matched_sensitive:
         if PIPELINE_AVAILABLE:
-            result     = _classify_request(f"I need to create a document about {title}. {description}")
-            category   = result.get("category", "Security")
-            chain      = _build_chain(category)
+            result   = _classify_request(f"I need to create a document about {title}. {description}")
+            category = result.get("category", "Security")
+            chain    = _build_chain(category)
             if not chain:
                 chain    = ["Team Lead", "Tech Manager", "CTO", "CEO"]
                 category = "Security"
@@ -1140,19 +1191,23 @@ def classify_doc_sensitivity(title: str, description: str) -> dict:
             chain    = ["Team Lead", "Tech Manager", "CTO", "CEO"]
 
         return {
-            "is_sensitive":       True,
-            "category":           category,
-            "matched_keywords":   matched_sensitive[:6],
-            "chain":              chain,
-            "reason":             f"This document contains sensitive content ({', '.join(matched_sensitive[:3])}…) and must go through the full approval pipeline.",
+            "is_sensitive":     True,
+            "category":         category,
+            "matched_keywords": matched_sensitive[:6],
+            "chain":            chain,
+            "reason": (
+                f"This document contains sensitive content "
+                f"({', '.join(matched_sensitive[:3])}…) and must go through "
+                f"the full approval pipeline."
+            ),
         }
     else:
         return {
-            "is_sensitive":       False,
-            "category":           "General",
-            "matched_keywords":   matched_normal[:6],
-            "chain":              [],
-            "reason":             "This document does not contain sensitive content and will be auto-approved instantly.",
+            "is_sensitive":     False,
+            "category":         "General",
+            "matched_keywords": matched_normal[:6],
+            "chain":            [],
+            "reason":           "This document does not contain sensitive content and will be auto-approved instantly.",
         }
 
 
@@ -1160,20 +1215,20 @@ def classify_doc_sensitivity(title: str, description: str) -> dict:
 #  TICKET INTENT DETECTOR
 # ════════════════════════════════════════════════════════
 _TICKET_INTENT_PHRASES = [
-    "raise a ticket", "raise ticket", "raise a query", "raise query",
-    "raise an issue", "raise issue", "raise a request", "raise request",
-    "submit a ticket", "submit ticket", "submit a query", "submit query",
-    "create a ticket", "create ticket", "open a ticket", "open ticket",
-    "log a ticket", "log ticket", "log an issue", "log issue",
-    "file a ticket", "file a complaint", "file a request",
-    "i want to raise", "i need to raise", "i want to submit", "i need to submit",
-    "i want to create a ticket", "i need to create a ticket",
-    "i want to report", "i need to report",
-    "report an issue", "report a problem", "report a bug",
-    "need help ticket", "need support ticket", "need a support ticket",
-    "contact support", "reach support", "get support",
-    "need human help", "talk to someone", "speak to admin",
-    "escalate", "escalate this", "escalate issue",
+    "raise a ticket","raise ticket","raise a query","raise query",
+    "raise an issue","raise issue","raise a request","raise request",
+    "submit a ticket","submit ticket","submit a query","submit query",
+    "create a ticket","create ticket","open a ticket","open ticket",
+    "log a ticket","log ticket","log an issue","log issue",
+    "file a ticket","file a complaint","file a request",
+    "i want to raise","i need to raise","i want to submit","i need to submit",
+    "i want to create a ticket","i need to create a ticket",
+    "i want to report","i need to report",
+    "report an issue","report a problem","report a bug",
+    "need help ticket","need support ticket","need a support ticket",
+    "contact support","reach support","get support",
+    "need human help","talk to someone","speak to admin",
+    "escalate","escalate this","escalate issue",
 ]
 
 def _is_ticket_intent(text: str) -> bool:
@@ -1184,9 +1239,9 @@ def _is_ticket_intent(text: str) -> bool:
 # ════════════════════════════════════════════════════════
 #  DOC VISIBILITY — ROLE HIERARCHY
 # ════════════════════════════════════════════════════════
-ROLE_HIERARCHY = ["Employee", "Manager", "Tech Manager", "CTO", "CEO"]
+ROLE_HIERARCHY   = ["Employee", "Manager", "Tech Manager", "CTO", "CEO"]
 AUTO_ACCESS_ROLES = {"CTO", "CEO"}
-APPROVER_ROLES = {"Tech Manager", "CTO", "CEO"}
+APPROVER_ROLES    = {"Tech Manager", "CTO", "CEO"}
 
 def _role_level(role: str) -> int:
     try:
@@ -1195,16 +1250,12 @@ def _role_level(role: str) -> int:
         return 0
 
 def _can_auto_access(user_role: str, doc_min_role: str) -> bool:
-    user_level = _role_level(user_role)
-    doc_level  = _role_level(doc_min_role)
     if user_role in AUTO_ACCESS_ROLES:
         return True
-    return user_level >= doc_level
+    return _role_level(user_role) >= _role_level(doc_min_role)
 
 def _needs_approval(user_role: str, doc_min_role: str) -> bool:
-    if _can_auto_access(user_role, doc_min_role):
-        return False
-    return True
+    return not _can_auto_access(user_role, doc_min_role)
 
 def _sensitivity_color(sensitivity: str) -> str:
     return {
@@ -1280,7 +1331,7 @@ def db_get_access_grants(user_id=None, doc_id=None):
 
 def db_check_active_grant(user_id: str, doc_id: int):
     grants = db_get_access_grants(user_id=user_id, doc_id=doc_id)
-    now = datetime.now(timezone.utc)
+    now    = datetime.now(timezone.utc)
     for g in grants:
         if g.get("status") != "Approved":
             continue
@@ -1299,7 +1350,7 @@ def db_grant_access(doc_id, user_id, user_role, granted_by="System"):
     expires = (datetime.now(timezone.utc) + timedelta(days=7)).isoformat()
     row = {
         "doc_id": doc_id, "user_id": user_id, "user_role": user_role,
-        "granted_by": granted_by, "expires_at": expires, "status": "Approved"
+        "granted_by": granted_by, "expires_at": expires, "status": "Approved",
     }
     db.table("doc_access").insert(row).execute()
     st.toast(f"🔓 Access granted to {user_id} for doc #{doc_id} (7 days)", icon="☁️")
@@ -1357,7 +1408,7 @@ def db_review_access_request(req_id, action, reviewed_by, doc_id=None, user_id=N
 def page_employee():
     st.markdown("# Employee Help Portal")
     st.markdown(
-        "<p style='color:#6b5f55; font-size:17px; font-family: EB Garamond, serif;'>"
+        "<p style='color:#6b5f55; font-size:19px; font-family: EB Garamond, serif;'>"
         "Ask any question — or type <em>raise a ticket</em> to go straight to support.</p>",
         unsafe_allow_html=True,
     )
@@ -1386,12 +1437,12 @@ def page_employee():
             st.markdown(
                 "<div style='background: var(--paper); border: 1px solid var(--border); "
                 "border-left: 3px solid var(--rust); border-radius: 3px; padding: 16px 20px; margin-bottom: 8px;'>"
-                "<p style='margin:0; font-family: EB Garamond, serif; font-size:16px; color: var(--ink-light);'>"
+                "<p style='margin:0; font-family: EB Garamond, serif; font-size:18px; color: var(--ink-light);'>"
                 "Sure — fill in the form below and our team will get back to you."
                 "</p></div>",
                 unsafe_allow_html=True,
             )
-            st.session_state["show_ticket"] = True
+            st.session_state["show_ticket"]  = True
             st.session_state["ticket_query"] = ""
 
         else:
@@ -1401,7 +1452,7 @@ def page_employee():
             if result.get("pdf_error") and not result["found"]:
                 st.error("Knowledge base unavailable. Please raise a ticket.")
                 db_log_failed_query(question.strip())
-                st.session_state["show_ticket"] = True
+                st.session_state["show_ticket"]  = True
                 st.session_state["ticket_query"] = question.strip()
 
             elif result["found"]:
@@ -1411,12 +1462,15 @@ def page_employee():
                 if source == "learned":
                     st.markdown("#### ✦ Answer Found")
                     st.markdown(
-                        "<small style='color:#3d5a4a; font-family: DM Mono, monospace; font-size:11px; letter-spacing:0.06em; text-transform:uppercase;'>"
+                        "<small style='color:#3d5a4a; font-family: DM Mono, monospace; font-size:13px; "
+                        "letter-spacing:0.06em; text-transform:uppercase;'>"
                         "Source: Previously resolved support ticket</small>",
                         unsafe_allow_html=True,
                     )
                     st.markdown(
-                        f"<small style='color:#9c8e82; font-family: EB Garamond, serif;'>Similar question: <em>{result['matched'][:160]}</em> &nbsp;·&nbsp; similarity {result['score']:.0%}</small>",
+                        f"<small style='color:#9c8e82; font-family: EB Garamond, serif; font-size:16px;'>"
+                        f"Similar question: <em>{result['matched'][:160]}</em> "
+                        f"&nbsp;·&nbsp; similarity {result['score']:.0%}</small>",
                         unsafe_allow_html=True,
                     )
                     st.markdown(f"<div class='learned-box'>{result['answer']}</div>", unsafe_allow_html=True)
@@ -1424,12 +1478,14 @@ def page_employee():
                     st.markdown("#### ✦ Answer Found")
                     match_label = "matched via question" if match_src == "question" else "matched via answer content"
                     st.markdown(
-                        f"<small style='color:#8b3a2a; font-family: DM Mono, monospace; font-size:11px; letter-spacing:0.06em; text-transform:uppercase;'>"
+                        f"<small style='color:#8b3a2a; font-family: DM Mono, monospace; font-size:13px; "
+                        f"letter-spacing:0.06em; text-transform:uppercase;'>"
                         f"Source: PDF Knowledge Base &nbsp;·&nbsp; {match_label}</small>",
                         unsafe_allow_html=True,
                     )
                     st.markdown(
-                        f"<small style='color:#9c8e82; font-family: EB Garamond, serif;'>Matched: <em>{result['matched'][:120]}</em> &nbsp;·&nbsp; score {result['score']:.2f}</small>",
+                        f"<small style='color:#9c8e82; font-family: EB Garamond, serif; font-size:16px;'>"
+                        f"Matched: <em>{result['matched'][:120]}</em> &nbsp;·&nbsp; score {result['score']:.2f}</small>",
                         unsafe_allow_html=True,
                     )
                     st.markdown(f"<div class='answer-box'>{result['answer']}</div>", unsafe_allow_html=True)
@@ -1442,7 +1498,7 @@ def page_employee():
                 with col_b:
                     if st.button("👎 Not helpful", key="emp_not_helpful"):
                         db_log_failed_query(question.strip())
-                        st.session_state["show_ticket"] = True
+                        st.session_state["show_ticket"]  = True
                         st.session_state["ticket_query"] = question.strip()
                         st.warning("Sorry! Please raise a ticket below.")
 
@@ -1454,7 +1510,7 @@ def page_employee():
                     unsafe_allow_html=True,
                 )
                 db_log_failed_query(question.strip())
-                st.session_state["show_ticket"] = True
+                st.session_state["show_ticket"]  = True
                 st.session_state["ticket_query"] = question.strip()
 
     elif search:
@@ -1466,19 +1522,27 @@ def page_employee():
         st.markdown("### Raise a Support Ticket")
         c1, c2 = st.columns(2)
         with c1:
-            user_id = st.text_input("Employee ID *", placeholder="e.g. EMP-1042", key="emp_user_id")
-            job_role = st.selectbox("Job Role *", ["Select…", "Software Engineer", "Data Analyst", "QA Engineer", "DevOps Engineer", "Product Manager", "HR / Operations", "Other"], key="emp_job_role")
+            user_id  = st.text_input("Employee ID *", placeholder="e.g. EMP-1042", key="emp_user_id")
+            job_role = st.selectbox(
+                "Job Role *",
+                ["Select…","Software Engineer","Data Analyst","QA Engineer",
+                 "DevOps Engineer","Product Manager","HR / Operations","Other"],
+                key="emp_job_role",
+            )
         with c2:
-            priority = st.selectbox("Priority *", ["Medium", "High", "Low"], key="emp_priority")
+            priority = st.selectbox("Priority *", ["Medium","High","Low"], key="emp_priority")
 
         original_question = st.session_state.get("ticket_query", "")
         if original_question:
             st.markdown(
-                f"<small style='color:#8b3a2a; font-family: DM Mono, monospace; font-size:11px; letter-spacing:0.04em;'>"
-                f"Search query: {original_question}</small>",
+                f"<small style='color:#8b3a2a; font-family: DM Mono, monospace; font-size:13px; "
+                f"letter-spacing:0.04em;'>Search query: {original_question}</small>",
                 unsafe_allow_html=True,
             )
-        query_text = st.text_area("Describe your problem in detail *", value="", placeholder="Add more details about your issue…", height=120, key="emp_query_text")
+        query_text = st.text_area(
+            "Describe your problem in detail *", value="",
+            placeholder="Add more details about your issue…", height=120, key="emp_query_text",
+        )
 
         col_sub, col_cancel, _ = st.columns([1, 1, 4])
         with col_sub:
@@ -1549,12 +1613,12 @@ def page_admin():
     with admin_tab1:
         try:
             stats = db_stats()
-            cols = st.columns(5)
+            cols  = st.columns(5)
             for col, val, label, icon in zip(
                 cols,
                 [stats["total"], stats["open"], stats["in_progress"], stats["resolved"], stats["overdue"]],
-                ["Total", "Open", "In Progress", "Resolved", "Overdue"],
-                ["📋", "○", "◑", "●", "⚠"],
+                ["Total","Open","In Progress","Resolved","Overdue"],
+                ["📋","○","◑","●","⚠"],
             ):
                 with col:
                     st.markdown(
@@ -1571,9 +1635,9 @@ def page_admin():
 
         c1, c2, c3, c4 = st.columns([1.5, 1.5, 1.5, 1])
         with c1:
-            sf = st.selectbox("Status", ["All", "Open", "In Progress", "Resolved", "Overdue"], key="admin_filter_status")
+            sf = st.selectbox("Status", ["All","Open","In Progress","Resolved","Overdue"], key="admin_filter_status")
         with c2:
-            pf = st.selectbox("Priority", ["All", "High", "Medium", "Low"], key="admin_filter_priority")
+            pf = st.selectbox("Priority", ["All","High","Medium","Low"], key="admin_filter_priority")
         with c3:
             search_term = st.text_input("Search tickets", placeholder="keyword / employee ID", key="admin_search_term")
         with c4:
@@ -1581,7 +1645,7 @@ def page_admin():
             export_btn = st.button("Export CSV", use_container_width=True, key="admin_export_btn")
 
         try:
-            tickets = db_get_tickets(sf if sf not in ["All", "Overdue"] else None)
+            tickets = db_get_tickets(sf if sf not in ["All","Overdue"] else None)
         except Exception as e:
             st.error(f"DB error: {e}")
             return
@@ -1592,11 +1656,11 @@ def page_admin():
             tickets = [t for t in tickets if t.get("priority") == pf]
         if search_term.strip():
             kw = search_term.strip().lower()
-            tickets = [t for t in tickets if kw in t.get("query", "").lower() or kw in t.get("user_id", "").lower()]
+            tickets = [t for t in tickets if kw in t.get("query","").lower() or kw in t.get("user_id","").lower()]
 
         if export_btn:
             all_tickets = db_get_tickets()
-            csv_bytes = tickets_to_csv(all_tickets)
+            csv_bytes   = tickets_to_csv(all_tickets)
             st.download_button("⬇ Download CSV", data=csv_bytes, file_name="helpdesk_tickets.csv", mime="text/csv", key="admin_download_csv")
             st.toast("CSV exported", icon="✅")
 
@@ -1604,17 +1668,17 @@ def page_admin():
             st.info("No tickets found.", icon="📭")
         else:
             st.markdown(
-                f"<p style='font-family: DM Mono, monospace; font-size: 12px; color: #9c8e82; "
+                f"<p style='font-family: DM Mono, monospace; font-size: 13px; color: #9c8e82; "
                 f"letter-spacing: 0.06em; text-transform: uppercase;'>{len(tickets)} ticket(s)</p>",
                 unsafe_allow_html=True,
             )
 
             for t in tickets:
-                tid = t.get("id")
-                status = t.get("status", "Open")
-                priority = t.get("priority", "Medium")
-                created = t.get("created_at", "")
-                overdue = is_overdue(created) and status == "Open"
+                tid          = t.get("id")
+                status       = t.get("status", "Open")
+                priority     = t.get("priority", "Medium")
+                created      = t.get("created_at", "")
+                overdue      = is_overdue(created) and status == "Open"
                 ticket_query = t.get("query", "")
 
                 try:
@@ -1622,17 +1686,17 @@ def page_admin():
                 except Exception:
                     created_fmt = created
 
-                badge_class = "badge-overdue" if overdue else {"Open": "badge-open", "In Progress": "badge-inprogress", "Resolved": "badge-resolved"}.get(status, "badge-open")
+                badge_class    = "badge-overdue" if overdue else {"Open":"badge-open","In Progress":"badge-inprogress","Resolved":"badge-resolved"}.get(status,"badge-open")
                 display_status = "OVERDUE" if overdue else status
-                prio_class = {"High": "prio-high", "Medium": "prio-medium", "Low": "prio-low"}.get(priority, "prio-medium")
+                prio_class     = {"High":"prio-high","Medium":"prio-medium","Low":"prio-low"}.get(priority,"prio-medium")
 
-                with st.expander(f"#{tid} — {t.get('user_id', '?')} · {t.get('job_role', '?')} · {display_status} · {priority} · {created_fmt}"):
+                with st.expander(f"#{tid} — {t.get('user_id','?')} · {t.get('job_role','?')} · {display_status} · {priority} · {created_fmt}"):
                     st.markdown(
                         f"<span class='{badge_class}'>{display_status}</span>&nbsp;&nbsp;"
                         f"<span class='{prio_class}'>{priority}</span>",
                         unsafe_allow_html=True,
                     )
-                    st.markdown(f"**Employee:** {t.get('user_id', '–')} &nbsp;·&nbsp; **Role:** {t.get('job_role', '–')} &nbsp;·&nbsp; **Submitted:** {created_fmt}")
+                    st.markdown(f"**Employee:** {t.get('user_id','–')} &nbsp;·&nbsp; **Role:** {t.get('job_role','–')} &nbsp;·&nbsp; **Submitted:** {created_fmt}")
 
                     st.markdown("**Timeline:**")
                     st.markdown(f"<span class='timeline-dot' style='background:#8b3a2a'></span> Opened — {created_fmt}", unsafe_allow_html=True)
@@ -1650,19 +1714,17 @@ def page_admin():
                     nc1, nc2 = st.columns(2)
                     with nc1:
                         new_status = st.selectbox(
-                            "Update Status", ["Open", "In Progress", "Resolved"],
-                            index=["Open", "In Progress", "Resolved"].index(status),
-                            key=f"admin_s_{tid}"
+                            "Update Status", ["Open","In Progress","Resolved"],
+                            index=["Open","In Progress","Resolved"].index(status),
+                            key=f"admin_s_{tid}",
                         )
                     with nc2:
                         prefill_note = st.session_state.pop(f"admin_prefill_{tid}", None)
                         default_note = prefill_note if prefill_note is not None else (t.get("admin_note") or "")
                         note = st.text_area(
-                            "Admin Note / Solution",
-                            value=default_note,
-                            key=f"admin_n_{tid}",
-                            height=100,
-                            placeholder="Write solution here…"
+                            "Admin Note / Solution", value=default_note,
+                            key=f"admin_n_{tid}", height=100,
+                            placeholder="Write solution here…",
                         )
 
                     bc1, bc2, _, _ = st.columns([1, 1, 1.5, 1])
@@ -1696,7 +1758,7 @@ def _render_doc_validator():
     st.markdown("""
     <div style='margin-bottom: 8px;'>
         <p class='validator-title'>Document Sensitivity Validator</p>
-        <p style='color: #6b5f55; font-size: 16px; margin-top: 0; font-family: EB Garamond, serif;'>
+        <p style='color: #6b5f55; font-size: 18px; margin-top: 0; font-family: EB Garamond, serif;'>
             Enter your document details below. The system will instantly classify it as
             <strong>Sensitive</strong> (requires full approval pipeline) or
             <strong>Normal</strong> (auto-approved).
@@ -1712,29 +1774,24 @@ def _render_doc_validator():
             doc_title = st.text_input(
                 "Document Title *",
                 placeholder="e.g. VPN Access Policy, Employee Onboarding Guide…",
-                key="dv_title"
+                key="dv_title",
             )
         with col2:
             doc_type_hint = st.selectbox(
                 "Document Hint (optional)",
-                ["— Let the system decide —", "VPN / Network", "Security Policy",
-                 "Legal / Compliance", "Financial", "Infrastructure",
-                 "Technical Guide", "Team Process", "FAQ / Onboarding", "General"],
-                key="dv_type_hint"
+                ["— Let the system decide —","VPN / Network","Security Policy",
+                 "Legal / Compliance","Financial","Infrastructure",
+                 "Technical Guide","Team Process","FAQ / Onboarding","General"],
+                key="dv_type_hint",
             )
 
         doc_description = st.text_area(
             "Document Description *",
             placeholder="Briefly describe what this document covers, its purpose, and intended audience…",
-            height=120,
-            key="dv_description"
+            height=120, key="dv_description",
         )
 
-        validate_btn = st.form_submit_button(
-            "Validate Document →",
-            type="primary",
-            use_container_width=False
-        )
+        validate_btn = st.form_submit_button("Validate Document →", type="primary", use_container_width=False)
 
     if validate_btn:
         if not doc_title.strip() or not doc_description.strip():
@@ -1745,9 +1802,9 @@ def _render_doc_validator():
                 hint_text += f" {doc_type_hint}"
 
             result = classify_doc_sensitivity(doc_title.strip(), hint_text)
-            st.session_state["dv_result"]      = result
-            st.session_state["dv_last_title"]  = doc_title.strip()
-            st.session_state["dv_last_desc"]   = doc_description.strip()
+            st.session_state["dv_result"]     = result
+            st.session_state["dv_last_title"] = doc_title.strip()
+            st.session_state["dv_last_desc"]  = doc_description.strip()
 
     result = st.session_state.get("dv_result")
     if result:
@@ -1763,7 +1820,7 @@ def _render_doc_validator():
                     <span style='font-size:32px;'>⚠</span>
                     <div>
                         <span class='sensitive-badge'>Sensitive Document</span>
-                        <p style='margin:8px 0 0 0; color:#3d3530; font-size:16px; font-family: EB Garamond, serif;'>
+                        <p style='margin:8px 0 0 0; color:#3d3530; font-size:18px; font-family: EB Garamond, serif;'>
                             {result["reason"]}
                         </p>
                     </div>
@@ -1774,13 +1831,10 @@ def _render_doc_validator():
             st.markdown("<br>", unsafe_allow_html=True)
 
             if result["matched_keywords"]:
-                kw_html = "".join(
-                    f"<span class='keyword-tag'>{kw}</span>"
-                    for kw in result["matched_keywords"]
-                )
+                kw_html = "".join(f"<span class='keyword-tag'>{kw}</span>" for kw in result["matched_keywords"])
                 st.markdown(f"""
                 <div style='margin-bottom:16px;'>
-                    <p style='font-size:11px; color:#9c8e82; margin-bottom:6px; font-family: DM Mono, monospace; letter-spacing: 0.06em; text-transform: uppercase;'>
+                    <p style='font-size:13px; color:#9c8e82; margin-bottom:6px; font-family: DM Mono, monospace; letter-spacing: 0.06em; text-transform: uppercase;'>
                         Detected sensitive keywords
                     </p>
                     {kw_html}
@@ -1791,15 +1845,15 @@ def _render_doc_validator():
             if chain:
                 st.markdown("#### Required Approval Chain")
                 st.markdown(
-                    f"<p style='color:#6b5f55; font-size:14px; margin-top:-8px; font-family: EB Garamond, serif;'>"
+                    f"<p style='color:#6b5f55; font-size:17px; margin-top:-8px; font-family: EB Garamond, serif;'>"
                     f"This document must be approved by all {len(chain)} level(s) before it is published.</p>",
-                    unsafe_allow_html=True
+                    unsafe_allow_html=True,
                 )
 
                 chain_html = ""
                 for i, role in enumerate(chain):
-                    role_icons = {"Team Lead": "◈", "Tech Manager": "◉", "CTO": "◎", "CEO": "◆"}
-                    icon = role_icons.get(role, "○")
+                    role_icons = {"Team Lead":"◈","Tech Manager":"◉","CTO":"◎","CEO":"◆"}
+                    icon       = role_icons.get(role, "○")
                     chain_html += f"<span class='chain-step'>{icon} {role}</span>"
                     if i < len(chain) - 1:
                         chain_html += "<span class='chain-arrow'> → </span>"
@@ -1808,7 +1862,7 @@ def _render_doc_validator():
                     f"<div style='display:flex; flex-wrap:wrap; align-items:center; gap:4px; "
                     f"padding:16px; background:var(--cream-dark); border-radius:3px; "
                     f"border:1px solid var(--border);'>{chain_html}</div>",
-                    unsafe_allow_html=True
+                    unsafe_allow_html=True,
                 )
 
                 st.markdown("<br>", unsafe_allow_html=True)
@@ -1821,7 +1875,7 @@ def _render_doc_validator():
                         "CEO":          "Final sign-off for company-wide policy and risk exposure.",
                     }
                     desc   = role_descs.get(role, "Reviews and approves the document.")
-                    colors = ["#8b3a2a", "#2d3d4f", "#3d5a4a", "#8b6914"]
+                    colors = ["#8b3a2a","#2d3d4f","#3d5a4a","#8b6914"]
                     color  = colors[i % len(colors)]
                     st.markdown(
                         f"<div style='display:flex; gap:12px; align-items:flex-start; "
@@ -1829,11 +1883,11 @@ def _render_doc_validator():
                         f"border-radius:3px; border-left:3px solid {color}; border:1px solid var(--border);'>"
                         f"<div style='min-width:22px; font-family: DM Mono, monospace; color:{color}; font-weight:500;'>{i+1:02d}</div>"
                         f"<div>"
-                        f"<p style='margin:0; font-weight:600; color:{color}; font-family: Playfair Display, serif; font-size:15px;'>{role}</p>"
-                        f"<p style='margin:2px 0 0 0; font-size:14px; color:#6b5f55; font-family: EB Garamond, serif;'>{desc}</p>"
+                        f"<p style='margin:0; font-weight:600; color:{color}; font-family: Playfair Display, serif; font-size:16px;'>{role}</p>"
+                        f"<p style='margin:2px 0 0 0; font-size:16px; color:#6b5f55; font-family: EB Garamond, serif;'>{desc}</p>"
                         f"</div>"
                         f"</div>",
-                        unsafe_allow_html=True
+                        unsafe_allow_html=True,
                     )
 
             st.markdown("---")
@@ -1865,7 +1919,7 @@ def _render_doc_validator():
                     <span style='font-size:32px; color:#3d5a4a;'>✓</span>
                     <div>
                         <span class='normal-badge'>Normal Document — Auto-Approved</span>
-                        <p style='margin:8px 0 0 0; color:#3d3530; font-size:16px; font-family: EB Garamond, serif;'>
+                        <p style='margin:8px 0 0 0; color:#3d3530; font-size:18px; font-family: EB Garamond, serif;'>
                             {result["reason"]}
                         </p>
                     </div>
@@ -1882,7 +1936,7 @@ def _render_doc_validator():
                 )
                 st.markdown(f"""
                 <div style='margin-bottom:16px;'>
-                    <p style='font-size:11px; color:#9c8e82; margin-bottom:6px; font-family: DM Mono, monospace; letter-spacing: 0.06em; text-transform: uppercase;'>
+                    <p style='font-size:13px; color:#9c8e82; margin-bottom:6px; font-family: DM Mono, monospace; letter-spacing: 0.06em; text-transform: uppercase;'>
                         Detected normal-content keywords
                     </p>
                     {kw_html}
@@ -1892,7 +1946,7 @@ def _render_doc_validator():
             st.info(
                 "No approval chain needed. This document will be instantly approved "
                 "when submitted through the Approval Pipeline.",
-                icon="ℹ️"
+                icon="ℹ️",
             )
 
             st.markdown("---")
@@ -1920,20 +1974,20 @@ def _render_doc_validator():
         <div style='text-align:center; padding:52px 24px; background:var(--paper);
                     border-radius:3px; border:1px solid var(--border); margin-top:16px;'>
             <div style='font-size:48px; margin-bottom:14px; color:#d4c9bc;'>◉</div>
-            <p style='font-size:18px; font-weight:600; color:#1a1612; font-family: Playfair Display, serif; margin:0;'>
+            <p style='font-size:20px; font-weight:600; color:#1a1612; font-family: Playfair Display, serif; margin:0;'>
                 Enter document details above and click Validate
             </p>
-            <p style='font-size:14px; color:#9c8e82; margin-top:10px; font-family: EB Garamond, serif;'>
+            <p style='font-size:16px; color:#9c8e82; margin-top:10px; font-family: EB Garamond, serif;'>
                 The system will instantly classify it and show you the required approval chain.
             </p>
             <div style='margin-top:24px; display:flex; justify-content:center; gap:40px; flex-wrap:wrap;'>
                 <div style='text-align:center;'>
-                    <p style='font-family: DM Mono, monospace; font-size:11px; color:#8b3a2a; font-weight:600; margin:4px 0 0; letter-spacing:0.08em; text-transform:uppercase;'>Sensitive</p>
-                    <p style='font-size:12px; color:#9c8e82; margin:2px 0 0; font-family: EB Garamond, serif;'>Full pipeline required</p>
+                    <p style='font-family: DM Mono, monospace; font-size:12px; color:#8b3a2a; font-weight:600; margin:4px 0 0; letter-spacing:0.08em; text-transform:uppercase;'>Sensitive</p>
+                    <p style='font-size:14px; color:#9c8e82; margin:2px 0 0; font-family: EB Garamond, serif;'>Full pipeline required</p>
                 </div>
                 <div style='text-align:center;'>
-                    <p style='font-family: DM Mono, monospace; font-size:11px; color:#3d5a4a; font-weight:600; margin:4px 0 0; letter-spacing:0.08em; text-transform:uppercase;'>Normal</p>
-                    <p style='font-size:12px; color:#9c8e82; margin:2px 0 0; font-family: EB Garamond, serif;'>Auto-approved instantly</p>
+                    <p style='font-family: DM Mono, monospace; font-size:12px; color:#3d5a4a; font-weight:600; margin:4px 0 0; letter-spacing:0.08em; text-transform:uppercase;'>Normal</p>
+                    <p style='font-size:14px; color:#9c8e82; margin:2px 0 0; font-family: EB Garamond, serif;'>Auto-approved instantly</p>
                 </div>
             </div>
         </div>
@@ -1964,12 +2018,12 @@ def page_analytics():
         return
 
     df = pd.DataFrame(tickets)
-    df["created_at"] = pd.to_datetime(df["created_at"], utc=True)
+    df["created_at"]     = pd.to_datetime(df["created_at"], utc=True)
     df["created_at_ist"] = df["created_at"] + pd.Timedelta(hours=5, minutes=30)
-    df["date"] = df["created_at_ist"].dt.strftime("%d %b %Y")
+    df["date"]           = df["created_at_ist"].dt.strftime("%d %b %Y")
 
     col1, col2, col3, col4 = st.columns(4)
-    resolved = df[df["status"] == "Resolved"]
+    resolved        = df[df["status"] == "Resolved"]
     resolution_rate = round(len(resolved) / len(df) * 100, 1) if len(df) else 0
 
     with col1:
@@ -1983,8 +2037,8 @@ def page_analytics():
         high_prio = len(df[df["priority"] == "High"])
         st.markdown(f"<div class='metric-card'><div class='metric-number'>{high_prio}</div><div class='metric-label'>High Priority</div></div>", unsafe_allow_html=True)
 
-    RUST = "#8b3a2a"
-    SAGE = "#3d5a4a"
+    RUST  = "#8b3a2a"
+    SAGE  = "#3d5a4a"
     AMBER = "#8b6914"
     SLATE = "#2d3d4f"
 
@@ -1994,14 +2048,13 @@ def page_analytics():
     with col_a:
         st.markdown("### Tickets Per Day")
         daily = df.groupby("date").size().reset_index(name="count")
-        fig1 = px.bar(daily, x="date", y="count", color_discrete_sequence=[RUST], text="count")
+        fig1  = px.bar(daily, x="date", y="count", color_discrete_sequence=[RUST], text="count")
         fig1.update_layout(
             xaxis_title="", yaxis_title="",
             plot_bgcolor="#faf7f2", paper_bgcolor="#faf7f2",
-            margin=dict(t=20, b=80),
-            bargap=0.4,
-            font=dict(family="EB Garamond", color="#3d3530"),
-            xaxis=dict(tickangle=-35, type="category", tickfont=dict(size=11), gridcolor="#e8e0d0"),
+            margin=dict(t=20, b=80), bargap=0.4,
+            font=dict(family="EB Garamond", color="#3d3530", size=15),
+            xaxis=dict(tickangle=-35, type="category", tickfont=dict(size=13), gridcolor="#e8e0d0"),
             yaxis=dict(tickformat="d", dtick=1, gridcolor="#e8e0d0"),
         )
         fig1.update_traces(textposition="outside", marker_line_width=0)
@@ -2009,18 +2062,17 @@ def page_analytics():
 
     with col_b:
         st.markdown("### Ticket Status Breakdown")
-        status_counts = df["status"].value_counts().reset_index()
-        status_counts.columns = ["status", "count"]
+        status_counts         = df["status"].value_counts().reset_index()
+        status_counts.columns = ["status","count"]
         fig2 = px.pie(
             status_counts, names="status", values="count", color="status",
             color_discrete_map={"Open": AMBER, "In Progress": SLATE, "Resolved": SAGE},
             hole=0.4,
         )
-        fig2.update_traces(textinfo="label+percent", textfont_size=13)
+        fig2.update_traces(textinfo="label+percent", textfont_size=15)
         fig2.update_layout(
-            margin=dict(t=20),
-            paper_bgcolor="#faf7f2",
-            font=dict(family="EB Garamond", color="#3d3530"),
+            margin=dict(t=20), paper_bgcolor="#faf7f2",
+            font=dict(family="EB Garamond", color="#3d3530", size=15),
             legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5),
         )
         st.plotly_chart(fig2, use_container_width=True)
@@ -2029,9 +2081,9 @@ def page_analytics():
 
     with col_c:
         st.markdown("### Tickets by Priority")
-        prio_order = ["High", "Medium", "Low"]
+        prio_order  = ["High","Medium","Low"]
         prio_counts = df["priority"].value_counts().reindex(prio_order, fill_value=0).reset_index()
-        prio_counts.columns = ["priority", "count"]
+        prio_counts.columns = ["priority","count"]
         fig3 = px.bar(
             prio_counts, x="priority", y="count", color="priority",
             color_discrete_map={"High": RUST, "Medium": AMBER, "Low": SAGE},
@@ -2040,7 +2092,7 @@ def page_analytics():
         fig3.update_layout(
             showlegend=False, plot_bgcolor="#faf7f2", paper_bgcolor="#faf7f2",
             margin=dict(t=20), bargap=0.45,
-            font=dict(family="EB Garamond", color="#3d3530"),
+            font=dict(family="EB Garamond", color="#3d3530", size=15),
             xaxis=dict(title="", gridcolor="#e8e0d0"),
             yaxis=dict(title="", tickformat="d", dtick=1, gridcolor="#e8e0d0"),
         )
@@ -2049,14 +2101,14 @@ def page_analytics():
 
     with col_d:
         st.markdown("### Tickets by Job Role")
-        role_counts = df["job_role"].value_counts().reset_index()
-        role_counts.columns = ["role", "count"]
+        role_counts         = df["job_role"].value_counts().reset_index()
+        role_counts.columns = ["role","count"]
         fig4 = px.bar(role_counts, x="count", y="role", orientation="h", color_discrete_sequence=[SLATE], text="count")
         fig4.update_layout(
             xaxis=dict(title="", tickformat="d", dtick=1, gridcolor="#e8e0d0"),
             yaxis_title="", plot_bgcolor="#faf7f2", paper_bgcolor="#faf7f2",
             margin=dict(t=20, l=140), bargap=0.35,
-            font=dict(family="EB Garamond", color="#3d3530"),
+            font=dict(family="EB Garamond", color="#3d3530", size=15),
             height=max(300, len(role_counts) * 50),
         )
         fig4.update_traces(textposition="outside", marker_line_width=0)
@@ -2078,7 +2130,7 @@ def page_knowledge_gap():
 
     st.markdown("# Knowledge Gap Report")
     st.markdown(
-        "<p style='color:#6b5f55; font-size:17px; font-family: EB Garamond, serif;'>"
+        "<p style='color:#6b5f55; font-size:19px; font-family: EB Garamond, serif;'>"
         "Questions employees asked that the system couldn't answer.</p>",
         unsafe_allow_html=True,
     )
@@ -2120,8 +2172,8 @@ def page_knowledge_gap():
         st.markdown(
             f"<div class='gap-card'>"
             f"<span class='gap-count'>#{i:02d}</span> &nbsp;"
-            f"<strong style='font-family: EB Garamond, serif; font-size:16px;'>{row['query']}</strong>"
-            f"<br><small style='color:#9c8e82; font-family: DM Mono, monospace; font-size:11px;'>Asked {date_fmt}</small>"
+            f"<strong style='font-family: EB Garamond, serif; font-size:18px;'>{row['query']}</strong>"
+            f"<br><small style='color:#9c8e82; font-family: DM Mono, monospace; font-size:13px;'>Asked {date_fmt}</small>"
             f"</div>",
             unsafe_allow_html=True,
         )
@@ -2137,17 +2189,17 @@ def page_knowledge_gap():
         try:
             import plotly.express as px
             import pandas as pd
-            wdf = pd.DataFrame(word_freq, columns=["keyword", "count"])
+            wdf = pd.DataFrame(word_freq, columns=["keyword","count"])
             fig = px.bar(wdf, x="count", y="keyword", orientation="h", color_discrete_sequence=["#8b3a2a"], text="count")
             fig.update_layout(
                 xaxis=dict(title="", tickformat="d", dtick=1, gridcolor="#e8e0d0"),
                 yaxis_title="", plot_bgcolor="#faf7f2", paper_bgcolor="#faf7f2",
                 margin=dict(t=10, l=120),
-                font=dict(family="EB Garamond", color="#3d3530"),
+                font=dict(family="EB Garamond", color="#3d3530", size=15),
                 height=max(300, len(wdf) * 40), bargap=0.35,
             )
             fig.update_traces(textposition="outside", marker_line_width=0)
-            fig.update_yaxes(autorange="reversed", tickfont=dict(size=12))
+            fig.update_yaxes(autorange="reversed", tickfont=dict(size=14))
             st.plotly_chart(fig, use_container_width=True)
         except ImportError:
             for word, count in word_freq:
@@ -2170,7 +2222,7 @@ def page_knowledge_gap():
 def page_doc_visibility():
     st.markdown("# Document Visibility")
     st.markdown(
-        "<p style='color:#6b5f55; font-size:17px; font-family: EB Garamond, serif;'>"
+        "<p style='color:#6b5f55; font-size:19px; font-family: EB Garamond, serif;'>"
         "Role-based document library. Access is governed by your rank in the hierarchy. "
         "CTO and CEO can view all documents instantly — Managers and below must request access for restricted content.</p>",
         unsafe_allow_html=True,
@@ -2179,7 +2231,7 @@ def page_doc_visibility():
     st.markdown("""
     <div style='display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:20px; padding:16px 20px;
                 background:var(--paper); border:1px solid var(--border); border-radius:3px;'>
-        <span style='font-family:DM Mono,monospace; font-size:10px; color:var(--ink-faint); letter-spacing:0.1em; text-transform:uppercase; margin-right:4px;'>Hierarchy</span>
+        <span style='font-family:DM Mono,monospace; font-size:11px; color:var(--ink-faint); letter-spacing:0.1em; text-transform:uppercase; margin-right:4px;'>Hierarchy</span>
         <span class='role-badge role-emp'>Employee</span>
         <span style='color:var(--ink-faint);'>→</span>
         <span class='role-badge role-mgr'>Manager</span>
@@ -2190,17 +2242,15 @@ def page_doc_visibility():
         <span style='color:var(--ink-faint);'>→</span>
         <span class='role-badge role-ceo'>CEO</span>
         &nbsp;&nbsp;
-        <span style='font-family:DM Mono,monospace; font-size:10px; color:#3d5a4a; letter-spacing:0.06em;'>CTO &amp; CEO: instant access to all docs · Others: request required for restricted docs</span>
+        <span style='font-family:DM Mono,monospace; font-size:12px; color:#3d5a4a; letter-spacing:0.06em;'>CTO &amp; CEO: instant access to all docs · Others: request required for restricted docs</span>
     </div>
     """, unsafe_allow_html=True)
 
     st.markdown("---")
 
-    dv_tab1, dv_tab2, dv_tab3 = st.tabs(["Browse Documents", "My Access", "Admin — Manage Library"])
+    dv_tab1, dv_tab2, dv_tab3 = st.tabs(["Browse Documents","My Access","Admin — Manage Library"])
 
-    # ════════════════════════════════════════════════════
-    #  TAB 1 — BROWSE DOCUMENTS
-    # ════════════════════════════════════════════════════
+    # ── TAB 1 — BROWSE DOCUMENTS ─────────────────────────────────────────────
     with dv_tab1:
         st.markdown("### Browse Document Library")
 
@@ -2212,8 +2262,8 @@ def page_doc_visibility():
         with ic3:
             cat_filter = st.selectbox(
                 "Filter by Category",
-                ["All", "General", "Security", "HR", "Finance", "Engineering", "Legal", "Operations"],
-                key="dv_cat_filter"
+                ["All","General","Security","HR","Finance","Engineering","Legal","Operations"],
+                key="dv_cat_filter",
             )
 
         if not viewer_id.strip():
@@ -2229,7 +2279,7 @@ def page_doc_visibility():
                 accessible, needs_req, pending_req = [], [], []
                 for doc in docs:
                     doc_id   = doc["id"]
-                    min_role = doc.get("min_role", "Employee")
+                    min_role = doc.get("min_role","Employee")
                     can_auto = _can_auto_access(viewer_role, min_role)
                     grant    = db_check_active_grant(viewer_id.strip(), doc_id) if not can_auto else None
                     req_rows = db_get_access_requests(doc_id=doc_id)
@@ -2255,13 +2305,12 @@ def page_doc_visibility():
 
                 st.markdown("---")
 
-                # Accessible docs
                 if accessible:
                     st.markdown("#### ✦ Documents You Can View")
                     for doc, access_type, grant in accessible:
                         doc_id      = doc["id"]
-                        sensitivity = doc.get("sensitivity", "Normal")
-                        min_role    = doc.get("min_role", "Employee")
+                        sensitivity = doc.get("sensitivity","Normal")
+                        min_role    = doc.get("min_role","Employee")
                         role_cls    = _role_badge_class(min_role)
                         s_color     = _sensitivity_color(sensitivity)
                         s_bg        = _sensitivity_bg(sensitivity)
@@ -2271,7 +2320,7 @@ def page_doc_visibility():
                         else:
                             if grant:
                                 try:
-                                    exp = datetime.fromisoformat(grant["expires_at"].replace("Z", "+00:00"))
+                                    exp       = datetime.fromisoformat(grant["expires_at"].replace("Z","+00:00"))
                                     days_left = (exp - datetime.now(timezone.utc)).days
                                     if days_left <= 2:
                                         access_label = f"<span class='access-expiring'>⚠ Granted — expires in {days_left}d</span>"
@@ -2287,7 +2336,7 @@ def page_doc_visibility():
                                 f"<div style='display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:12px;'>"
                                 f"<span class='role-badge {role_cls}'>{min_role}+</span>"
                                 f"<span style='display:inline-block; background:{s_bg}; color:{s_color}; border-radius:2px; "
-                                f"padding:2px 10px; font-size:10px; font-family:DM Mono,monospace; font-weight:500; letter-spacing:0.08em; text-transform:uppercase;'>{sensitivity}</span>"
+                                f"padding:2px 10px; font-size:11px; font-family:DM Mono,monospace; font-weight:500; letter-spacing:0.08em; text-transform:uppercase;'>{sensitivity}</span>"
                                 f"&nbsp;{access_label}"
                                 f"</div>",
                                 unsafe_allow_html=True,
@@ -2295,43 +2344,38 @@ def page_doc_visibility():
                             if doc.get("description"):
                                 st.markdown(f"**Description:** {doc['description']}")
                             if doc.get("content_preview"):
-                                st.markdown(
-                                    f"<div class='answer-box' style='font-size:15px;'>{doc['content_preview']}</div>",
-                                    unsafe_allow_html=True
-                                )
+                                st.markdown(f"<div class='answer-box' style='font-size:17px;'>{doc['content_preview']}</div>", unsafe_allow_html=True)
                             if doc.get("file_url"):
                                 st.markdown(f"📎 [Open Document]({doc['file_url']})")
                             st.markdown(
                                 f"<small style='color:#9c8e82; font-family:DM Mono,monospace;'>Added {_to_ist(doc.get('created_at',''))} · Owner: {doc.get('owner_id','—')}</small>",
-                                unsafe_allow_html=True
+                                unsafe_allow_html=True,
                             )
 
-                # Pending requests
                 if pending_req:
                     st.markdown("---")
                     st.markdown("#### ◑ Pending Access Requests")
                     for doc, req in pending_req:
-                        sensitivity = doc.get("sensitivity", "Normal")
-                        min_role    = doc.get("min_role", "Employee")
+                        sensitivity = doc.get("sensitivity","Normal")
+                        min_role    = doc.get("min_role","Employee")
                         role_cls    = _role_badge_class(min_role)
                         st.markdown(
                             f"<div class='doc-card doc-card-pending'>"
                             f"<span class='role-badge {role_cls}'>{min_role}+</span>&nbsp;"
-                            f"<strong style='font-family:EB Garamond,serif; font-size:16px;'>{doc['title']}</strong>"
+                            f"<strong style='font-family:EB Garamond,serif; font-size:18px;'>{doc['title']}</strong>"
                             f"&nbsp;&nbsp;<span class='access-pending'>◑ Request pending — submitted {_to_ist(req.get('created_at',''))}</span>"
-                            f"<br><small style='color:#9c8e82; font-family:DM Mono,monospace; font-size:11px;'>Awaiting approval from Tech Manager / CTO / CEO</small>"
+                            f"<br><small style='color:#9c8e82; font-family:DM Mono,monospace; font-size:13px;'>Awaiting approval from Tech Manager / CTO / CEO</small>"
                             f"</div>",
                             unsafe_allow_html=True,
                         )
 
-                # Restricted docs
                 if needs_req:
                     st.markdown("---")
                     st.markdown("#### ✗ Restricted Documents — Request Access")
                     for doc in needs_req:
                         doc_id      = doc["id"]
-                        sensitivity = doc.get("sensitivity", "Normal")
-                        min_role    = doc.get("min_role", "Employee")
+                        sensitivity = doc.get("sensitivity","Normal")
+                        min_role    = doc.get("min_role","Employee")
                         role_cls    = _role_badge_class(min_role)
                         s_color     = _sensitivity_color(sensitivity)
                         s_bg        = _sensitivity_bg(sensitivity)
@@ -2341,7 +2385,7 @@ def page_doc_visibility():
                                 f"<div style='display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:10px;'>"
                                 f"<span class='role-badge {role_cls}'>{min_role}+</span>"
                                 f"<span style='display:inline-block; background:{s_bg}; color:{s_color}; border-radius:2px; "
-                                f"padding:2px 10px; font-size:10px; font-family:DM Mono,monospace; font-weight:500; letter-spacing:0.08em; text-transform:uppercase;'>{sensitivity}</span>"
+                                f"padding:2px 10px; font-size:11px; font-family:DM Mono,monospace; font-weight:500; letter-spacing:0.08em; text-transform:uppercase;'>{sensitivity}</span>"
                                 f"<span class='access-denied'>✗ Access restricted</span>"
                                 f"</div>",
                                 unsafe_allow_html=True,
@@ -2351,17 +2395,16 @@ def page_doc_visibility():
 
                             st.markdown(
                                 "<div style='background:var(--rust-pale); border-left:3px solid var(--rust); border-radius:3px; "
-                                "padding:12px 16px; margin:10px 0; font-family:EB Garamond,serif; font-size:15px; color:var(--rust);'>"
+                                "padding:12px 16px; margin:10px 0; font-family:EB Garamond,serif; font-size:17px; color:var(--rust);'>"
                                 "You need approval from a Tech Manager, CTO, or CEO to view this document. "
                                 "Access will be granted for 7 days.</div>",
-                                unsafe_allow_html=True
+                                unsafe_allow_html=True,
                             )
 
                             reason = st.text_area(
                                 "Reason for access *",
                                 placeholder="Briefly explain why you need access to this document…",
-                                height=80,
-                                key=f"req_reason_{doc_id}"
+                                height=80, key=f"req_reason_{doc_id}",
                             )
                             if st.button(f"Request Access →", key=f"req_btn_{doc_id}", use_container_width=False):
                                 if not reason.strip():
@@ -2377,9 +2420,7 @@ def page_doc_visibility():
                                     except Exception as ex:
                                         st.error(f"Failed: {ex}")
 
-    # ════════════════════════════════════════════════════
-    #  TAB 2 — MY ACCESS
-    # ════════════════════════════════════════════════════
+    # ── TAB 2 — MY ACCESS ─────────────────────────────────────────────────────
     with dv_tab2:
         st.markdown("### My Access Dashboard")
 
@@ -2401,13 +2442,13 @@ def page_doc_visibility():
                 if g.get("status") != "Approved":
                     continue
                 try:
-                    exp = datetime.fromisoformat(g["expires_at"].replace("Z", "+00:00"))
+                    exp = datetime.fromisoformat(g["expires_at"].replace("Z","+00:00"))
                     if exp > now:
                         active_grants.append((g, exp))
                 except Exception:
                     pass
 
-            auto_docs = [d for d in docs if _can_auto_access(my_role, d.get("min_role", "Employee"))]
+            auto_docs = [d for d in docs if _can_auto_access(my_role, d.get("min_role","Employee"))]
 
             g1, g2, g3 = st.columns(3)
             with g1:
@@ -2432,49 +2473,46 @@ def page_doc_visibility():
                     color     = "#8b6914" if expiring else "#3d5a4a"
                     st.markdown(
                         f"<div class='doc-card doc-card-accessible'>"
-                        f"<strong style='font-family:EB Garamond,serif; font-size:16px;'>{doc['title']}</strong>"
-                        f"&nbsp;&nbsp;<span style='color:{color}; font-family:DM Mono,monospace; font-size:11px; text-transform:uppercase; letter-spacing:0.06em;'>{'⚠ ' if expiring else '✓ '}{exp_label}</span>"
-                        f"<br><small style='color:#9c8e82; font-family:DM Mono,monospace; font-size:11px;'>Granted by: {grant.get('granted_by','—')} · {_to_ist(grant.get('granted_at',''))}</small>"
+                        f"<strong style='font-family:EB Garamond,serif; font-size:18px;'>{doc['title']}</strong>"
+                        f"&nbsp;&nbsp;<span style='color:{color}; font-family:DM Mono,monospace; font-size:12px; text-transform:uppercase; letter-spacing:0.06em;'>{'⚠ ' if expiring else '✓ '}{exp_label}</span>"
+                        f"<br><small style='color:#9c8e82; font-family:DM Mono,monospace; font-size:13px;'>Granted by: {grant.get('granted_by','—')} · {_to_ist(grant.get('granted_at',''))}</small>"
                         f"</div>",
-                        unsafe_allow_html=True
+                        unsafe_allow_html=True,
                     )
 
             if my_reqs:
                 st.markdown("---")
                 st.markdown("#### My Access Requests")
                 for req in my_reqs:
-                    doc = docs_map.get(req["doc_id"])
+                    doc       = docs_map.get(req["doc_id"])
                     doc_title = doc["title"] if doc else f"Doc #{req['doc_id']}"
-                    status = req["status"]
-                    status_colors = {"Pending": "#8b6914", "Approved": "#3d5a4a", "Rejected": "#8b3a2a"}
-                    s_color = status_colors.get(status, "#6b5f55")
+                    status    = req["status"]
+                    status_colors = {"Pending":"#8b6914","Approved":"#3d5a4a","Rejected":"#8b3a2a"}
+                    s_color   = status_colors.get(status, "#6b5f55")
                     st.markdown(
                         f"<div class='doc-card'>"
                         f"<strong style='font-family:EB Garamond,serif;'>{doc_title}</strong>&nbsp;&nbsp;"
-                        f"<span style='color:{s_color}; font-family:DM Mono,monospace; font-size:11px; text-transform:uppercase; letter-spacing:0.06em;'>{status}</span>"
-                        f"<br><small style='color:#9c8e82; font-family:DM Mono,monospace; font-size:11px;'>Requested {_to_ist(req.get('created_at',''))} · Reason: {req.get('reason','—')[:80]}</small>"
+                        f"<span style='color:{s_color}; font-family:DM Mono,monospace; font-size:12px; text-transform:uppercase; letter-spacing:0.06em;'>{status}</span>"
+                        f"<br><small style='color:#9c8e82; font-family:DM Mono,monospace; font-size:13px;'>Requested {_to_ist(req.get('created_at',''))} · Reason: {req.get('reason','—')[:80]}</small>"
                         f"</div>",
-                        unsafe_allow_html=True
+                        unsafe_allow_html=True,
                     )
 
-    # ════════════════════════════════════════════════════
-    #  TAB 3 — ADMIN: MANAGE LIBRARY
-    # ════════════════════════════════════════════════════
+    # ── TAB 3 — ADMIN: MANAGE LIBRARY ─────────────────────────────────────────
     with dv_tab3:
         if not st.session_state.get("admin_logged_in"):
             st.warning("Please log in via the Admin Panel to manage the document library.")
         else:
-            lib_tab1, lib_tab2, lib_tab3 = st.tabs(["Add Document", "All Documents", "Access Requests"])
+            lib_tab1, lib_tab2, lib_tab3 = st.tabs(["Add Document","All Documents","Access Requests"])
 
-            # ── ADD DOCUMENT ─────────────────────────────────────────────────
             with lib_tab1:
                 st.markdown("#### Add a New Document")
                 with st.form("add_doc_form", clear_on_submit=True):
                     fa1, fa2 = st.columns(2)
                     with fa1:
                         doc_title    = st.text_input("Document Title *", placeholder="e.g. VPN Access Policy")
-                        doc_cat      = st.selectbox("Category", ["General", "Security", "HR", "Finance", "Engineering", "Legal", "Operations"])
-                        doc_sens     = st.selectbox("Sensitivity Level", ["Normal", "Restricted", "Confidential", "Top Secret"])
+                        doc_cat      = st.selectbox("Category", ["General","Security","HR","Finance","Engineering","Legal","Operations"])
+                        doc_sens     = st.selectbox("Sensitivity Level", ["Normal","Restricted","Confidential","Top Secret"])
                     with fa2:
                         doc_min_role = st.selectbox("Minimum Role to View", ROLE_HIERARCHY, index=0)
                         doc_owner    = st.text_input("Owner ID", placeholder="e.g. EMP-0001")
@@ -2492,14 +2530,13 @@ def page_doc_visibility():
                             added = db_add_document(
                                 doc_title.strip(), doc_desc.strip(), doc_cat,
                                 doc_sens, doc_min_role, doc_owner.strip(),
-                                doc_url.strip(), doc_preview.strip()
+                                doc_url.strip(), doc_preview.strip(),
                             )
                             st.success(f"Document '{added['title']}' added (ID #{added['id']}).")
                             st.rerun()
                         except Exception as ex:
                             st.error(f"Failed: {ex}")
 
-            # ── ALL DOCUMENTS ────────────────────────────────────────────────
             with lib_tab2:
                 st.markdown("#### All Documents in Library")
                 docs = db_get_documents()
@@ -2507,13 +2544,13 @@ def page_doc_visibility():
                     st.info("No documents yet.")
                 else:
                     st.markdown(
-                        f"<p style='font-family:DM Mono,monospace; font-size:12px; color:#9c8e82; letter-spacing:0.06em; text-transform:uppercase;'>{len(docs)} document(s)</p>",
-                        unsafe_allow_html=True
+                        f"<p style='font-family:DM Mono,monospace; font-size:13px; color:#9c8e82; letter-spacing:0.06em; text-transform:uppercase;'>{len(docs)} document(s)</p>",
+                        unsafe_allow_html=True,
                     )
                     for doc in docs:
                         doc_id      = doc["id"]
-                        sensitivity = doc.get("sensitivity", "Normal")
-                        min_role    = doc.get("min_role", "Employee")
+                        sensitivity = doc.get("sensitivity","Normal")
+                        min_role    = doc.get("min_role","Employee")
                         role_cls    = _role_badge_class(min_role)
                         s_color     = _sensitivity_color(sensitivity)
                         s_bg        = _sensitivity_bg(sensitivity)
@@ -2523,9 +2560,9 @@ def page_doc_visibility():
                                 f"<div style='display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;'>"
                                 f"<span class='role-badge {role_cls}'>{min_role}+</span>"
                                 f"<span style='display:inline-block; background:{s_bg}; color:{s_color}; border-radius:2px; "
-                                f"padding:2px 10px; font-size:10px; font-family:DM Mono,monospace; font-weight:500; letter-spacing:0.08em; text-transform:uppercase;'>{sensitivity}</span>"
+                                f"padding:2px 10px; font-size:11px; font-family:DM Mono,monospace; font-weight:500; letter-spacing:0.08em; text-transform:uppercase;'>{sensitivity}</span>"
                                 f"</div>",
-                                unsafe_allow_html=True
+                                unsafe_allow_html=True,
                             )
                             if doc.get("description"):
                                 st.markdown(f"**Description:** {doc['description']}")
@@ -2535,17 +2572,17 @@ def page_doc_visibility():
                                 st.markdown(f"📎 **URL:** {doc['file_url']}")
                             st.markdown(
                                 f"<small style='color:#9c8e82; font-family:DM Mono,monospace;'>Owner: {doc.get('owner_id','—')} · Added: {_to_ist(doc.get('created_at',''))}</small>",
-                                unsafe_allow_html=True
+                                unsafe_allow_html=True,
                             )
 
                             grants_for_doc = db_get_access_grants(doc_id=doc_id)
-                            now = datetime.now(timezone.utc)
-                            active_here = []
+                            now            = datetime.now(timezone.utc)
+                            active_here    = []
                             for g in grants_for_doc:
                                 if g.get("status") != "Approved":
                                     continue
                                 try:
-                                    exp = datetime.fromisoformat(g["expires_at"].replace("Z", "+00:00"))
+                                    exp = datetime.fromisoformat(g["expires_at"].replace("Z","+00:00"))
                                     if exp > now:
                                         active_here.append((g, exp))
                                 except Exception:
@@ -2554,13 +2591,13 @@ def page_doc_visibility():
                                 st.markdown(f"**Active grants ({len(active_here)}):**")
                                 for g, exp in active_here:
                                     days_left = (exp - now).days
-                                    gc1, gc2 = st.columns([4, 1])
+                                    gc1, gc2  = st.columns([4, 1])
                                     with gc1:
                                         st.markdown(
-                                            f"<small style='font-family:DM Mono,monospace; font-size:11px;'>"
+                                            f"<small style='font-family:DM Mono,monospace; font-size:13px;'>"
                                             f"👤 {g['user_id']} ({g['user_role']}) — {days_left}d left — granted by {g.get('granted_by','—')}"
                                             f"</small>",
-                                            unsafe_allow_html=True
+                                            unsafe_allow_html=True,
                                         )
                                     with gc2:
                                         if st.button("Revoke", key=f"revoke_{g['id']}", use_container_width=True):
@@ -2577,13 +2614,12 @@ def page_doc_visibility():
                                     except Exception as ex:
                                         st.error(str(ex))
 
-            # ── ACCESS REQUESTS ──────────────────────────────────────────────
             with lib_tab3:
                 st.markdown("#### Document Access Requests")
 
                 rf1, rf2 = st.columns(2)
                 with rf1:
-                    req_status_filter = st.selectbox("Filter by Status", ["All", "Pending", "Approved", "Rejected"], key="req_status_filter")
+                    req_status_filter = st.selectbox("Filter by Status", ["All","Pending","Approved","Rejected"], key="req_status_filter")
                 with rf2:
                     reviewer_id = st.text_input("Reviewer ID (your ID)", placeholder="e.g. CTO-001", key="reviewer_id")
 
@@ -2598,9 +2634,9 @@ def page_doc_visibility():
 
                     if pending_reqs:
                         st.markdown(
-                            f"<p style='font-family:DM Mono,monospace; font-size:12px; color:#8b6914; letter-spacing:0.06em;'>"
+                            f"<p style='font-family:DM Mono,monospace; font-size:13px; color:#8b6914; letter-spacing:0.06em;'>"
                             f"{len(pending_reqs)} pending request(s) awaiting review</p>",
-                            unsafe_allow_html=True
+                            unsafe_allow_html=True,
                         )
                         for req in pending_reqs:
                             doc       = docs_map.get(req["doc_id"])
@@ -2614,16 +2650,16 @@ def page_doc_visibility():
                                 st.markdown(f"**Requested:** {_to_ist(req.get('created_at',''))}")
 
                                 if doc:
-                                    sens  = doc.get("sensitivity", "Normal")
-                                    min_r = doc.get("min_role", "Employee")
+                                    sens    = doc.get("sensitivity","Normal")
+                                    min_r   = doc.get("min_role","Employee")
                                     s_color = _sensitivity_color(sens)
                                     s_bg    = _sensitivity_bg(sens)
                                     st.markdown(
                                         f"<div style='margin:8px 0; display:flex; gap:8px;'>"
                                         f"<span class='role-badge {_role_badge_class(min_r)}'>{min_r}+</span>"
-                                        f"<span style='background:{s_bg}; color:{s_color}; border-radius:2px; padding:2px 10px; font-size:10px; font-family:DM Mono,monospace; font-weight:500; letter-spacing:0.08em; text-transform:uppercase;'>{sens}</span>"
+                                        f"<span style='background:{s_bg}; color:{s_color}; border-radius:2px; padding:2px 10px; font-size:11px; font-family:DM Mono,monospace; font-weight:500; letter-spacing:0.08em; text-transform:uppercase;'>{sens}</span>"
                                         f"</div>",
-                                        unsafe_allow_html=True
+                                        unsafe_allow_html=True,
                                     )
 
                                 ac1, ac2, _ = st.columns([1, 1, 4])
@@ -2634,7 +2670,7 @@ def page_doc_visibility():
                                         else:
                                             db_review_access_request(
                                                 req_id, "Approved", reviewer_id.strip(),
-                                                doc_id=req["doc_id"], user_id=req["user_id"], user_role=req["user_role"]
+                                                doc_id=req["doc_id"], user_id=req["user_id"], user_role=req["user_role"],
                                             )
                                             st.success(f"Access approved. {req['user_id']} has 7-day access.")
                                             st.rerun()
@@ -2654,15 +2690,15 @@ def page_doc_visibility():
                             doc       = docs_map.get(req["doc_id"])
                             doc_title = doc["title"] if doc else f"Doc #{req['doc_id']}"
                             status    = req["status"]
-                            status_colors = {"Approved": "#3d5a4a", "Rejected": "#8b3a2a"}
-                            s_color = status_colors.get(status, "#6b5f55")
+                            status_colors = {"Approved":"#3d5a4a","Rejected":"#8b3a2a"}
+                            s_color   = status_colors.get(status, "#6b5f55")
                             st.markdown(
                                 f"<div class='doc-card' style='padding:12px 16px;'>"
                                 f"#{req['id']} &nbsp;·&nbsp; <strong>{req['user_id']}</strong> ({req['user_role']}) → {doc_title} &nbsp;&nbsp;"
-                                f"<span style='color:{s_color}; font-family:DM Mono,monospace; font-size:11px; text-transform:uppercase;'>{status}</span>"
-                                f"<br><small style='color:#9c8e82; font-family:DM Mono,monospace; font-size:11px;'>Reviewed by {req.get('reviewed_by','—')} on {_to_ist(req.get('reviewed_at',''))}</small>"
+                                f"<span style='color:{s_color}; font-family:DM Mono,monospace; font-size:12px; text-transform:uppercase;'>{status}</span>"
+                                f"<br><small style='color:#9c8e82; font-family:DM Mono,monospace; font-size:13px;'>Reviewed by {req.get('reviewed_by','—')} on {_to_ist(req.get('reviewed_at',''))}</small>"
                                 f"</div>",
-                                unsafe_allow_html=True
+                                unsafe_allow_html=True,
                             )
 
 
@@ -2748,8 +2784,8 @@ def page_setup():
                             st.markdown(f"**Original question:** {row['query']}")
                             st.markdown(f"**Admin solution:** {row['solution']}")
                             st.markdown(
-                                f"<small style='color:#9c8e82; font-family: DM Mono, monospace; font-size:11px;'>"
-                                f"Saved: {_to_ist(row.get('created_at', ''))}</small>",
+                                f"<small style='color:#9c8e82; font-family: DM Mono, monospace; font-size:13px;'>"
+                                f"Saved: {_to_ist(row.get('created_at',''))}</small>",
                                 unsafe_allow_html=True,
                             )
                 else:
@@ -2765,20 +2801,20 @@ with st.sidebar:
     st.markdown("""
     <div style='padding: 8px 0 20px;'>
         <div style='display: flex; align-items: center; gap: 10px;'>
-            <div style='width: 28px; height: 28px; background: #8b3a2a; border-radius: 2px;
+            <div style='width: 30px; height: 30px; background: #8b3a2a; border-radius: 2px;
                         display: flex; align-items: center; justify-content: center;'>
-                <span style='color: white; font-size: 14px; font-weight: 700; font-family: Playfair Display, serif;'>H</span>
+                <span style='color: white; font-size: 15px; font-weight: 700; font-family: Playfair Display, serif;'>H</span>
             </div>
             <div>
-                <p style='margin:0; font-family: Playfair Display, serif; font-size:16px; font-weight:700; color: #f5f0e8; letter-spacing: -0.01em;'>HelpDesk Pro</p>
-                <p style='margin:0; font-family: DM Mono, monospace; font-size:9px; color: #6b5f55; letter-spacing: 0.1em; text-transform: uppercase;'>Knowledge · Support</p>
+                <p style='margin:0; font-family: Playfair Display, serif; font-size:17px; font-weight:700; color: #f5f0e8; letter-spacing: -0.01em;'>HelpDesk Pro</p>
+                <p style='margin:0; font-family: DM Mono, monospace; font-size:10px; color: #6b5f55; letter-spacing: 0.1em; text-transform: uppercase;'>Knowledge · Support</p>
             </div>
         </div>
     </div>
     """, unsafe_allow_html=True)
 
     st.markdown(
-        "<p style='font-family: DM Mono, monospace; font-size: 9px; color: #3a3028; "
+        "<p style='font-family: DM Mono, monospace; font-size: 10px; color: #3a3028; "
         "letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 8px;'>Navigate</p>",
         unsafe_allow_html=True,
     )
@@ -2799,7 +2835,7 @@ with st.sidebar:
         st.warning("approval_pipeline.py not found.", icon="⚠️")
 
     st.markdown(
-        "<p style='font-family: DM Mono, monospace; font-size: 9px; color: #3a3028; "
+        "<p style='font-family: DM Mono, monospace; font-size: 10px; color: #3a3028; "
         "letter-spacing: 0.06em; margin-top: 16px;'>Powered by Supabase + pdfplumber</p>",
         unsafe_allow_html=True,
     )
