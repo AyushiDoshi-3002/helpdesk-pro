@@ -58,7 +58,7 @@ html, body, [class*="css"] {
     font-family: 'EB Garamond', Georgia, serif;
     color: var(--ink);
     background: var(--cream);
-    font-size: 20px;
+    font-size: 28px;
 }
 
 h1, h2, h3, h4, h5 {
@@ -69,7 +69,7 @@ h1, h2, h3, h4, h5 {
 
 code, pre, .stCode {
     font-family: 'DM Mono', monospace !important;
-    font-size: 17px !important;
+    font-size: 20px !important;
 }
 
 /* ── App Background ── */
@@ -92,7 +92,7 @@ section[data-testid="stSidebar"] * {
 
 section[data-testid="stSidebar"] .stRadio label {
     font-family: 'EB Garamond', serif !important;
-    font-size: 19px !important;
+    font-size: 24px !important;
     letter-spacing: 0.02em;
     color: var(--cream-mid) !important;
     padding: 6px 0;
@@ -114,7 +114,7 @@ section[data-testid="stSidebar"] .stButton > button {
     border: 1px solid #3a3028 !important;
     color: var(--cream-mid) !important;
     font-family: 'EB Garamond', serif !important;
-    font-size: 18px !important;
+    font-size: 22px !important;
     letter-spacing: 0.04em;
     transition: all 0.2s;
 }
@@ -137,7 +137,7 @@ section[data-testid="stSidebar"] .stButton > button:hover {
     border-radius: 3px;
     padding: 24px 28px;
     border-left: 3px solid var(--rust);
-    font-size: 20px;
+    font-size: 24px;
     line-height: 1.9;
     color: var(--ink-light);
     font-family: 'EB Garamond', serif;
@@ -151,7 +151,7 @@ section[data-testid="stSidebar"] .stButton > button:hover {
     padding: 18px 22px;
     border-left: 3px solid var(--rust-light);
     color: var(--rust);
-    font-size: 19px;
+    font-size: 23px;
     font-family: 'EB Garamond', serif;
 }
 
@@ -160,7 +160,7 @@ section[data-testid="stSidebar"] .stButton > button:hover {
     border-radius: 3px;
     padding: 24px 28px;
     border-left: 3px solid var(--sage);
-    font-size: 20px;
+    font-size: 24px;
     line-height: 1.9;
     color: var(--ink-light);
     font-family: 'EB Garamond', serif;
@@ -173,7 +173,7 @@ section[data-testid="stSidebar"] .stButton > button:hover {
     color: var(--amber);
     padding: 3px 12px;
     border-radius: 2px;
-    font-size: 13px;
+    font-size: 16px;
     font-weight: 500;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -186,7 +186,7 @@ section[data-testid="stSidebar"] .stButton > button:hover {
     color: var(--slate);
     padding: 3px 12px;
     border-radius: 2px;
-    font-size: 13px;
+    font-size: 16px;
     font-weight: 500;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -199,7 +199,7 @@ section[data-testid="stSidebar"] .stButton > button:hover {
     color: var(--sage);
     padding: 3px 12px;
     border-radius: 2px;
-    font-size: 13px;
+    font-size: 16px;
     font-weight: 500;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -212,7 +212,7 @@ section[data-testid="stSidebar"] .stButton > button:hover {
     color: var(--rust);
     padding: 3px 12px;
     border-radius: 2px;
-    font-size: 13px;
+    font-size: 16px;
     font-weight: 500;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -226,7 +226,7 @@ section[data-testid="stSidebar"] .stButton > button:hover {
     color: var(--rust);
     padding: 2px 10px;
     border-radius: 2px;
-    font-size: 13px;
+    font-size: 16px;
     font-weight: 500;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -238,7 +238,7 @@ section[data-testid="stSidebar"] .stButton > button:hover {
     color: var(--amber);
     padding: 2px 10px;
     border-radius: 2px;
-    font-size: 13px;
+    font-size: 16px;
     font-weight: 500;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -250,7 +250,7 @@ section[data-testid="stSidebar"] .stButton > button:hover {
     color: var(--sage);
     padding: 2px 10px;
     border-radius: 2px;
-    font-size: 13px;
+    font-size: 16px;
     font-weight: 500;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -263,14 +263,14 @@ div.stButton > button {
     color: #f5f0e8 !important;
     border: 1px solid var(--ink) !important;
     border-radius: 2px !important;
-    padding: 12px 26px !important;
+    padding: 14px 28px !important;
     font-family: 'EB Garamond', serif !important;
-    font-size: 19px !important;
+    font-size: 22px !important;
     font-weight: 500 !important;
     letter-spacing: 0.04em !important;
     transition: all 0.18s ease !important;
     box-shadow: none !important;
-    min-height: 46px !important;
+    min-height: 52px !important;
     line-height: 1.4 !important;
 }
 
@@ -340,7 +340,7 @@ div.stButton > button[kind="primary"]:hover {
 
 .metric-number {
     font-family: 'Playfair Display', serif !important;
-    font-size: 46px !important;
+    font-size: 54px !important;
     font-weight: 700 !important;
     color: var(--ink) !important;
     line-height: 1;
@@ -348,7 +348,7 @@ div.stButton > button[kind="primary"]:hover {
 }
 
 .metric-label {
-    font-size: 13px;
+    font-size: 16px;
     color: var(--ink-muted);
     letter-spacing: 0.1em;
     text-transform: uppercase;
@@ -368,7 +368,7 @@ div.stButton > button[kind="primary"]:hover {
 
 .gap-count {
     font-family: 'Playfair Display', serif;
-    font-size: 24px;
+    font-size: 28px;
     font-weight: 700;
     color: var(--rust);
 }
@@ -390,15 +390,15 @@ div.stButton > button[kind="primary"]:hover {
     border-radius: 2px !important;
     color: var(--ink) !important;
     font-family: 'EB Garamond', serif !important;
-    font-size: 21px !important;
-    padding: 14px 18px !important;
+    font-size: 24px !important;
+    padding: 16px 20px !important;
     line-height: 1.6 !important;
 }
 
 .stTextInput > div > div > input::placeholder,
 .stTextArea > div > div > textarea::placeholder {
     color: var(--ink-faint) !important;
-    font-size: 19px !important;
+    font-size: 22px !important;
     font-style: italic !important;
     font-family: 'EB Garamond', serif !important;
 }
@@ -410,14 +410,14 @@ div.stButton > button[kind="primary"]:hover {
     border-radius: 2px !important;
     color: var(--ink) !important;
     font-family: 'EB Garamond', serif !important;
-    font-size: 21px !important;
-    min-height: 52px !important;
+    font-size: 24px !important;
+    min-height: 56px !important;
 }
 
 [data-baseweb="select"] span,
 [data-baseweb="select"] div {
     font-family: 'EB Garamond', serif !important;
-    font-size: 20px !important;
+    font-size: 24px !important;
     color: var(--ink) !important;
 }
 
@@ -430,7 +430,7 @@ div.stButton > button[kind="primary"]:hover {
 label[data-testid="stWidgetLabel"],
 label[data-testid="stWidgetLabel"] p {
     font-family: 'EB Garamond', serif !important;
-    font-size: 20px !important;
+    font-size: 23px !important;
     font-weight: 600 !important;
     letter-spacing: 0.01em !important;
     text-transform: none !important;
@@ -447,7 +447,7 @@ label[data-testid="stWidgetLabel"] p {
 
 [data-testid="stExpander"] > div:first-child {
     font-family: 'EB Garamond', serif !important;
-    font-size: 19px !important;
+    font-size: 22px !important;
     color: var(--ink-light) !important;
 }
 
@@ -464,10 +464,10 @@ label[data-testid="stWidgetLabel"] p {
     border-bottom: 2px solid transparent !important;
     color: var(--ink-muted) !important;
     font-family: 'DM Mono', monospace !important;
-    font-size: 14px !important;
+    font-size: 16px !important;
     letter-spacing: 0.06em !important;
     text-transform: uppercase !important;
-    padding: 10px 18px !important;
+    padding: 12px 20px !important;
     margin-bottom: -1px;
     transition: all 0.15s;
 }
@@ -482,18 +482,18 @@ label[data-testid="stWidgetLabel"] p {
     border-radius: 3px !important;
     border-left-width: 3px !important;
     font-family: 'EB Garamond', serif !important;
-    font-size: 21px !important;
+    font-size: 24px !important;
 }
 
 .stAlert p, .stAlert div, .stAlert span {
     font-family: 'EB Garamond', serif !important;
-    font-size: 21px !important;
+    font-size: 24px !important;
 }
 
 /* ── Success / Error / Warning ── */
 [data-testid="stNotification"] {
     font-family: 'EB Garamond', serif !important;
-    font-size: 21px !important;
+    font-size: 24px !important;
     border-radius: 3px !important;
 }
 
@@ -507,7 +507,7 @@ hr {
 /* ── Captions & small text ── */
 small, .stCaption {
     font-family: 'DM Mono', monospace !important;
-    font-size: 15px !important;
+    font-size: 17px !important;
     color: var(--ink-faint) !important;
     letter-spacing: 0.03em;
 }
@@ -515,7 +515,7 @@ small, .stCaption {
 /* ── Markdown paragraph text ── */
 [data-testid="stMarkdownContainer"] p {
     font-family: 'EB Garamond', serif;
-    font-size: 21px;
+    font-size: 24px;
     line-height: 1.85;
     color: var(--ink-light);
 }
@@ -524,7 +524,7 @@ small, .stCaption {
 [data-testid="stMarkdownContainer"] ul,
 [data-testid="stMarkdownContainer"] ol {
     font-family: 'EB Garamond', serif;
-    font-size: 21px;
+    font-size: 24px;
     line-height: 1.85;
     color: var(--ink-light);
 }
@@ -546,7 +546,7 @@ small, .stCaption {
     border: 1px solid #c4543a;
     border-radius: 2px;
     padding: 4px 14px;
-    font-size: 13px;
+    font-size: 15px;
     font-weight: 500;
     letter-spacing: 0.1em;
     text-transform: uppercase;
@@ -560,7 +560,7 @@ small, .stCaption {
     border: 1px solid #7ab898;
     border-radius: 2px;
     padding: 4px 14px;
-    font-size: 13px;
+    font-size: 15px;
     font-weight: 500;
     letter-spacing: 0.1em;
     text-transform: uppercase;
@@ -574,7 +574,7 @@ small, .stCaption {
     border: 1px solid var(--border-dark);
     border-radius: 2px;
     padding: 8px 16px;
-    font-size: 15px;
+    font-size: 17px;
     font-weight: 500;
     color: var(--ink-light);
     margin: 4px;
@@ -583,7 +583,7 @@ small, .stCaption {
 }
 
 .chain-arrow {
-    font-size: 20px;
+    font-size: 22px;
     color: var(--ink-faint);
     margin: 0 2px;
 }
@@ -606,7 +606,7 @@ small, .stCaption {
 
 .validator-title {
     font-family: 'Playfair Display', serif;
-    font-size: 28px;
+    font-size: 32px;
     font-weight: 700;
     color: var(--ink);
     margin-bottom: 4px;
@@ -618,7 +618,7 @@ small, .stCaption {
     color: var(--ink-muted);
     border-radius: 2px;
     padding: 3px 12px;
-    font-size: 13px;
+    font-size: 15px;
     margin: 2px;
     border: 1px solid var(--border);
     font-family: 'DM Mono', monospace;
@@ -644,7 +644,7 @@ small, .stCaption {
     display: inline-block;
     padding: 3px 12px;
     border-radius: 2px;
-    font-size: 12px;
+    font-size: 14px;
     font-weight: 500;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -658,10 +658,10 @@ small, .stCaption {
 .role-emp    { background: var(--sage-light); color: var(--sage); border: 1px solid #7ab898; }
 .role-all    { background: var(--cream-dark); color: var(--ink-muted); border: 1px solid var(--border); }
 
-.access-granted  { color: var(--sage);  font-family: 'DM Mono', monospace; font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase; }
-.access-denied   { color: var(--rust);  font-family: 'DM Mono', monospace; font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase; }
-.access-pending  { color: var(--amber); font-family: 'DM Mono', monospace; font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase; }
-.access-expiring { color: #8b6914;      font-family: 'DM Mono', monospace; font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase; }
+.access-granted  { color: var(--sage);  font-family: 'DM Mono', monospace; font-size: 15px; letter-spacing: 0.06em; text-transform: uppercase; }
+.access-denied   { color: var(--rust);  font-family: 'DM Mono', monospace; font-size: 15px; letter-spacing: 0.06em; text-transform: uppercase; }
+.access-pending  { color: var(--amber); font-family: 'DM Mono', monospace; font-size: 15px; letter-spacing: 0.06em; text-transform: uppercase; }
+.access-expiring { color: #8b6914;      font-family: 'DM Mono', monospace; font-size: 15px; letter-spacing: 0.06em; text-transform: uppercase; }
 
 /* ── Scrollbar ── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -682,13 +682,13 @@ small, .stCaption {
 
 [data-testid="stMetricValue"] {
     font-family: 'Playfair Display', serif !important;
-    font-size: 36px !important;
+    font-size: 42px !important;
     color: var(--ink) !important;
 }
 
 [data-testid="stMetricLabel"] {
     font-family: 'DM Mono', monospace !important;
-    font-size: 13px !important;
+    font-size: 15px !important;
     letter-spacing: 0.06em !important;
     text-transform: uppercase !important;
     color: var(--ink-muted) !important;
@@ -1372,7 +1372,7 @@ def db_review_access_request(req_id, action, reviewed_by, doc_id=None, user_id=N
 def page_employee():
     st.markdown("# Employee Help Portal")
     st.markdown(
-        "<p style='color:#6b5f55; font-size:21px; font-family: EB Garamond, serif;'>"
+        "<p style='color:#6b5f55; font-size:26px; font-family: EB Garamond, serif;'>"
         "Ask any question — or type <em>raise a ticket</em> to go straight to support.</p>",
         unsafe_allow_html=True,
     )
@@ -1401,7 +1401,7 @@ def page_employee():
             st.markdown(
                 "<div style='background: var(--paper); border: 1px solid var(--border); "
                 "border-left: 3px solid var(--rust); border-radius: 3px; padding: 16px 20px; margin-bottom: 8px;'>"
-                "<p style='margin:0; font-family: EB Garamond, serif; font-size:20px; color: var(--ink-light);'>"
+                "<p style='margin:0; font-family: EB Garamond, serif; font-size:24px; color: var(--ink-light);'>"
                 "Sure — fill in the form below and our team will get back to you."
                 "</p></div>",
                 unsafe_allow_html=True,
@@ -1426,13 +1426,13 @@ def page_employee():
                 if source == "learned":
                     st.markdown("#### ✦ Answer Found")
                     st.markdown(
-                        "<small style='color:#3d5a4a; font-family: DM Mono, monospace; font-size:15px; "
+                        "<small style='color:#3d5a4a; font-family: DM Mono, monospace; font-size:17px; "
                         "letter-spacing:0.06em; text-transform:uppercase;'>"
                         "Source: Previously resolved support ticket</small>",
                         unsafe_allow_html=True,
                     )
                     st.markdown(
-                        f"<small style='color:#9c8e82; font-family: EB Garamond, serif; font-size:18px;'>"
+                        f"<small style='color:#9c8e82; font-family: EB Garamond, serif; font-size:20px;'>"
                         f"Similar question: <em>{result['matched'][:160]}</em> "
                         f"&nbsp;·&nbsp; similarity {result['score']:.0%}</small>",
                         unsafe_allow_html=True,
@@ -1442,13 +1442,13 @@ def page_employee():
                     st.markdown("#### ✦ Answer Found")
                     match_label = "matched via question" if match_src == "question" else "matched via answer content"
                     st.markdown(
-                        f"<small style='color:#8b3a2a; font-family: DM Mono, monospace; font-size:15px; "
+                        f"<small style='color:#8b3a2a; font-family: DM Mono, monospace; font-size:17px; "
                         f"letter-spacing:0.06em; text-transform:uppercase;'>"
                         f"Source: PDF Knowledge Base &nbsp;·&nbsp; {match_label}</small>",
                         unsafe_allow_html=True,
                     )
                     st.markdown(
-                        f"<small style='color:#9c8e82; font-family: EB Garamond, serif; font-size:18px;'>"
+                        f"<small style='color:#9c8e82; font-family: EB Garamond, serif; font-size:20px;'>"
                         f"Matched: <em>{result['matched'][:120]}</em> &nbsp;·&nbsp; score {result['score']:.2f}</small>",
                         unsafe_allow_html=True,
                     )
@@ -1499,7 +1499,7 @@ def page_employee():
         original_question = st.session_state.get("ticket_query", "")
         if original_question:
             st.markdown(
-                f"<small style='color:#8b3a2a; font-family: DM Mono, monospace; font-size:15px; "
+                f"<small style='color:#8b3a2a; font-family: DM Mono, monospace; font-size:17px; "
                 f"letter-spacing:0.04em;'>Search query: {original_question}</small>",
                 unsafe_allow_html=True,
             )
@@ -1632,7 +1632,7 @@ def page_admin():
             st.info("No tickets found.", icon="📭")
         else:
             st.markdown(
-                f"<p style='font-family: DM Mono, monospace; font-size: 14px; color: #9c8e82; "
+                f"<p style='font-family: DM Mono, monospace; font-size: 16px; color: #9c8e82; "
                 f"letter-spacing: 0.06em; text-transform: uppercase;'>{len(tickets)} ticket(s)</p>",
                 unsafe_allow_html=True,
             )
@@ -1722,7 +1722,7 @@ def _render_doc_validator():
     st.markdown("""
     <div style='margin-bottom: 8px;'>
         <p class='validator-title'>Document Sensitivity Validator</p>
-        <p style='color: #6b5f55; font-size: 20px; margin-top: 0; font-family: EB Garamond, serif;'>
+        <p style='color: #6b5f55; font-size: 24px; margin-top: 0; font-family: EB Garamond, serif;'>
             Enter your document details below. The system will instantly classify it as
             <strong>Sensitive</strong> (requires full approval pipeline) or
             <strong>Normal</strong> (auto-approved).
@@ -1781,10 +1781,10 @@ def _render_doc_validator():
             st.markdown(f"""
             <div class='sensitive-box'>
                 <div style='display:flex; align-items:center; gap:12px; margin-bottom:14px;'>
-                    <span style='font-size:32px;'>⚠</span>
+                    <span style='font-size:36px;'>⚠</span>
                     <div>
                         <span class='sensitive-badge'>Sensitive Document</span>
-                        <p style='margin:8px 0 0 0; color:#3d3530; font-size:20px; font-family: EB Garamond, serif;'>
+                        <p style='margin:8px 0 0 0; color:#3d3530; font-size:24px; font-family: EB Garamond, serif;'>
                             {result["reason"]}
                         </p>
                     </div>
@@ -1798,7 +1798,7 @@ def _render_doc_validator():
                 kw_html = "".join(f"<span class='keyword-tag'>{kw}</span>" for kw in result["matched_keywords"])
                 st.markdown(f"""
                 <div style='margin-bottom:16px;'>
-                    <p style='font-size:14px; color:#9c8e82; margin-bottom:6px; font-family: DM Mono, monospace; letter-spacing: 0.06em; text-transform: uppercase;'>
+                    <p style='font-size:16px; color:#9c8e82; margin-bottom:6px; font-family: DM Mono, monospace; letter-spacing: 0.06em; text-transform: uppercase;'>
                         Detected sensitive keywords
                     </p>
                     {kw_html}
@@ -1809,7 +1809,7 @@ def _render_doc_validator():
             if chain:
                 st.markdown("#### Required Approval Chain")
                 st.markdown(
-                    f"<p style='color:#6b5f55; font-size:19px; margin-top:-8px; font-family: EB Garamond, serif;'>"
+                    f"<p style='color:#6b5f55; font-size:23px; margin-top:-8px; font-family: EB Garamond, serif;'>"
                     f"This document must be approved by all {len(chain)} level(s) before it is published.</p>",
                     unsafe_allow_html=True,
                 )
@@ -1845,10 +1845,10 @@ def _render_doc_validator():
                         f"<div style='display:flex; gap:12px; align-items:flex-start; "
                         f"margin-bottom:8px; padding:14px 18px; background:var(--paper); "
                         f"border-radius:3px; border-left:3px solid {color}; border:1px solid var(--border);'>"
-                        f"<div style='min-width:22px; font-family: DM Mono, monospace; color:{color}; font-weight:500; font-size:15px;'>{i+1:02d}</div>"
+                        f"<div style='min-width:22px; font-family: DM Mono, monospace; color:{color}; font-weight:500; font-size:17px;'>{i+1:02d}</div>"
                         f"<div>"
-                        f"<p style='margin:0; font-weight:600; color:{color}; font-family: Playfair Display, serif; font-size:18px;'>{role}</p>"
-                        f"<p style='margin:2px 0 0 0; font-size:18px; color:#6b5f55; font-family: EB Garamond, serif;'>{desc}</p>"
+                        f"<p style='margin:0; font-weight:600; color:{color}; font-family: Playfair Display, serif; font-size:22px;'>{role}</p>"
+                        f"<p style='margin:2px 0 0 0; font-size:22px; color:#6b5f55; font-family: EB Garamond, serif;'>{desc}</p>"
                         f"</div>"
                         f"</div>",
                         unsafe_allow_html=True,
@@ -1880,10 +1880,10 @@ def _render_doc_validator():
             st.markdown(f"""
             <div class='auto-approve-box'>
                 <div style='display:flex; align-items:center; gap:12px; margin-bottom:10px;'>
-                    <span style='font-size:32px; color:#3d5a4a;'>✓</span>
+                    <span style='font-size:36px; color:#3d5a4a;'>✓</span>
                     <div>
                         <span class='normal-badge'>Normal Document — Auto-Approved</span>
-                        <p style='margin:8px 0 0 0; color:#3d3530; font-size:20px; font-family: EB Garamond, serif;'>
+                        <p style='margin:8px 0 0 0; color:#3d3530; font-size:24px; font-family: EB Garamond, serif;'>
                             {result["reason"]}
                         </p>
                     </div>
@@ -1900,7 +1900,7 @@ def _render_doc_validator():
                 )
                 st.markdown(f"""
                 <div style='margin-bottom:16px;'>
-                    <p style='font-size:14px; color:#9c8e82; margin-bottom:6px; font-family: DM Mono, monospace; letter-spacing: 0.06em; text-transform: uppercase;'>
+                    <p style='font-size:16px; color:#9c8e82; margin-bottom:6px; font-family: DM Mono, monospace; letter-spacing: 0.06em; text-transform: uppercase;'>
                         Detected normal-content keywords
                     </p>
                     {kw_html}
@@ -1937,21 +1937,21 @@ def _render_doc_validator():
         st.markdown("""
         <div style='text-align:center; padding:52px 24px; background:var(--paper);
                     border-radius:3px; border:1px solid var(--border); margin-top:16px;'>
-            <div style='font-size:48px; margin-bottom:14px; color:#d4c9bc;'>◉</div>
-            <p style='font-size:22px; font-weight:600; color:#1a1612; font-family: Playfair Display, serif; margin:0;'>
+            <div style='font-size:52px; margin-bottom:14px; color:#d4c9bc;'>◉</div>
+            <p style='font-size:26px; font-weight:600; color:#1a1612; font-family: Playfair Display, serif; margin:0;'>
                 Enter document details above and click Validate
             </p>
-            <p style='font-size:18px; color:#9c8e82; margin-top:10px; font-family: EB Garamond, serif;'>
+            <p style='font-size:22px; color:#9c8e82; margin-top:10px; font-family: EB Garamond, serif;'>
                 The system will instantly classify it and show you the required approval chain.
             </p>
             <div style='margin-top:24px; display:flex; justify-content:center; gap:40px; flex-wrap:wrap;'>
                 <div style='text-align:center;'>
-                    <p style='font-family: DM Mono, monospace; font-size:13px; color:#8b3a2a; font-weight:600; margin:4px 0 0; letter-spacing:0.08em; text-transform:uppercase;'>Sensitive</p>
-                    <p style='font-size:16px; color:#9c8e82; margin:2px 0 0; font-family: EB Garamond, serif;'>Full pipeline required</p>
+                    <p style='font-family: DM Mono, monospace; font-size:15px; color:#8b3a2a; font-weight:600; margin:4px 0 0; letter-spacing:0.08em; text-transform:uppercase;'>Sensitive</p>
+                    <p style='font-size:19px; color:#9c8e82; margin:2px 0 0; font-family: EB Garamond, serif;'>Full pipeline required</p>
                 </div>
                 <div style='text-align:center;'>
-                    <p style='font-family: DM Mono, monospace; font-size:13px; color:#3d5a4a; font-weight:600; margin:4px 0 0; letter-spacing:0.08em; text-transform:uppercase;'>Normal</p>
-                    <p style='font-size:16px; color:#9c8e82; margin:2px 0 0; font-family: EB Garamond, serif;'>Auto-approved instantly</p>
+                    <p style='font-family: DM Mono, monospace; font-size:15px; color:#3d5a4a; font-weight:600; margin:4px 0 0; letter-spacing:0.08em; text-transform:uppercase;'>Normal</p>
+                    <p style='font-size:19px; color:#9c8e82; margin:2px 0 0; font-family: EB Garamond, serif;'>Auto-approved instantly</p>
                 </div>
             </div>
         </div>
@@ -2017,8 +2017,8 @@ def page_analytics():
             xaxis_title="", yaxis_title="",
             plot_bgcolor="#faf7f2", paper_bgcolor="#faf7f2",
             margin=dict(t=20, b=80), bargap=0.4,
-            font=dict(family="EB Garamond", color="#3d3530", size=16),
-            xaxis=dict(tickangle=-35, type="category", tickfont=dict(size=14), gridcolor="#e8e0d0"),
+            font=dict(family="EB Garamond", color="#3d3530", size=18),
+            xaxis=dict(tickangle=-35, type="category", tickfont=dict(size=16), gridcolor="#e8e0d0"),
             yaxis=dict(tickformat="d", dtick=1, gridcolor="#e8e0d0"),
         )
         fig1.update_traces(textposition="outside", marker_line_width=0)
@@ -2033,10 +2033,10 @@ def page_analytics():
             color_discrete_map={"Open": AMBER, "In Progress": SLATE, "Resolved": SAGE},
             hole=0.4,
         )
-        fig2.update_traces(textinfo="label+percent", textfont_size=16)
+        fig2.update_traces(textinfo="label+percent", textfont_size=18)
         fig2.update_layout(
             margin=dict(t=20), paper_bgcolor="#faf7f2",
-            font=dict(family="EB Garamond", color="#3d3530", size=16),
+            font=dict(family="EB Garamond", color="#3d3530", size=18),
             legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5),
         )
         st.plotly_chart(fig2, use_container_width=True)
@@ -2056,7 +2056,7 @@ def page_analytics():
         fig3.update_layout(
             showlegend=False, plot_bgcolor="#faf7f2", paper_bgcolor="#faf7f2",
             margin=dict(t=20), bargap=0.45,
-            font=dict(family="EB Garamond", color="#3d3530", size=16),
+            font=dict(family="EB Garamond", color="#3d3530", size=18),
             xaxis=dict(title="", gridcolor="#e8e0d0"),
             yaxis=dict(title="", tickformat="d", dtick=1, gridcolor="#e8e0d0"),
         )
@@ -2072,7 +2072,7 @@ def page_analytics():
             xaxis=dict(title="", tickformat="d", dtick=1, gridcolor="#e8e0d0"),
             yaxis_title="", plot_bgcolor="#faf7f2", paper_bgcolor="#faf7f2",
             margin=dict(t=20, l=140), bargap=0.35,
-            font=dict(family="EB Garamond", color="#3d3530", size=16),
+            font=dict(family="EB Garamond", color="#3d3530", size=18),
             height=max(300, len(role_counts) * 50),
         )
         fig4.update_traces(textposition="outside", marker_line_width=0)
@@ -2094,7 +2094,7 @@ def page_knowledge_gap():
 
     st.markdown("# Knowledge Gap Report")
     st.markdown(
-        "<p style='color:#6b5f55; font-size:21px; font-family: EB Garamond, serif;'>"
+        "<p style='color:#6b5f55; font-size:26px; font-family: EB Garamond, serif;'>"
         "Questions employees asked that the system couldn't answer.</p>",
         unsafe_allow_html=True,
     )
@@ -2136,8 +2136,8 @@ def page_knowledge_gap():
         st.markdown(
             f"<div class='gap-card'>"
             f"<span class='gap-count'>#{i:02d}</span> &nbsp;"
-            f"<strong style='font-family: EB Garamond, serif; font-size:20px;'>{row['query']}</strong>"
-            f"<br><small style='color:#9c8e82; font-family: DM Mono, monospace; font-size:15px;'>Asked {date_fmt}</small>"
+            f"<strong style='font-family: EB Garamond, serif; font-size:24px;'>{row['query']}</strong>"
+            f"<br><small style='color:#9c8e82; font-family: DM Mono, monospace; font-size:17px;'>Asked {date_fmt}</small>"
             f"</div>",
             unsafe_allow_html=True,
         )
@@ -2159,11 +2159,11 @@ def page_knowledge_gap():
                 xaxis=dict(title="", tickformat="d", dtick=1, gridcolor="#e8e0d0"),
                 yaxis_title="", plot_bgcolor="#faf7f2", paper_bgcolor="#faf7f2",
                 margin=dict(t=10, l=120),
-                font=dict(family="EB Garamond", color="#3d3530", size=16),
+                font=dict(family="EB Garamond", color="#3d3530", size=18),
                 height=max(300, len(wdf) * 40), bargap=0.35,
             )
             fig.update_traces(textposition="outside", marker_line_width=0)
-            fig.update_yaxes(autorange="reversed", tickfont=dict(size=15))
+            fig.update_yaxes(autorange="reversed", tickfont=dict(size=17))
             st.plotly_chart(fig, use_container_width=True)
         except ImportError:
             for word, count in word_freq:
@@ -2186,7 +2186,7 @@ def page_knowledge_gap():
 def page_doc_visibility():
     st.markdown("# Document Visibility")
     st.markdown(
-        "<p style='color:#6b5f55; font-size:21px; font-family: EB Garamond, serif;'>"
+        "<p style='color:#6b5f55; font-size:26px; font-family: EB Garamond, serif;'>"
         "Role-based document library. Access is governed by your rank in the hierarchy. "
         "CTO and CEO can view all documents instantly — Managers and below must request access for restricted content.</p>",
         unsafe_allow_html=True,
@@ -2195,7 +2195,7 @@ def page_doc_visibility():
     st.markdown("""
     <div style='display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:20px; padding:16px 20px;
                 background:var(--paper); border:1px solid var(--border); border-radius:3px;'>
-        <span style='font-family:DM Mono,monospace; font-size:12px; color:var(--ink-faint); letter-spacing:0.1em; text-transform:uppercase; margin-right:4px;'>Hierarchy</span>
+        <span style='font-family:DM Mono,monospace; font-size:14px; color:var(--ink-faint); letter-spacing:0.1em; text-transform:uppercase; margin-right:4px;'>Hierarchy</span>
         <span class='role-badge role-emp'>Employee</span>
         <span style='color:var(--ink-faint);'>→</span>
         <span class='role-badge role-mgr'>Manager</span>
@@ -2206,7 +2206,7 @@ def page_doc_visibility():
         <span style='color:var(--ink-faint);'>→</span>
         <span class='role-badge role-ceo'>CEO</span>
         &nbsp;&nbsp;
-        <span style='font-family:DM Mono,monospace; font-size:13px; color:#3d5a4a; letter-spacing:0.06em;'>CTO &amp; CEO: instant access to all docs · Others: request required for restricted docs</span>
+        <span style='font-family:DM Mono,monospace; font-size:15px; color:#3d5a4a; letter-spacing:0.06em;'>CTO &amp; CEO: instant access to all docs · Others: request required for restricted docs</span>
     </div>
     """, unsafe_allow_html=True)
 
@@ -2300,7 +2300,7 @@ def page_doc_visibility():
                                 f"<div style='display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:12px;'>"
                                 f"<span class='role-badge {role_cls}'>{min_role}+</span>"
                                 f"<span style='display:inline-block; background:{s_bg}; color:{s_color}; border-radius:2px; "
-                                f"padding:2px 10px; font-size:12px; font-family:DM Mono,monospace; font-weight:500; letter-spacing:0.08em; text-transform:uppercase;'>{sensitivity}</span>"
+                                f"padding:2px 10px; font-size:14px; font-family:DM Mono,monospace; font-weight:500; letter-spacing:0.08em; text-transform:uppercase;'>{sensitivity}</span>"
                                 f"&nbsp;{access_label}"
                                 f"</div>",
                                 unsafe_allow_html=True,
@@ -2308,7 +2308,7 @@ def page_doc_visibility():
                             if doc.get("description"):
                                 st.markdown(f"**Description:** {doc['description']}")
                             if doc.get("content_preview"):
-                                st.markdown(f"<div class='answer-box' style='font-size:19px;'>{doc['content_preview']}</div>", unsafe_allow_html=True)
+                                st.markdown(f"<div class='answer-box' style='font-size:23px;'>{doc['content_preview']}</div>", unsafe_allow_html=True)
                             if doc.get("file_url"):
                                 st.markdown(f"📎 [Open Document]({doc['file_url']})")
                             st.markdown(
@@ -2326,9 +2326,9 @@ def page_doc_visibility():
                         st.markdown(
                             f"<div class='doc-card doc-card-pending'>"
                             f"<span class='role-badge {role_cls}'>{min_role}+</span>&nbsp;"
-                            f"<strong style='font-family:EB Garamond,serif; font-size:20px;'>{doc['title']}</strong>"
+                            f"<strong style='font-family:EB Garamond,serif; font-size:24px;'>{doc['title']}</strong>"
                             f"&nbsp;&nbsp;<span class='access-pending'>◑ Request pending — submitted {_to_ist(req.get('created_at',''))}</span>"
-                            f"<br><small style='color:#9c8e82; font-family:DM Mono,monospace; font-size:15px;'>Awaiting approval from Tech Manager / CTO / CEO</small>"
+                            f"<br><small style='color:#9c8e82; font-family:DM Mono,monospace; font-size:17px;'>Awaiting approval from Tech Manager / CTO / CEO</small>"
                             f"</div>",
                             unsafe_allow_html=True,
                         )
@@ -2349,7 +2349,7 @@ def page_doc_visibility():
                                 f"<div style='display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:10px;'>"
                                 f"<span class='role-badge {role_cls}'>{min_role}+</span>"
                                 f"<span style='display:inline-block; background:{s_bg}; color:{s_color}; border-radius:2px; "
-                                f"padding:2px 10px; font-size:12px; font-family:DM Mono,monospace; font-weight:500; letter-spacing:0.08em; text-transform:uppercase;'>{sensitivity}</span>"
+                                f"padding:2px 10px; font-size:14px; font-family:DM Mono,monospace; font-weight:500; letter-spacing:0.08em; text-transform:uppercase;'>{sensitivity}</span>"
                                 f"<span class='access-denied'>✗ Access restricted</span>"
                                 f"</div>",
                                 unsafe_allow_html=True,
@@ -2359,7 +2359,7 @@ def page_doc_visibility():
 
                             st.markdown(
                                 "<div style='background:var(--rust-pale); border-left:3px solid var(--rust); border-radius:3px; "
-                                "padding:12px 16px; margin:10px 0; font-family:EB Garamond,serif; font-size:19px; color:var(--rust);'>"
+                                "padding:12px 16px; margin:10px 0; font-family:EB Garamond,serif; font-size:23px; color:var(--rust);'>"
                                 "You need approval from a Tech Manager, CTO, or CEO to view this document. "
                                 "Access will be granted for 7 days.</div>",
                                 unsafe_allow_html=True,
@@ -2437,9 +2437,9 @@ def page_doc_visibility():
                     color     = "#8b6914" if expiring else "#3d5a4a"
                     st.markdown(
                         f"<div class='doc-card doc-card-accessible'>"
-                        f"<strong style='font-family:EB Garamond,serif; font-size:20px;'>{doc['title']}</strong>"
-                        f"&nbsp;&nbsp;<span style='color:{color}; font-family:DM Mono,monospace; font-size:13px; text-transform:uppercase; letter-spacing:0.06em;'>{'⚠ ' if expiring else '✓ '}{exp_label}</span>"
-                        f"<br><small style='color:#9c8e82; font-family:DM Mono,monospace; font-size:15px;'>Granted by: {grant.get('granted_by','—')} · {_to_ist(grant.get('granted_at',''))}</small>"
+                        f"<strong style='font-family:EB Garamond,serif; font-size:24px;'>{doc['title']}</strong>"
+                        f"&nbsp;&nbsp;<span style='color:{color}; font-family:DM Mono,monospace; font-size:15px; text-transform:uppercase; letter-spacing:0.06em;'>{'⚠ ' if expiring else '✓ '}{exp_label}</span>"
+                        f"<br><small style='color:#9c8e82; font-family:DM Mono,monospace; font-size:17px;'>Granted by: {grant.get('granted_by','—')} · {_to_ist(grant.get('granted_at',''))}</small>"
                         f"</div>",
                         unsafe_allow_html=True,
                     )
@@ -2456,8 +2456,8 @@ def page_doc_visibility():
                     st.markdown(
                         f"<div class='doc-card'>"
                         f"<strong style='font-family:EB Garamond,serif;'>{doc_title}</strong>&nbsp;&nbsp;"
-                        f"<span style='color:{s_color}; font-family:DM Mono,monospace; font-size:13px; text-transform:uppercase; letter-spacing:0.06em;'>{status}</span>"
-                        f"<br><small style='color:#9c8e82; font-family:DM Mono,monospace; font-size:15px;'>Requested {_to_ist(req.get('created_at',''))} · Reason: {req.get('reason','—')[:80]}</small>"
+                        f"<span style='color:{s_color}; font-family:DM Mono,monospace; font-size:15px; text-transform:uppercase; letter-spacing:0.06em;'>{status}</span>"
+                        f"<br><small style='color:#9c8e82; font-family:DM Mono,monospace; font-size:17px;'>Requested {_to_ist(req.get('created_at',''))} · Reason: {req.get('reason','—')[:80]}</small>"
                         f"</div>",
                         unsafe_allow_html=True,
                     )
@@ -2508,7 +2508,7 @@ def page_doc_visibility():
                     st.info("No documents yet.")
                 else:
                     st.markdown(
-                        f"<p style='font-family:DM Mono,monospace; font-size:14px; color:#9c8e82; letter-spacing:0.06em; text-transform:uppercase;'>{len(docs)} document(s)</p>",
+                        f"<p style='font-family:DM Mono,monospace; font-size:16px; color:#9c8e82; letter-spacing:0.06em; text-transform:uppercase;'>{len(docs)} document(s)</p>",
                         unsafe_allow_html=True,
                     )
                     for doc in docs:
@@ -2524,7 +2524,7 @@ def page_doc_visibility():
                                 f"<div style='display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;'>"
                                 f"<span class='role-badge {role_cls}'>{min_role}+</span>"
                                 f"<span style='display:inline-block; background:{s_bg}; color:{s_color}; border-radius:2px; "
-                                f"padding:2px 10px; font-size:12px; font-family:DM Mono,monospace; font-weight:500; letter-spacing:0.08em; text-transform:uppercase;'>{sensitivity}</span>"
+                                f"padding:2px 10px; font-size:14px; font-family:DM Mono,monospace; font-weight:500; letter-spacing:0.08em; text-transform:uppercase;'>{sensitivity}</span>"
                                 f"</div>",
                                 unsafe_allow_html=True,
                             )
@@ -2558,7 +2558,7 @@ def page_doc_visibility():
                                     gc1, gc2  = st.columns([4, 1])
                                     with gc1:
                                         st.markdown(
-                                            f"<small style='font-family:DM Mono,monospace; font-size:15px;'>"
+                                            f"<small style='font-family:DM Mono,monospace; font-size:17px;'>"
                                             f"👤 {g['user_id']} ({g['user_role']}) — {days_left}d left — granted by {g.get('granted_by','—')}"
                                             f"</small>",
                                             unsafe_allow_html=True,
@@ -2598,7 +2598,7 @@ def page_doc_visibility():
 
                     if pending_reqs:
                         st.markdown(
-                            f"<p style='font-family:DM Mono,monospace; font-size:14px; color:#8b6914; letter-spacing:0.06em;'>"
+                            f"<p style='font-family:DM Mono,monospace; font-size:16px; color:#8b6914; letter-spacing:0.06em;'>"
                             f"{len(pending_reqs)} pending request(s) awaiting review</p>",
                             unsafe_allow_html=True,
                         )
@@ -2621,7 +2621,7 @@ def page_doc_visibility():
                                     st.markdown(
                                         f"<div style='margin:8px 0; display:flex; gap:8px;'>"
                                         f"<span class='role-badge {_role_badge_class(min_r)}'>{min_r}+</span>"
-                                        f"<span style='background:{s_bg}; color:{s_color}; border-radius:2px; padding:2px 10px; font-size:12px; font-family:DM Mono,monospace; font-weight:500; letter-spacing:0.08em; text-transform:uppercase;'>{sens}</span>"
+                                        f"<span style='background:{s_bg}; color:{s_color}; border-radius:2px; padding:2px 10px; font-size:14px; font-family:DM Mono,monospace; font-weight:500; letter-spacing:0.08em; text-transform:uppercase;'>{sens}</span>"
                                         f"</div>",
                                         unsafe_allow_html=True,
                                     )
@@ -2659,8 +2659,8 @@ def page_doc_visibility():
                             st.markdown(
                                 f"<div class='doc-card' style='padding:12px 16px;'>"
                                 f"#{req['id']} &nbsp;·&nbsp; <strong>{req['user_id']}</strong> ({req['user_role']}) → {doc_title} &nbsp;&nbsp;"
-                                f"<span style='color:{s_color}; font-family:DM Mono,monospace; font-size:13px; text-transform:uppercase;'>{status}</span>"
-                                f"<br><small style='color:#9c8e82; font-family:DM Mono,monospace; font-size:15px;'>Reviewed by {req.get('reviewed_by','—')} on {_to_ist(req.get('reviewed_at',''))}</small>"
+                                f"<span style='color:{s_color}; font-family:DM Mono,monospace; font-size:15px; text-transform:uppercase;'>{status}</span>"
+                                f"<br><small style='color:#9c8e82; font-family:DM Mono,monospace; font-size:17px;'>Reviewed by {req.get('reviewed_by','—')} on {_to_ist(req.get('reviewed_at',''))}</small>"
                                 f"</div>",
                                 unsafe_allow_html=True,
                             )
@@ -2748,7 +2748,7 @@ def page_setup():
                             st.markdown(f"**Original question:** {row['query']}")
                             st.markdown(f"**Admin solution:** {row['solution']}")
                             st.markdown(
-                                f"<small style='color:#9c8e82; font-family: DM Mono, monospace; font-size:15px;'>"
+                                f"<small style='color:#9c8e82; font-family: DM Mono, monospace; font-size:17px;'>"
                                 f"Saved: {_to_ist(row.get('created_at',''))}</small>",
                                 unsafe_allow_html=True,
                             )
@@ -2765,20 +2765,20 @@ with st.sidebar:
     st.markdown("""
     <div style='padding: 8px 0 20px;'>
         <div style='display: flex; align-items: center; gap: 10px;'>
-            <div style='width: 30px; height: 30px; background: #8b3a2a; border-radius: 2px;
+            <div style='width: 34px; height: 34px; background: #8b3a2a; border-radius: 2px;
                         display: flex; align-items: center; justify-content: center;'>
-                <span style='color: white; font-size: 15px; font-weight: 700; font-family: Playfair Display, serif;'>H</span>
+                <span style='color: white; font-size: 18px; font-weight: 700; font-family: Playfair Display, serif;'>H</span>
             </div>
             <div>
-                <p style='margin:0; font-family: Playfair Display, serif; font-size:17px; font-weight:700; color: #f5f0e8; letter-spacing: -0.01em;'>HelpDesk Pro</p>
-                <p style='margin:0; font-family: DM Mono, monospace; font-size:10px; color: #6b5f55; letter-spacing: 0.1em; text-transform: uppercase;'>Knowledge · Support</p>
+                <p style='margin:0; font-family: Playfair Display, serif; font-size:20px; font-weight:700; color: #f5f0e8; letter-spacing: -0.01em;'>HelpDesk Pro</p>
+                <p style='margin:0; font-family: DM Mono, monospace; font-size:12px; color: #6b5f55; letter-spacing: 0.1em; text-transform: uppercase;'>Knowledge · Support</p>
             </div>
         </div>
     </div>
     """, unsafe_allow_html=True)
 
     st.markdown(
-        "<p style='font-family: DM Mono, monospace; font-size: 11px; color: #3a3028; "
+        "<p style='font-family: DM Mono, monospace; font-size: 13px; color: #3a3028; "
         "letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 8px;'>Navigate</p>",
         unsafe_allow_html=True,
     )
@@ -2799,7 +2799,7 @@ with st.sidebar:
         st.warning("approval_pipeline.py not found.", icon="⚠️")
 
     st.markdown(
-        "<p style='font-family: DM Mono, monospace; font-size: 11px; color: #3a3028; "
+        "<p style='font-family: DM Mono, monospace; font-size: 13px; color: #3a3028; "
         "letter-spacing: 0.06em; margin-top: 16px;'>Powered by Supabase + pdfplumber</p>",
         unsafe_allow_html=True,
     )
