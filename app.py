@@ -2990,36 +2990,8 @@ with st.sidebar:
         "letter-spacing: 0.06em; margin-top: 16px;'>Powered by Supabase + pdfplumber</p>",
         unsafe_allow_html=True,
     )
-
-    show_storage_info_button()    # ← MOVE IT TO HERE, LAST LINE IN THE BLOCK
-
-    st.markdown(
-        "<p style='font-family: DM Mono, monospace; font-size: 13px; color: #3a3028; "
-        "letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 8px;'>Navigate</p>",
-        unsafe_allow_html=True,
-    )
     
-    page = st.radio("Navigation", [
-    "🔍 Employee Portal",
-    "📋 Approval Pipeline",
-    "🛡️ Admin Panel",
-    "📊 Analytics",
-    "🕳️ Knowledge Gap Report",
-    "📁 Doc Visibility",
-    "⚙️ Setup / Config",
-], label_visibility="collapsed")
-
-    st.markdown("---")
-
-    if not PIPELINE_AVAILABLE:
-        st.warning("approval_pipeline.py not found.", icon="⚠️")
-
-    st.markdown(
-        "<p style='font-family: DM Mono, monospace; font-size: 13px; color: #3a3028; "
-        "letter-spacing: 0.06em; margin-top: 16px;'>Powered by Supabase + pdfplumber</p>",
-        unsafe_allow_html=True,
-    )
-
+    show_storage_info_button()    # ← MOVE IT TO HERE, LAST LINE IN THE BLOC
 
 if page == "🔍 Employee Portal":
     page_employee()
