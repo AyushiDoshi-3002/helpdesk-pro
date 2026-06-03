@@ -1438,10 +1438,18 @@ def page_employee():
     st.markdown("# Employee Help Portal")
     st.markdown(
         "<p style='color:#6b5f55; font-size:26px; font-family: EB Garamond, serif;'>"
-        "Ask any question — or type <em>raise a ticket</em> to go straight to support.</p>",
+        "Ask questions, raise tickets, and track your requests.</p>",
         unsafe_allow_html=True,
     )
     st.markdown("---")
+    st.markdown(EP_CSS, unsafe_allow_html=True)
+
+    tab1, tab2, tab3 = st.tabs([
+        "💬 Knowledge Base & Q&A",
+        "🎫 Raise a Ticket",
+        "📋 My Tickets",
+    ])
+    with tab1:
 
     pairs = load_qa_pairs()
     if len(pairs) == 0:
@@ -1598,6 +1606,11 @@ def page_employee():
             if st.button("Cancel", use_container_width=True, key="emp_cancel"):
                 st.session_state["show_ticket"] = False
                 st.rerun()
+        with tab2:
+        _tab_ticket_hub()
+
+    with tab3:
+        _tab_my_tickets()
 
 
 # ════════════════════════════════════════════════════════
