@@ -173,15 +173,10 @@ def show_storage_info_button():
     if "si_docs_open"     not in st.session_state: st.session_state["si_docs_open"]     = False
 
     st.sidebar.markdown("---")
-    st.sidebar.markdown(
-        "<p style='font-family:DM Mono,monospace;font-size:11px;color:#3a3028;"
-        "letter-spacing:.10em;text-transform:uppercase;margin-bottom:6px;'>"
-        "Document Access</p>",
-        unsafe_allow_html=True,
-    )
+    st.sidebar.markdown("---")
 
-    # ── Role selector (shown to everyone) ─────────────────────────────────────
     role = st.session_state["si_role"]
+    
 
     # ── Only privileged roles see the button ─────────────────────────────────
     
