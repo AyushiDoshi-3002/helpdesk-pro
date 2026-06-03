@@ -2991,7 +2991,7 @@ with st.sidebar:
         unsafe_allow_html=True,
     )
     
-    show_storage_info_button()    # ← MOVE IT TO HERE, LAST LINE IN THE BLOC
+      
 
 if page == "🔍 Employee Portal":
     page_employee()
@@ -3144,6 +3144,7 @@ elif page == "📋 Approval Pipeline":
         # ── DOC APPROVAL flow ─────────────────────────────────────────────
         elif ap_type == "doc":
             st.markdown("### 📄 Document Approval Ticket")
+            show_storage_info_button()
             st.markdown(
                 "<p style='color:#6b5f55; font-size:20px;'>"
                 "Fill in your details and the document info. "
