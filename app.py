@@ -2881,7 +2881,271 @@ elif page == "📁 Doc Visibility":
     page_doc_visibility()
 elif page == "📋 Approval Pipeline":
     if PIPELINE_AVAILABLE:
-        page_approval_pipeline()
+        st.markdown("# 📋 Approval Pipeline")
+        st.markdown(
+            "<p style='color:#6b5f55; font-size:26px; font-family: EB Garamond, serif;'>"
+            "Choose your ticket type, or review and action pending approval requests.</p>",
+            unsafe_allow_html=True,
+        )
+        st.markdown("---")
+
+        # ── Ticket type selector at top ───────────────────────────────────
+        if "ap_page_type" not in st.session_state:
+            st.session_state["ap_page_type"] = None
+
+        col_a, col_b = st.columns(2)
+        with col_a:
+            if st.button(
+                "🚨 Incident Ticket\n\nReport a bug, problem or technical issue. "
+                "We search the KB first — if no answer, a support ticket is raised.",
+                use_container_width=True,
+                key="ap_page_incident_btn",
+            ):
+                st.session_state["ap_page_type"] = "incident"
+                st.session_state["ap_page_inc_show_form"] = False
+                st.session_state["ap_page_inc_kb_status"] = None
+
+        with col_b:
+            if st.button(
+                "📄 Document Approval Ticket\n\nRequest creation or approval of a document. "
+                "Routed through the correct approval chain automatically.",
+                use_container_width=True,
+                key="ap_page_doc_btn",
+            ):
+                st.session_state["ap_page_type"] = "doc"
+
+        st.markdown("---")
+
+        ap_type = st.session_state.get("ap_page_type")
+
+        # ── INCIDENT flow ─────────────────────────────────────────────────
+        if ap_type == "incident":
+            st.markdown("### 🚨 Incident Ticket")
+            c1, c2 = st.columns([4, 1])
+            with c1:
+                inc_q = st.text_input(
+                    "",
+                    placeholder="Describe the issue or ask a question…",
+                    label_visibility="collapsed",
+                    key="ap_page_inc_q",
+                )
+            with c2:
+                inc_search = st.button("Search →", use_container_width=True, key="ap_page_inc_search")
+
+            if inc_search and inc_q.strip():
+                # reuse the existing answer_question logic
+                with st.spinner("Searching knowledge base…"):
+                    result = answer_question(inc_q.strip())
+
+                if result["found"]:
+                    src = result.get("source", "pdf")
+                    if src == "learned":
+                        st.markdown("#### ✦ Answer Found")
+                        st.markdown(f"<div class='learned-box'>{result['answer']}</div>", unsafe_allow_html=True)
+                    else:
+                        st.markdown("#### ✦ Answer Found")
+                        st.markdown(f"<div class='answer-box'>{result['answer']}</div>", unsafe_allow_html=True)
+
+                    st.markdown("---")
+                    ca, cb, _ = st.columns([1, 1, 4])
+                    with ca:
+                        if st.button("👍 Helpful", key="ap_page_helpful"):
+                            st.success("Glad it helped!")
+                    with cb:
+                        if st.button("👎 Not helpful", key="ap_page_nothelpful"):
+                            db_log_failed_query(inc_q.strip())
+                            st.session_state["ap_page_inc_show_form"] = True
+                            st.session_state["ap_page_inc_query_cache"] = inc_q.strip()
+                            st.warning("Sorry! Please raise a ticket below.")
+                else:
+                    st.markdown(
+                        "<div class='no-answer-box'>No answer found. "
+                        "Please fill in the ticket below.</div>",
+                        unsafe_allow_html=True,
+                    )
+                    db_log_failed_query(inc_q.strip())
+                    st.session_state["ap_page_inc_show_form"] = True
+                    st.session_state["ap_page_inc_query_cache"] = inc_q.strip()
+
+            elif inc_search:
+                st.warning("Please enter a question.")
+
+            # ── Incident ticket form ──────────────────────────────────────
+            if st.session_state.get("ap_page_inc_show_form", False):
+                st.markdown("---")
+                st.markdown("### 🎫 Raise a Support Ticket")
+                prefill_q = st.session_state.get("ap_page_inc_query_cache", "")
+                ic1, ic2 = st.columns(2)
+                with ic1:
+                    inc_uid  = st.text_input("Employee ID *", placeholder="e.g. EMP-1042", key="ap_inc_uid")
+                    inc_role = st.selectbox(
+                        "Job Role *",
+                        ["Select…","Software Engineer","Data Analyst","QA Engineer",
+                         "DevOps Engineer","Product Manager","HR / Operations","Other"],
+                        key="ap_inc_role",
+                    )
+                with ic2:
+                    inc_prio = st.selectbox("Priority *", ["Medium","High","Low"], key="ap_inc_prio")
+
+                if prefill_q:
+                    st.markdown(
+                        f"<small style='color:#8b3a2a; font-family: DM Mono, monospace; font-size:17px;'>"
+                        f"Search query: {prefill_q}</small>",
+                        unsafe_allow_html=True,
+                    )
+                inc_detail = st.text_area(
+                    "Describe your problem in detail *",
+                    placeholder="Add more details…",
+                    height=120,
+                    key="ap_inc_detail",
+                )
+                sc1, sc2, _ = st.columns([1, 1, 4])
+                with sc1:
+                    if st.button("Submit Ticket →", use_container_width=True, key="ap_inc_submit"):
+                        errors = []
+                        if not inc_uid.strip():    errors.append("Employee ID required.")
+                        if inc_role == "Select…":  errors.append("Select your job role.")
+                        final_q = prefill_q or inc_detail.strip()
+                        if not final_q:            errors.append("Problem description required.")
+                        for e in errors: st.error(e)
+                        if not errors:
+                            try:
+                                t = db_create_ticket(inc_uid.strip(), inc_role, final_q, inc_prio)
+                                st.success(f"✅ Ticket #{t.get('id','–')} submitted!")
+                                st.session_state["ap_page_inc_show_form"] = False
+                            except Exception as ex:
+                                st.error(f"Failed: {ex}")
+                with sc2:
+                    if st.button("Cancel", use_container_width=True, key="ap_inc_cancel"):
+                        st.session_state["ap_page_inc_show_form"] = False
+                        st.rerun()
+
+        # ── DOC APPROVAL flow ─────────────────────────────────────────────
+        elif ap_type == "doc":
+            st.markdown("### 📄 Document Approval Ticket")
+            st.markdown(
+                "<p style='color:#6b5f55; font-size:20px;'>"
+                "Fill in your details and the document info. "
+                "The system will route it through the correct approval chain.</p>",
+                unsafe_allow_html=True,
+            )
+            st.markdown("---")
+
+            # Employee details
+            st.markdown("##### 👤 Your Details")
+            d1, d2 = st.columns(2)
+            with d1:
+                doc_emp_id   = st.text_input("Employee ID *", placeholder="e.g. EMP-1042", key="ap_doc_emp_id")
+            with d2:
+                doc_emp_name = st.text_input("Your Name *",   placeholder="e.g. Priya K.", key="ap_doc_emp_name")
+
+            st.markdown("---")
+            st.markdown("##### 📄 Document Details")
+
+            from approval_pipeline import DOC_CATEGORIES, _build_chain, _create as _ap_create, _escalation_label, _fmt as _ap_fmt
+
+            cat_keys = list(DOC_CATEGORIES.keys())
+            da1, da2 = st.columns(2)
+            with da1:
+                doc_title = st.text_input("Document Title *", placeholder="e.g. Database Backup Procedure", key="ap_doc_title")
+                doc_cat   = st.selectbox("Document Category *", cat_keys,
+                                         format_func=lambda c: DOC_CATEGORIES[c]["label"], key="ap_doc_cat")
+            with da2:
+                avail_sub = DOC_CATEGORIES[st.session_state.get("ap_doc_cat", cat_keys[0])]["subtypes"]
+                doc_sub   = st.selectbox("Document Subtype *", avail_sub, key="ap_doc_sub")
+                doc_urg   = st.selectbox("Urgency *", ["Normal","URGENT","CRITICAL"], key="ap_doc_urg")
+
+            doc_desc = st.text_area(
+                "What does this document need to cover? *",
+                placeholder="Describe the purpose and scope…",
+                height=100, key="ap_doc_desc",
+            )
+
+            # Live chain preview
+            chosen_cat = st.session_state.get("ap_doc_cat", cat_keys[0])
+            chain      = _build_chain(chosen_cat)
+            cfg        = DOC_CATEGORIES[chosen_cat]
+            if cfg["auto"]:
+                route_str = "✅ Auto-approved instantly"
+            else:
+                route_str = " → ".join(chain) + f"  ·  {_escalation_label()} per level"
+            st.caption(f"Approval route: {route_str}")
+
+            st.markdown("---")
+            if st.button("🚀 Submit for Approval", type="primary", key="ap_doc_submit"):
+                errors = []
+                if not doc_emp_id.strip():   errors.append("Employee ID required.")
+                if not doc_emp_name.strip(): errors.append("Your name required.")
+                if not doc_title.strip():    errors.append("Document title required.")
+                if not doc_desc.strip():     errors.append("Document description required.")
+                for e in errors: st.error(e)
+                if not errors:
+                    requester_str = f"{doc_emp_name.strip()} · {doc_emp_id.strip()}"
+                    try:
+                        req = _ap_create(
+                            title       = doc_title.strip(),
+                            category    = chosen_cat,
+                            subtype     = st.session_state.get("ap_doc_sub", avail_sub[0]),
+                            description = doc_desc.strip(),
+                            urgency     = doc_urg,
+                            requester   = requester_str,
+                        )
+                        if req["done"]:
+                            st.success(f"✅ {req['id']} — '{doc_title}' auto-approved instantly!")
+                        else:
+                            ch = req["chain"]
+                            st.success(
+                                f"✅ {req['id']} submitted → routed to **{ch[0]}**. "
+                                f"Full chain: **{' → '.join(ch)}**. "
+                                f"Each approver has **{_escalation_label()}** to respond."
+                            )
+                    except Exception as ex:
+                        st.error(f"Submission failed: {ex}")
+
+        st.markdown("---")
+
+        # ── Approver review section (always visible below) ────────────────
+        st.markdown("### 🔐 Approver Review")
+        st.markdown(
+            "<p style='color:#6b5f55; font-size:20px;'>"
+            "Approvers: log in to your role tab below to action pending requests.</p>",
+            unsafe_allow_html=True,
+        )
+        # Render just the role tabs from approval_pipeline (no Submit tab)
+        from approval_pipeline import _view_role, _render_policy_box, _init, _load_requests, _check_expiry, _migrate_chain, _db_update
+
+        _init()
+        if not st.session_state.ap_loaded:
+            _load_requests()
+
+        for r in st.session_state.ap_requests:
+            if _migrate_chain(r):
+                _db_update(r)
+
+        escalated = []
+        for r in st.session_state.ap_requests:
+            bi, bd = r.get("stage_idx", 0), r.get("done", False)
+            _check_expiry(r)
+            if r.get("stage_idx", 0) != bi or (r.get("done") and not bd):
+                escalated.append(r)
+        if escalated:
+            st.rerun()
+
+        def _n(role):
+            return sum(1 for r in st.session_state.ap_requests
+                       if not r["done"] and r["chain"] and r["chain"][r["stage_idx"]] == role)
+
+        role_tabs = st.tabs([
+            f"👨‍💼 Team Lead ({_n('Team Lead')})",
+            f"👩‍💻 Tech Manager ({_n('Tech Manager')})",
+            f"🧑‍🔬 CTO ({_n('CTO')})",
+            f"👑 CEO ({_n('CEO')})",
+        ])
+        with role_tabs[0]: _view_role("Team Lead")
+        with role_tabs[1]: _view_role("Tech Manager")
+        with role_tabs[2]: _view_role("CTO")
+        with role_tabs[3]: _view_role("CEO")
+
     else:
         st.error("`approval_pipeline.py` is missing from your project folder.")
 elif page == "⚙️ Setup / Config":
