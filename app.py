@@ -3256,46 +3256,61 @@ elif page == "📋 Approval Pipeline":
             SENIOR_ROLES = {"Manager", "Tech Manager", "CTO", "CEO"}
 
             if access_role != "Select…":
-                if access_role in SENIOR_ROLES:
-                    st.markdown("""
-                    <div style='background:#fff8e1; border-left:3px solid #f59e0b;
-                                border-radius:3px; padding:16px 20px; margin:12px 0;'>
-                        <p style='font-family: DM Mono, monospace; font-size:14px;
-                                  color:#92400e; font-weight:700; letter-spacing:.08em;
-                                  text-transform:uppercase; margin:0 0 8px;'>
-                            ⚡ Senior Access — Instant Grant
-                        </p>
-                        <ul style='color:#92400e; font-size:20px;
-                                   font-family: EB Garamond, serif; margin:0;
-                                   padding-left:18px; line-height:2;'>
-                            <li>Bypass approval chain</li>
-                            <li>Instant access granted</li>
-                            <li>Password-protected view</li>
-                            <li>View-only — no download permitted</li>
-                            <li>Auto-expires in 7 days</li>
-                        </ul>
-                    </div>
-                    """, unsafe_allow_html=True)
-                else:
-                    st.markdown("""
-                    <div style='background:#e8f4fd; border-left:3px solid #2d3d4f;
-                                border-radius:3px; padding:16px 20px; margin:12px 0;'>
-                        <p style='font-family: DM Mono, monospace; font-size:14px;
-                                  color:#1a3a4f; font-weight:700; letter-spacing:.08em;
-                                  text-transform:uppercase; margin:0 0 8px;'>
-                            📋 Standard Employee — Approval Required
-                        </p>
-                        <ul style='color:#1a3a4f; font-size:20px;
-                                   font-family: EB Garamond, serif; margin:0;
-                                   padding-left:18px; line-height:2;'>
-                            <li>Requires: Emp ID + Role + Doc type</li>
-                            <li>Follows approval hierarchy</li>
-                            <li>Password view only after approval</li>
-                            <li>No download permitted</li>
-                            <li>Auto-revoked after 7 days</li>
-                        </ul>
-                    </div>
-                    """, unsafe_allow_html=True)
+    if access_role in SENIOR_ROLES:
+                            db_grant_access(
+                                doc_id     = doc_id,
+                                user_id    = access_emp_id.strip(),
+                                user_role  = access_role,
+                                granted_by = "System (Senior Bypass)",
+                            )
+                            st.success(
+                                f"✅ Instant access granted to **{access_emp_id.strip()}** "
+                                f"({access_role}) for **{access_doc}**. "
+                                f"View-only, no download, expires in 7 days."
+                            )
+                            st.markdown(
+                                "<div style='background:#e8f4ea; border-left:3px solid #3d5a4a; "
+                                "border-radius:3px; padding:14px 18px; margin:10px 0; "
+                                "font-family: EB Garamond, serif; font-size:20px; color:#1a3a2a;'>"
+                                "🔒 Document is <strong>view-only</strong>. "
+                                "No download permitted. Access auto-expires in <strong>7 days</strong>."
+                                "</div>",
+                                unsafe_allow_html=True,
+                            )
+
+                            # ── View document content ──────────────────────
+                            view_pwd = st.session_state.get("ap_acc_pwd", "").strip()
+                            if view_pwd:
+                                st.session_state[f"doc_view_unlocked_{doc_id}"] = view_pwd
+
+                        # ── Show document viewer if unlocked ───────────────
+                        if st.session_state.get(f"doc_view_unlocked_{doc_id}"):
+                            st.markdown("---")
+                            st.markdown("### 📄 Document Viewer")
+                            pwd_attempt = st.text_input(
+                                "Enter document password to view",
+                                type="password",
+                                key=f"doc_view_pwd_{doc_id}",
+                                placeholder="Enter the password you set above…",
+                            )
+                            if st.button("🔓 View Document", key=f"doc_view_btn_{doc_id}"):
+                                correct_pwd = st.session_state.get(f"doc_view_unlocked_{doc_id}", "")
+                                if pwd_attempt == correct_pwd:
+                                    st.markdown(
+                                        "<div style='background:#faf7f2; border:1px solid #d4c9bc; "
+                                        "border-left:3px solid #3d5a4a; border-radius:3px; "
+                                        "padding:24px 28px; margin-top:12px;'>",
+                                        unsafe_allow_html=True,
+                                    )
+                                    if matched_doc.get("content_preview"):
+                                        st.markdown(matched_doc["content_preview"])
+                                    if matched_doc.get("file_url"):
+                                        st.markdown(f"📎 [Open Full Document]({matched_doc['file_url']})")
+                                    if not matched_doc.get("content_preview") and not matched_doc.get("file_url"):
+                                        st.info("No content preview available for this document.")
+                                    st.markdown("</div>", unsafe_allow_html=True)
+                                else:
+                                    st.error("Incorrect password.")
 
             if access_role in SENIOR_ROLES:
                 doc_view_pwd = st.text_input(
