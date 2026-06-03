@@ -1436,41 +1436,7 @@ def db_review_access_request(req_id, action, reviewed_by, doc_id=None, user_id=N
 # ════════════════════════════════════════════════════════
 def page_employee():
     st.markdown("# Employee Help Portal")
-    st.markdown(
-        "<p style='color:#6b5f55; font-size:26px; font-family: EB Garamond, serif;'>"
-        "Ask any question — or type <em>raise a ticket</em> to go straight to support.</p>",
-        unsafe_allow_html=True,
-    )
-    st.markdown("---")
-
-    pairs = load_qa_pairs()
-    if len(pairs) == 0:
-        st.error("⚠️ PDF knowledge base could not be loaded.")
-    else:
-        st.success(f"📚 Knowledge Base ready — {len(pairs)} Q&A pairs indexed")
-
-    st.markdown("### Ask a Question")
-    col1, col2 = st.columns([4, 1])
-    with col1:
-        question = st.text_input(
-            "",
-            placeholder="e.g. What is the difference between a list and a tuple?  ·  or: raise a ticket",
-            label_visibility="collapsed",
-        )
-    with col2:
-        search = st.button("Search →", use_container_width=True)
-
-    if search and question.strip():
-
-        if _is_ticket_intent(question.strip()):
-            st.markdown(
-                "<div style='background: var(--paper); border: 1px solid var(--border); "
-                "border-left: 3px solid var(--rust); border-radius: 3px; padding: 16px 20px; margin-bottom: 8px;'>"
-                "<p style='margin:0; font-family: EB Garamond, serif; font-size:24px; color: var(--ink-light);'>"
-                "Sure — fill in the form below and our team will get back to you."
-                "</p></div>",
-                unsafe_allow_html=True,
-            )
+    
             st.session_state["show_ticket"]  = True
             st.session_state["ticket_query"] = ""
 
