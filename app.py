@@ -2846,16 +2846,16 @@ with st.sidebar:
         "letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 8px;'>Navigate</p>",
         unsafe_allow_html=True,
     )
-
+    
     page = st.radio("Navigation", [
-        "🔍 Employee Portal",
-        "🛡️ Admin Panel",
-        "📊 Analytics",
-        "🕳️ Knowledge Gap Report",
-        "📁 Doc Visibility",
-        "📋 Approval Pipeline",
-        "⚙️ Setup / Config",
-    ], label_visibility="collapsed")
+    "🔍 Employee Portal",
+    "📋 Approval Pipeline",
+    "🛡️ Admin Panel",
+    "📊 Analytics",
+    "🕳️ Knowledge Gap Report",
+    "📁 Doc Visibility",
+    "⚙️ Setup / Config",
+], label_visibility="collapsed")
 
     st.markdown("---")
 
