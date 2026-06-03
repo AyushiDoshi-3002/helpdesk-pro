@@ -1436,12 +1436,168 @@ def db_review_access_request(req_id, action, reviewed_by, doc_id=None, user_id=N
 # ════════════════════════════════════════════════════════
 def page_employee():
     st.markdown("# Employee Help Portal")
-    
+    st.markdown(
+        "<p style='color:#6b5f55; font-size:26px; font-family: EB Garamond, serif;'>"
+        "Ask any question — or type <em>raise a ticket</em> to go straight to support.</p>",
+        unsafe_allow_html=True,
+    )
+    st.markdown("---")
+
+    pairs = load_qa_pairs()
+    if len(pairs) == 0:
+        st.error("⚠️ PDF knowledge base could not be loaded.")
+    else:
+        st.success(f"📚 Knowledge Base ready — {len(pairs)} Q&A pairs indexed")
+
+    st.markdown("### Ask a Question")
+    col1, col2 = st.columns([4, 1])
+    with col1:
+        question = st.text_input(
+            "",
+            placeholder="e.g. What is the difference between a list and a tuple?  ·  or: raise a ticket",
+            label_visibility="collapsed",
+        )
+    with col2:
+        search = st.button("Search →", use_container_width=True)
+
+    if search and question.strip():
+
+        if _is_ticket_intent(question.strip()):
+            st.markdown(
+                "<div style='background: var(--paper); border: 1px solid var(--border); "
+                "border-left: 3px solid var(--rust); border-radius: 3px; padding: 16px 20px; margin-bottom: 8px;'>"
+                "<p style='margin:0; font-family: EB Garamond, serif; font-size:24px; color: var(--ink-light);'>"
+                "Sure — fill in the form below and our team will get back to you."
+                "</p></div>",
+                unsafe_allow_html=True,
+            )
             st.session_state["show_ticket"]  = True
             st.session_state["ticket_query"] = ""
 
         else:
             with st.spinner("Searching knowledge base…"):
+                result = answer_question(question.strip())
+
+            if result.get("pdf_error") and not result["found"]:
+                st.error("Knowledge base unavailable. Please raise a ticket.")
+                db_log_failed_query(question.strip())
+                st.session_state["show_ticket"]  = True
+                st.session_state["ticket_query"] = question.strip()
+
+            elif result["found"]:
+                source    = result.get("source", "pdf")
+                match_src = result.get("match_src", "question")
+
+                if source == "learned":
+                    st.markdown("#### ✦ Answer Found")
+                    st.markdown(
+                        "<small style='color:#3d5a4a; font-family: DM Mono, monospace; font-size:17px; "
+                        "letter-spacing:0.06em; text-transform:uppercase;'>"
+                        "Source: Previously resolved support ticket</small>",
+                        unsafe_allow_html=True,
+                    )
+                    st.markdown(
+                        f"<small style='color:#9c8e82; font-family: EB Garamond, serif; font-size:20px;'>"
+                        f"Similar question: <em>{result['matched'][:160]}</em> "
+                        f"&nbsp;·&nbsp; similarity {result['score']:.0%}</small>",
+                        unsafe_allow_html=True,
+                    )
+                    st.markdown(f"<div class='learned-box'>{result['answer']}</div>", unsafe_allow_html=True)
+                else:
+                    st.markdown("#### ✦ Answer Found")
+                    match_label = "matched via question" if match_src == "question" else "matched via answer content"
+                    st.markdown(
+                        f"<small style='color:#8b3a2a; font-family: DM Mono, monospace; font-size:17px; "
+                        f"letter-spacing:0.06em; text-transform:uppercase;'>"
+                        f"Source: PDF Knowledge Base &nbsp;·&nbsp; {match_label}</small>",
+                        unsafe_allow_html=True,
+                    )
+                    st.markdown(
+                        f"<small style='color:#9c8e82; font-family: EB Garamond, serif; font-size:20px;'>"
+                        f"Matched: <em>{result['matched'][:120]}</em> &nbsp;·&nbsp; score {result['score']:.2f}</small>",
+                        unsafe_allow_html=True,
+                    )
+                    st.markdown(f"<div class='answer-box'>{result['answer']}</div>", unsafe_allow_html=True)
+
+                st.markdown("---")
+                col_a, col_b, _ = st.columns([1, 1, 4])
+                with col_a:
+                    if st.button("👍 Helpful", key="emp_helpful"):
+                        st.success("Great! Glad it helped.")
+                with col_b:
+                    if st.button("👎 Not helpful", key="emp_not_helpful"):
+                        db_log_failed_query(question.strip())
+                        st.session_state["show_ticket"]  = True
+                        st.session_state["ticket_query"] = question.strip()
+                        st.warning("Sorry! Please raise a ticket below.")
+
+            else:
+                st.markdown("#### ✦ No Answer Found")
+                st.markdown(
+                    "<div class='no-answer-box'>No answer found in the knowledge base. "
+                    "Please fill in the ticket details below and our team will help you.</div>",
+                    unsafe_allow_html=True,
+                )
+                db_log_failed_query(question.strip())
+                st.session_state["show_ticket"]  = True
+                st.session_state["ticket_query"] = question.strip()
+
+    elif search:
+        st.warning("Please enter a question.")
+
+    st.markdown("---")
+
+    if st.session_state.get("show_ticket", False):
+        st.markdown("### Raise a Support Ticket")
+        c1, c2 = st.columns(2)
+        with c1:
+            user_id  = st.text_input("Employee ID *", placeholder="e.g. EMP-1042", key="emp_user_id")
+            job_role = st.selectbox(
+                "Job Role *",
+                ["Select…","Software Engineer","Data Analyst","QA Engineer",
+                 "DevOps Engineer","Product Manager","HR / Operations","Other"],
+                key="emp_job_role",
+            )
+        with c2:
+            priority = st.selectbox("Priority *", ["Medium","High","Low"], key="emp_priority")
+
+        original_question = st.session_state.get("ticket_query", "")
+        if original_question:
+            st.markdown(
+                f"<small style='color:#8b3a2a; font-family: DM Mono, monospace; font-size:17px; "
+                f"letter-spacing:0.04em;'>Search query: {original_question}</small>",
+                unsafe_allow_html=True,
+            )
+        query_text = st.text_area(
+            "Describe your problem in detail *", value="",
+            placeholder="Add more details about your issue…", height=120, key="emp_query_text",
+        )
+
+        col_sub, col_cancel, _ = st.columns([1, 1, 4])
+        with col_sub:
+            if st.button("Submit Ticket →", use_container_width=True, key="emp_submit"):
+                errors = []
+                if not user_id.strip():
+                    errors.append("Employee ID required.")
+                if job_role == "Select…":
+                    errors.append("Select your job role.")
+                if not original_question and not query_text.strip():
+                    errors.append("Problem description required.")
+                for e in errors:
+                    st.error(e)
+                if not errors:
+                    final_query = original_question if original_question else query_text.strip()
+                    try:
+                        t = db_create_ticket(user_id.strip(), job_role, final_query, priority)
+                        st.toast(f"🎉 Ticket #{t.get('id')} submitted!", icon="✅")
+                        st.success(f"Ticket #{t.get('id', '–')} submitted. Our team will respond shortly.")
+                        st.session_state["show_ticket"] = False
+                    except Exception as ex:
+                        st.error(f"Failed: {ex}")
+        with col_cancel:
+            if st.button("Cancel", use_container_width=True, key="emp_cancel"):
+                st.session_state["show_ticket"] = False
+                st.rerun()
                 result = answer_question(question.strip())
 
             if result.get("pdf_error") and not result["found"]:
