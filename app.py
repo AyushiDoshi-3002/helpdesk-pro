@@ -1450,8 +1450,7 @@ def page_employee():
         "📋 My Tickets",
     ])
     with tab1:
-
-    pairs = load_qa_pairs()
+        pairs = load_qa_pairs()
     if len(pairs) == 0:
         st.error("⚠️ PDF knowledge base could not be loaded.")
     else:
