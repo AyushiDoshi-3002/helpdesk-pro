@@ -164,10 +164,10 @@ def show_storage_info_button():
     if "si_docs_open"     not in st.session_state: st.session_state["si_docs_open"]     = False
 
     # ── Storage info button ───────────────────────────────────────────────────
-    if st.sidebar.button("🗄️ Where is data saved?", use_container_width=True, key="storage_info_btn"):
+    if st.button("🗄️ Where is data saved?", use_container_width=True, key="storage_info_btn"):
         _storage_dialog()
 
-    st.sidebar.markdown("---")
+    st.markdown("---")
 
     # ── Document viewer ───────────────────────────────────────────────────────
     role = st.session_state["si_role"]
@@ -178,7 +178,7 @@ def show_storage_info_button():
     )
 
     if not already_auth:
-        if st.sidebar.button("📁 View Documents", key="si_view_docs_btn", use_container_width=True):
+        if st.button("📁 View Documents", key="si_view_docs_btn", use_container_width=True):
             st.session_state["si_pwd_open"]  = True
             st.session_state["si_docs_open"] = False
 
@@ -223,7 +223,7 @@ def show_storage_info_button():
 
     # ── Authenticated view ────────────────────────────────────────────────────
     if already_auth:
-        col_btn, col_out = st.sidebar.columns([3, 1])
+        col_btn, col_out = st.columns([3, 1])
         with col_btn:
             btn_label = "📂 Close Documents" if st.session_state["si_docs_open"] else "📁 View Documents"
             if st.button(btn_label, key="si_toggle_docs_btn", use_container_width=True):
