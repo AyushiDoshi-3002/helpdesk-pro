@@ -2841,7 +2841,7 @@ with st.sidebar:
         </div>
     </div>
     """, unsafe_allow_html=True)
-     show_storage_info_button() 
+    show_storage_info_button() 
 
     st.markdown(
         "<p style='font-family: DM Mono, monospace; font-size: 13px; color: #3a3028; "
