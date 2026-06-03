@@ -5,6 +5,7 @@ import requests
 import csv
 from datetime import datetime, timezone, timedelta
 from collections import Counter
+from storage_info import show_storage_info_button
 
 # ── IST Timezone (UTC+5:30) ───────────────────────────────────────────────────
 IST = timezone(timedelta(hours=5, minutes=30))
@@ -2840,6 +2841,7 @@ with st.sidebar:
         </div>
     </div>
     """, unsafe_allow_html=True)
+     show_storage_info_button() 
 
     st.markdown(
         "<p style='font-family: DM Mono, monospace; font-size: 13px; color: #3a3028; "
