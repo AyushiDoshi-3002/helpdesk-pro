@@ -3097,9 +3097,159 @@ elif page == "📋 Approval Pipeline":
                     except Exception as ex:
                         st.error(f"Submission failed: {ex}")
 
+            # ── Document Access Request ───────────────────────────────────
             st.markdown("---")
+            st.markdown("### 📂 Request Access to an Existing Document")
+            st.markdown(
+                "<p style='color:#6b5f55; font-size:20px;'>"
+                "If the document already exists, request access below. "
+                "Senior roles get instant access. Employees go through the approval chain.</p>",
+                unsafe_allow_html=True,
+            )
+
+            acc1, acc2, acc3 = st.columns(3)
+            with acc1:
+                access_emp_id = st.text_input(
+                    "Employee ID *",
+                    placeholder="e.g. EMP-1042",
+                    key="ap_acc_emp_id",
+                )
+            with acc2:
+                access_role = st.selectbox(
+                    "Your Role *",
+                    ["Select…", "Employee", "Manager", "Tech Manager", "CTO", "CEO"],
+                    key="ap_acc_role",
+                )
+            with acc3:
+                all_docs_list = db_get_documents()
+                access_doc = st.selectbox(
+                    "Document *",
+                    ["Select…"] + [d["title"] for d in all_docs_list],
+                    key="ap_acc_doc",
+                )
+
+            SENIOR_ROLES = {"Manager", "Tech Manager", "CTO", "CEO"}
+
+            if access_role != "Select…":
+                if access_role in SENIOR_ROLES:
+                    st.markdown("""
+                    <div style='background:#fff8e1; border-left:3px solid #f59e0b;
+                                border-radius:3px; padding:16px 20px; margin:12px 0;'>
+                        <p style='font-family: DM Mono, monospace; font-size:14px;
+                                  color:#92400e; font-weight:700; letter-spacing:.08em;
+                                  text-transform:uppercase; margin:0 0 8px;'>
+                            ⚡ Senior Access — Instant Grant
+                        </p>
+                        <ul style='color:#92400e; font-size:20px;
+                                   font-family: EB Garamond, serif; margin:0;
+                                   padding-left:18px; line-height:2;'>
+                            <li>Bypass approval chain</li>
+                            <li>Instant access granted</li>
+                            <li>Password-protected view</li>
+                            <li>View-only — no download permitted</li>
+                            <li>Auto-expires in 7 days</li>
+                        </ul>
+                    </div>
+                    """, unsafe_allow_html=True)
+                else:
+                    st.markdown("""
+                    <div style='background:#e8f4fd; border-left:3px solid #2d3d4f;
+                                border-radius:3px; padding:16px 20px; margin:12px 0;'>
+                        <p style='font-family: DM Mono, monospace; font-size:14px;
+                                  color:#1a3a4f; font-weight:700; letter-spacing:.08em;
+                                  text-transform:uppercase; margin:0 0 8px;'>
+                            📋 Standard Employee — Approval Required
+                        </p>
+                        <ul style='color:#1a3a4f; font-size:20px;
+                                   font-family: EB Garamond, serif; margin:0;
+                                   padding-left:18px; line-height:2;'>
+                            <li>Requires: Emp ID + Role + Doc type</li>
+                            <li>Follows approval hierarchy</li>
+                            <li>Password view only after approval</li>
+                            <li>No download permitted</li>
+                            <li>Auto-revoked after 7 days</li>
+                        </ul>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+            if access_role in SENIOR_ROLES:
+                doc_view_pwd = st.text_input(
+                    "Set a view password for this document *",
+                    type="password",
+                    placeholder="Password to protect the document view…",
+                    key="ap_acc_pwd",
+                )
+
+            if access_role == "Employee":
+                access_reason = st.text_area(
+                    "Reason for access *",
+                    placeholder="Briefly explain why you need access to this document…",
+                    height=80,
+                    key="ap_acc_reason",
+                )
+
+            if st.button("Request Document Access →", key="ap_acc_submit"):
+                errors = []
+                if not access_emp_id.strip():  errors.append("Employee ID required.")
+                if access_role == "Select…":   errors.append("Select your role.")
+                if access_doc == "Select…":    errors.append("Select a document.")
+                if access_role in SENIOR_ROLES:
+                    if not st.session_state.get("ap_acc_pwd", "").strip():
+                        errors.append("Set a view password.")
+                elif access_role == "Employee":
+                    if not st.session_state.get("ap_acc_reason", "").strip():
+                        errors.append("Reason for access required.")
+                for e in errors: st.error(e)
+
+                if not errors:
+                    matched_doc = next((d for d in all_docs_list if d["title"] == access_doc), None)
+                    if not matched_doc:
+                        st.error("Document not found in the library.")
+                    else:
+                        doc_id = matched_doc["id"]
+                        if access_role in SENIOR_ROLES:
+                            db_grant_access(
+                                doc_id     = doc_id,
+                                user_id    = access_emp_id.strip(),
+                                user_role  = access_role,
+                                granted_by = "System (Senior Bypass)",
+                            )
+                            st.success(
+                                f"✅ Instant access granted to **{access_emp_id.strip()}** "
+                                f"({access_role}) for **{access_doc}**. "
+                                f"View-only, no download, expires in 7 days."
+                            )
+                            st.markdown(
+                                "<div style='background:#e8f4ea; border-left:3px solid #3d5a4a; "
+                                "border-radius:3px; padding:14px 18px; margin:10px 0; "
+                                "font-family: EB Garamond, serif; font-size:20px; color:#1a3a2a;'>"
+                                "🔒 Document is <strong>view-only</strong>. "
+                                "No download permitted. Access auto-expires in <strong>7 days</strong>."
+                                "</div>",
+                                unsafe_allow_html=True,
+                            )
+                        else:
+                            try:
+                                result = db_submit_access_request(
+                                    doc_id    = doc_id,
+                                    user_id   = access_emp_id.strip(),
+                                    user_role = access_role,
+                                    reason    = st.session_state.get("ap_acc_reason", "").strip(),
+                                )
+                                if result is None:
+                                    st.info("You already have a pending request for this document.")
+                                else:
+                                    st.success(
+                                        f"✅ Access request submitted for **{access_doc}**. "
+                                        f"Your request will follow the approval hierarchy. "
+                                        f"View-only access (no download) once approved. "
+                                        f"Auto-revokes after 7 days."
+                                    )
+                            except Exception as ex:
+                                st.error(f"Failed to submit request: {ex}")
 
             # ── Approver review (only shown for doc approval, not incident) ──
+            st.markdown("---")
             st.markdown("### 🔐 Approver Review")
             st.markdown(
                 "<p style='color:#6b5f55; font-size:20px;'>"
