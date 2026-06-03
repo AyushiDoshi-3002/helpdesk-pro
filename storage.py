@@ -166,7 +166,7 @@ def show_storage_info_button():
         show_storage_info_button()
     """
     # ── Initialise session state keys ─────────────────────────────────────────
-    if "si_role"          not in st.session_state: st.session_state["si_role"]          = "Employee"
+    if "si_role" not in st.session_state: st.session_state["si_role"] = "Manager"
     if "si_pwd_open"      not in st.session_state: st.session_state["si_pwd_open"]      = False
     if "si_authenticated" not in st.session_state: st.session_state["si_authenticated"] = False
     if "si_auth_role"     not in st.session_state: st.session_state["si_auth_role"]     = ""
@@ -181,35 +181,10 @@ def show_storage_info_button():
     )
 
     # ── Role selector (shown to everyone) ─────────────────────────────────────
-    all_roles = ["Employee", "Team Lead", "Manager", "Sr. Manager", "Tech Manager", "CTO", "CEO"]
-    selected_role = st.sidebar.selectbox(
-        "Select your role",
-        all_roles,
-        index=all_roles.index(st.session_state["si_role"]),
-        key="si_role_select",
-        label_visibility="collapsed",
-    )
-
-    # If the role changed, reset auth state
-    if selected_role != st.session_state["si_role"]:
-        st.session_state["si_role"]          = selected_role
-        st.session_state["si_pwd_open"]      = False
-        st.session_state["si_authenticated"] = False
-        st.session_state["si_auth_role"]     = ""
-        st.session_state["si_docs_open"]     = False
-        st.rerun()
-
     role = st.session_state["si_role"]
 
-    # ── Only privileged roles see the button ──────────────────────────────────
-    if role not in PRIVILEGED_ROLES:
-        st.sidebar.markdown(
-            "<p style='font-family:EB Garamond,serif;font-size:13px;"
-            "color:#6b5f55;font-style:italic;margin-top:4px;'>"
-            "Document access not available for this role.</p>",
-            unsafe_allow_html=True,
-        )
-        return
+    # ── Only privileged roles see the button ─────────────────────────────────
+    
 
     # ── "View Documents" button (visible only to privileged roles) ────────────
     already_auth = (
