@@ -1606,7 +1606,7 @@ def page_employee():
                 st.session_state["show_ticket"] = False
                 st.rerun()
         with tab2:
-        _tab_ticket_hub()
+            _tab_ticket_hub()
 
     with tab3:
         _tab_my_tickets()
