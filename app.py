@@ -2870,8 +2870,7 @@ with st.sidebar:
 
 
 if page == "🔍 Employee Portal":
-    from employee_portal import show as employee_portal_show
-    employee_portal_show()
+    page_employee()
 elif page == "🛡️ Admin Panel":
     page_admin()
 elif page == "📊 Analytics":
