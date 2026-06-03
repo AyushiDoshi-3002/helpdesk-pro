@@ -5,6 +5,7 @@ import requests
 import csv
 from datetime import datetime, timezone, timedelta
 from collections import Counter
+from employee_portal import _tab_ticket_hub, _tab_my_tickets, _CSS as EP_CSS
 
 # ── IST Timezone (UTC+5:30) ───────────────────────────────────────────────────
 IST = timezone(timedelta(hours=5, minutes=30))
