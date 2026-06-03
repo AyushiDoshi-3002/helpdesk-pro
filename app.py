@@ -3368,6 +3368,31 @@ elif page == "📋 Approval Pipeline":
                                 "</div>",
                                 unsafe_allow_html=True,
                             )
+                            view_pwd = st.session_state.get("ap_acc_pwd", "").strip()
+                            if view_pwd:
+                                st.session_state[f"doc_view_unlocked_{doc_id}"] = view_pwd
+
+                        # ── Show document viewer if unlocked ───────────────:
+                            db_grant_access(
+                                doc_id     = doc_id,
+                                user_id    = access_emp_id.strip(),
+                                user_role  = access_role,
+                                granted_by = "System (Senior Bypass)",
+                            )
+                            st.success(
+                                f"✅ Instant access granted to **{access_emp_id.strip()}** "
+                                f"({access_role}) for **{access_doc}**. "
+                                f"View-only, no download, expires in 7 days."
+                            )
+                            st.markdown(
+                                "<div style='background:#e8f4ea; border-left:3px solid #3d5a4a; "
+                                "border-radius:3px; padding:14px 18px; margin:10px 0; "
+                                "font-family: EB Garamond, serif; font-size:20px; color:#1a3a2a;'>"
+                                "🔒 Document is <strong>view-only</strong>. "
+                                "No download permitted. Access auto-expires in <strong>7 days</strong>."
+                                "</div>",
+                                unsafe_allow_html=True,
+                            )
                         else:
                             try:
                                 result = db_submit_access_request(
