@@ -2889,7 +2889,6 @@ elif page == "📋 Approval Pipeline":
         )
         st.markdown("---")
 
-        # ── Ticket type selector at top ───────────────────────────────────
         if "ap_page_type" not in st.session_state:
             st.session_state["ap_page_type"] = None
 
@@ -2933,7 +2932,6 @@ elif page == "📋 Approval Pipeline":
                 inc_search = st.button("Search →", use_container_width=True, key="ap_page_inc_search")
 
             if inc_search and inc_q.strip():
-                # reuse the existing answer_question logic
                 with st.spinner("Searching knowledge base…"):
                     result = answer_question(inc_q.strip())
 
@@ -2970,7 +2968,6 @@ elif page == "📋 Approval Pipeline":
             elif inc_search:
                 st.warning("Please enter a question.")
 
-            # ── Incident ticket form ──────────────────────────────────────
             if st.session_state.get("ap_page_inc_show_form", False):
                 st.markdown("---")
                 st.markdown("### 🎫 Raise a Support Ticket")
@@ -3003,10 +3000,10 @@ elif page == "📋 Approval Pipeline":
                 with sc1:
                     if st.button("Submit Ticket →", use_container_width=True, key="ap_inc_submit"):
                         errors = []
-                        if not inc_uid.strip():    errors.append("Employee ID required.")
-                        if inc_role == "Select…":  errors.append("Select your job role.")
+                        if not inc_uid.strip():   errors.append("Employee ID required.")
+                        if inc_role == "Select…": errors.append("Select your job role.")
                         final_q = prefill_q or inc_detail.strip()
-                        if not final_q:            errors.append("Problem description required.")
+                        if not final_q:           errors.append("Problem description required.")
                         for e in errors: st.error(e)
                         if not errors:
                             try:
@@ -3031,13 +3028,12 @@ elif page == "📋 Approval Pipeline":
             )
             st.markdown("---")
 
-            # Employee details
             st.markdown("##### 👤 Your Details")
             d1, d2 = st.columns(2)
             with d1:
                 doc_emp_id   = st.text_input("Employee ID *", placeholder="e.g. EMP-1042", key="ap_doc_emp_id")
             with d2:
-                doc_emp_name = st.text_input("Your Name *",   placeholder="e.g. Priya K.", key="ap_doc_emp_name")
+                doc_emp_name = st.text_input("Your Name *", placeholder="e.g. Priya K.", key="ap_doc_emp_name")
 
             st.markdown("---")
             st.markdown("##### 📄 Document Details")
@@ -3061,7 +3057,6 @@ elif page == "📋 Approval Pipeline":
                 height=100, key="ap_doc_desc",
             )
 
-            # Live chain preview
             chosen_cat = st.session_state.get("ap_doc_cat", cat_keys[0])
             chain      = _build_chain(chosen_cat)
             cfg        = DOC_CATEGORIES[chosen_cat]
@@ -3102,51 +3097,49 @@ elif page == "📋 Approval Pipeline":
                     except Exception as ex:
                         st.error(f"Submission failed: {ex}")
 
-        st.markdown("---")
+            st.markdown("---")
 
-        # ── Approver review section (always visible below) ────────────────
-        st.markdown("### 🔐 Approver Review")
-        st.markdown(
-            "<p style='color:#6b5f55; font-size:20px;'>"
-            "Approvers: log in to your role tab below to action pending requests.</p>",
-            unsafe_allow_html=True,
-        )
-        # Render just the role tabs from approval_pipeline (no Submit tab)
-        from approval_pipeline import _view_role, _render_policy_box, _init, _load_requests, _check_expiry, _migrate_chain, _db_update
+            # ── Approver review (only shown for doc approval, not incident) ──
+            st.markdown("### 🔐 Approver Review")
+            st.markdown(
+                "<p style='color:#6b5f55; font-size:20px;'>"
+                "Approvers: log in to your role tab below to action pending requests.</p>",
+                unsafe_allow_html=True,
+            )
 
-        _init()
-        if not st.session_state.ap_loaded:
-            _load_requests()
+            from approval_pipeline import _view_role, _init, _load_requests, _check_expiry, _migrate_chain, _db_update
 
-        for r in st.session_state.ap_requests:
-            if _migrate_chain(r):
-                _db_update(r)
+            _init()
+            if not st.session_state.ap_loaded:
+                _load_requests()
 
-        escalated = []
-        for r in st.session_state.ap_requests:
-            bi, bd = r.get("stage_idx", 0), r.get("done", False)
-            _check_expiry(r)
-            if r.get("stage_idx", 0) != bi or (r.get("done") and not bd):
-                escalated.append(r)
-        if escalated:
-            st.rerun()
+            for r in st.session_state.ap_requests:
+                if _migrate_chain(r):
+                    _db_update(r)
 
-        def _n(role):
-            return sum(1 for r in st.session_state.ap_requests
-                       if not r["done"] and r["chain"] and r["chain"][r["stage_idx"]] == role)
+            escalated = []
+            for r in st.session_state.ap_requests:
+                bi, bd = r.get("stage_idx", 0), r.get("done", False)
+                _check_expiry(r)
+                if r.get("stage_idx", 0) != bi or (r.get("done") and not bd):
+                    escalated.append(r)
+            if escalated:
+                st.rerun()
 
-        role_tabs = st.tabs([
-            f"👨‍💼 Team Lead ({_n('Team Lead')})",
-            f"👩‍💻 Tech Manager ({_n('Tech Manager')})",
-            f"🧑‍🔬 CTO ({_n('CTO')})",
-            f"👑 CEO ({_n('CEO')})",
-        ])
-        with role_tabs[0]: _view_role("Team Lead")
-        with role_tabs[1]: _view_role("Tech Manager")
-        with role_tabs[2]: _view_role("CTO")
-        with role_tabs[3]: _view_role("CEO")
+            def _n(role):
+                return sum(1 for r in st.session_state.ap_requests
+                           if not r["done"] and r["chain"] and r["chain"][r["stage_idx"]] == role)
+
+            role_tabs = st.tabs([
+                f"👨‍💼 Team Lead ({_n('Team Lead')})",
+                f"👩‍💻 Tech Manager ({_n('Tech Manager')})",
+                f"🧑‍🔬 CTO ({_n('CTO')})",
+                f"👑 CEO ({_n('CEO')})",
+            ])
+            with role_tabs[0]: _view_role("Team Lead")
+            with role_tabs[1]: _view_role("Tech Manager")
+            with role_tabs[2]: _view_role("CTO")
+            with role_tabs[3]: _view_role("CEO")
 
     else:
         st.error("`approval_pipeline.py` is missing from your project folder.")
-elif page == "⚙️ Setup / Config":
-    page_setup()
