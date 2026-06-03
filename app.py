@@ -2829,19 +2829,30 @@ def page_setup():
 with st.sidebar:
     st.markdown("""
     <div style='padding: 8px 0 20px;'>
-        <div style='display: flex; align-items: center; gap: 10px;'>
-            <div style='width: 34px; height: 34px; background: #8b3a2a; border-radius: 2px;
-                        display: flex; align-items: center; justify-content: center;'>
-                <span style='color: white; font-size: 18px; font-weight: 700; font-family: Playfair Display, serif;'>H</span>
-            </div>
-            <div>
-                <p style='margin:0; font-family: Playfair Display, serif; font-size:20px; font-weight:700; color: #f5f0e8; letter-spacing: -0.01em;'>HelpDesk Pro</p>
-                <p style='margin:0; font-family: DM Mono, monospace; font-size:12px; color: #6b5f55; letter-spacing: 0.1em; text-transform: uppercase;'>Knowledge · Support</p>
-            </div>
-        </div>
+        ...logo html...
     </div>
     """, unsafe_allow_html=True)
-    show_storage_info_button() 
+
+    # ← show_storage_info_button() removed from here
+
+    st.markdown(
+        "<p style='font-family: DM Mono...'>Navigate</p>",
+        ...
+    )
+
+    page = st.radio("Navigation", [...])
+
+    st.markdown("---")
+
+    if not PIPELINE_AVAILABLE:
+        st.warning(...)
+
+    st.markdown(
+        "<p style='...'>Powered by Supabase + pdfplumber</p>",
+        unsafe_allow_html=True,
+    )
+
+    show_storage_info_button()    # ← MOVE IT TO HERE, LAST LINE IN THE BLOCK
 
     st.markdown(
         "<p style='font-family: DM Mono, monospace; font-size: 13px; color: #3a3028; "
