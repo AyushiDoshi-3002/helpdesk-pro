@@ -33,6 +33,7 @@ components.html("""
         var style = document.createElement('style');
         style.id = 'font-override-inject';
         style.innerHTML = `
+
             html { font-size: 20px !important; }
             body { font-size: 20px !important; }
             p, span, div, li, td, th, label, a,
@@ -49,8 +50,7 @@ components.html("""
             }
             button, button span, button p {
                 font-size: 20px !important;
-                font-family: 'EB Garamond', Georgia, serif !important;
-            }
+                font-family: 'EB Garamond', Georgia, serif !important}
             label, label p, label span {
                 font-size: 20px !important;
                 font-family: 'EB Garamond', Georgia, serif !important;
