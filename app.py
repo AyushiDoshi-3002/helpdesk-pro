@@ -2889,9 +2889,12 @@ if page == "🔍 Employee Portal":
     page_employee()
 elif page == "🛡️ Admin Panel":
     page_admin()
+if page == "🔍 Employee Portal":
+    page_employee()
+elif page == "🛡️ Admin Panel":
+    page_admin()
 elif page == "⚙️ Setup / Config":
     page_setup()
-            "Choose your ticket type, or review and action pending approval requests.</p>",
             unsafe_allow_html=True,
         )
         st.markdown("---")
