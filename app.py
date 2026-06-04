@@ -3130,7 +3130,7 @@ elif page == "📋 Approval Pipeline":
                     key="ap_acc_doc",
                 )
 
-SENIOR_ROLES = {"Manager", "Tech Manager", "CTO", "CEO"}
+            SENIOR_ROLES = {"Manager", "Tech Manager", "CTO", "CEO"}
 
             if access_role in SENIOR_ROLES:
                 doc_view_pwd = st.text_input(
@@ -3191,6 +3191,34 @@ SENIOR_ROLES = {"Manager", "Tech Manager", "CTO", "CEO"}
                             view_pwd = st.session_state.get("ap_acc_pwd", "").strip()
                             if view_pwd:
                                 st.session_state[f"doc_view_unlocked_{doc_id}"] = view_pwd
+
+                            if st.session_state.get(f"doc_view_unlocked_{doc_id}"):
+                                st.markdown("---")
+                                st.markdown("### 📄 Document Viewer")
+                                pwd_attempt = st.text_input(
+                                    "Enter document password to view",
+                                    type="password",
+                                    key=f"doc_view_pwd_{doc_id}",
+                                    placeholder="Enter the password you set above…",
+                                )
+                                if st.button("🔓 View Document", key=f"doc_view_btn_{doc_id}"):
+                                    correct_pwd = st.session_state.get(f"doc_view_unlocked_{doc_id}", "")
+                                    if pwd_attempt == correct_pwd:
+                                        st.markdown(
+                                            "<div style='background:#faf7f2; border:1px solid #d4c9bc; "
+                                            "border-left:3px solid #3d5a4a; border-radius:3px; "
+                                            "padding:24px 28px; margin-top:12px;'>",
+                                            unsafe_allow_html=True,
+                                        )
+                                        if matched_doc.get("content_preview"):
+                                            st.markdown(matched_doc["content_preview"])
+                                        if matched_doc.get("file_url"):
+                                            st.markdown(f"📎 [Open Full Document]({matched_doc['file_url']})")
+                                        if not matched_doc.get("content_preview") and not matched_doc.get("file_url"):
+                                            st.info("No content preview available for this document.")
+                                        st.markdown("</div>", unsafe_allow_html=True)
+                                    else:
+                                        st.error("Incorrect password.")
                         else:
                             try:
                                 result = db_submit_access_request(
@@ -3210,48 +3238,6 @@ SENIOR_ROLES = {"Manager", "Tech Manager", "CTO", "CEO"}
                                     )
                             except Exception as ex:
                                 st.error(f"Failed to submit request: {ex}")
-
-            # ── View Document (shown once access is unlocked) ─────────────
-            unlocked_doc_id = None
-            for d in all_docs_list:
-                if st.session_state.get(f"doc_view_unlocked_{d['id']}"):
-                    unlocked_doc_id = d["id"]
-                    break
-
-            if unlocked_doc_id:
-                matched_doc = next((d for d in all_docs_list if d["id"] == unlocked_doc_id), None)
-                if matched_doc:
-                    st.markdown("---")
-                    st.markdown("### 📄 View Document")
-                    st.markdown(
-                        f"<p style='color:#6b5f55; font-size:20px;'>"
-                        f"Enter the password you set to view <strong>{matched_doc['title']}</strong>.</p>",
-                        unsafe_allow_html=True,
-                    )
-                    pwd_attempt = st.text_input(
-                        "Document password",
-                        type="password",
-                        key=f"doc_view_pwd_{unlocked_doc_id}",
-                        placeholder="Enter the password you set…",
-                    )
-                    if st.button("🔓 View Document", key=f"doc_view_btn_{unlocked_doc_id}"):
-                        correct_pwd = st.session_state.get(f"doc_view_unlocked_{unlocked_doc_id}", "")
-                        if pwd_attempt == correct_pwd:
-                            st.markdown(
-                                "<div style='background:#faf7f2; border:1px solid #d4c9bc; "
-                                "border-left:3px solid #3d5a4a; border-radius:3px; "
-                                "padding:24px 28px; margin-top:12px;'>",
-                                unsafe_allow_html=True,
-                            )
-                            if matched_doc.get("content_preview"):
-                                st.markdown(matched_doc["content_preview"])
-                            if matched_doc.get("file_url"):
-                                st.markdown(f"📎 [Open Full Document]({matched_doc['file_url']})")
-                            if not matched_doc.get("content_preview") and not matched_doc.get("file_url"):
-                                st.info("No content preview available for this document.")
-                            st.markdown("</div>", unsafe_allow_html=True)
-                        else:
-                            st.error("Incorrect password.")
 
             # ── Approver review ───────────────────────────────────────────
             st.markdown("---")
