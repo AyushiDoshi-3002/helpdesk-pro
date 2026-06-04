@@ -5,7 +5,6 @@ import requests
 import csv
 from datetime import datetime, timezone, timedelta
 from collections import Counter
-from storage_info import show_storage_info_button
 
 # ── IST Timezone (UTC+5:30) ───────────────────────────────────────────────────
 IST = timezone(timedelta(hours=5, minutes=30))
@@ -24,76 +23,11 @@ def _to_ist(dt_str: str) -> str:
 
 st.set_page_config(page_title="HelpDesk Pro", page_icon="🤖", layout="wide", initial_sidebar_state="expanded")
 
-# ── Font size injection via JS (bypasses Streamlit CSS scoping) ──
-import streamlit.components.v1 as components
-components.html("""
-<script>
-(function() {
-    function applyFonts() {
-        var style = document.createElement('style');
-        style.id = 'font-override-inject';
-        style.innerHTML = `
-            html { font-size: 20px !important; }
-            body { font-size: 20px !important; }
-            p, span, div, li, td, th, label, a,
-            .stMarkdown p,
-            [data-testid="stMarkdownContainer"] p,
-            [data-testid="stMarkdownContainer"] li,
-            [data-testid="stMarkdownContainer"] span {
-                font-size: 20px !important;
-                font-family: 'EB Garamond', Georgia, serif !important;
-            }
-            input, textarea, select {
-                font-size: 20px !important;
-                font-family: 'EB Garamond', Georgia, serif !important;
-            }
-            button, button span, button p {
-                font-size: 20px !important;
-                font-family: 'EB Garamond', Georgia, serif !important;
-            }
-            label, label p, label span {
-                font-size: 20px !important;
-                font-family: 'EB Garamond', Georgia, serif !important;
-            }
-            [data-baseweb="select"] div,
-            [data-baseweb="select"] span,
-            [role="option"] {
-                font-size: 20px !important;
-                font-family: 'EB Garamond', Georgia, serif !important;
-            }
-            [data-testid="stSidebar"] p,
-            [data-testid="stSidebar"] span,
-            [data-testid="stSidebar"] label {
-                font-size: 20px !important;
-            }
-            [data-testid="stAlert"] p,
-            [data-testid="stAlert"] span {
-                font-size: 20px !important;
-            }
-            [data-testid="stExpander"] summary p {
-                font-size: 20px !important;
-            }
-        `;
-        var existing = document.getElementById('font-override-inject');
-        if (existing) existing.remove();
-        document.head.appendChild(style);
-    }
-    applyFonts();
-    // Re-apply after Streamlit rerenders
-    var observer = new MutationObserver(applyFonts);
-    observer.observe(document.body, { childList: true, subtree: true });
-})();
-</script>
-""", height=0)
-
-
-
 st.markdown("""
 <style>
 /* ── Quarry-inspired Design System ── */
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=DM+Mono:wght@400;500&display=swap');
 
-/* ── CSS Variables ── */
 :root {
     --cream:       #f5f0e8;
     --cream-dark:  #ede7d9;
@@ -118,12 +52,11 @@ st.markdown("""
     --shadow-md:   rgba(26,22,18,0.14);
 }
 
-/* ── Base Reset ── */
 html, body, [class*="css"] {
     font-family: 'EB Garamond', Georgia, serif;
     color: var(--ink);
     background: var(--cream);
-    font-size: 20px;
+    font-size: 28px;
 }
 
 h1, h2, h3, h4, h5 {
@@ -137,7 +70,6 @@ code, pre, .stCode {
     font-size: 20px !important;
 }
 
-/* ── App Background ── */
 .stApp,
 [data-testid="stAppViewContainer"],
 [data-testid="stMain"],
@@ -145,7 +77,6 @@ code, pre, .stCode {
     background: var(--cream) !important;
 }
 
-/* ── Sidebar ── */
 section[data-testid="stSidebar"] {
     background: var(--ink) !important;
     border-right: 1px solid #2a2420;
@@ -190,13 +121,11 @@ section[data-testid="stSidebar"] .stButton > button:hover {
     color: white !important;
 }
 
-/* ── Main content padding ── */
 [data-testid="stMainBlockContainer"] {
     padding: 2rem 3rem;
     max-width: 1400px;
 }
 
-/* ── Answer / Content boxes ── */
 .answer-box {
     background: var(--paper);
     border-radius: 3px;
@@ -232,7 +161,6 @@ section[data-testid="stSidebar"] .stButton > button:hover {
     box-shadow: 0 1px 8px var(--shadow);
 }
 
-/* ── Status Badges ── */
 .badge-open {
     background: var(--amber-light);
     color: var(--amber);
@@ -285,7 +213,6 @@ section[data-testid="stSidebar"] .stButton > button:hover {
     border: 1px solid #c4543a;
 }
 
-/* ── Priority Pills ── */
 .prio-high {
     background: var(--rust-pale);
     color: var(--rust);
@@ -322,7 +249,6 @@ section[data-testid="stSidebar"] .stButton > button:hover {
     font-family: 'DM Mono', monospace;
 }
 
-/* ── Buttons ── */
 div.stButton > button {
     background: var(--ink) !important;
     color: #f5f0e8 !important;
@@ -383,7 +309,6 @@ div.stButton > button[kind="primary"]:hover {
     color: #ffffff !important;
 }
 
-/* ── Metric Cards ── */
 .metric-card {
     background: var(--paper);
     border-radius: 3px;
@@ -420,7 +345,6 @@ div.stButton > button[kind="primary"]:hover {
     font-family: 'DM Mono', monospace;
 }
 
-/* ── Knowledge Gap cards ── */
 .gap-card {
     background: var(--paper);
     border-radius: 3px;
@@ -447,7 +371,6 @@ div.stButton > button[kind="primary"]:hover {
     vertical-align: middle;
 }
 
-/* ── Inputs & Forms ── */
 .stTextInput > div > div > input,
 .stTextArea > div > div > textarea {
     background: var(--paper) !important;
@@ -502,7 +425,6 @@ label[data-testid="stWidgetLabel"] p {
     color: var(--ink) !important;
 }
 
-/* ── Expanders ── */
 [data-testid="stExpander"] {
     background: var(--paper) !important;
     border: 1px solid var(--border) !important;
@@ -516,7 +438,6 @@ label[data-testid="stWidgetLabel"] p {
     color: var(--ink-light) !important;
 }
 
-/* ── Tabs ── */
 .stTabs [data-baseweb="tab-list"] {
     background: transparent !important;
     border-bottom: 1px solid var(--border) !important;
@@ -542,7 +463,6 @@ label[data-testid="stWidgetLabel"] p {
     color: var(--rust) !important;
 }
 
-/* ── Alerts / Info boxes ── */
 .stAlert {
     border-radius: 3px !important;
     border-left-width: 3px !important;
@@ -555,21 +475,18 @@ label[data-testid="stWidgetLabel"] p {
     font-size: 24px !important;
 }
 
-/* ── Success / Error / Warning ── */
 [data-testid="stNotification"] {
     font-family: 'EB Garamond', serif !important;
     font-size: 24px !important;
     border-radius: 3px !important;
 }
 
-/* ── Divider ── */
 hr {
     border: none !important;
     border-top: 1px solid var(--border) !important;
     margin: 20px 0 !important;
 }
 
-/* ── Captions & small text ── */
 small, .stCaption {
     font-family: 'DM Mono', monospace !important;
     font-size: 17px !important;
@@ -577,7 +494,6 @@ small, .stCaption {
     letter-spacing: 0.03em;
 }
 
-/* ── Markdown paragraph text ── */
 [data-testid="stMarkdownContainer"] p {
     font-family: 'EB Garamond', serif;
     font-size: 24px;
@@ -594,7 +510,6 @@ small, .stCaption {
     color: var(--ink-light);
 }
 
-/* ── Doc Validator styles ── */
 .validator-card {
     background: var(--paper);
     border-radius: 3px;
@@ -690,7 +605,6 @@ small, .stCaption {
     letter-spacing: 0.03em;
 }
 
-/* ── Doc Library Cards ── */
 .doc-card {
     background: var(--paper);
     border-radius: 3px;
@@ -728,16 +642,13 @@ small, .stCaption {
 .access-pending  { color: var(--amber); font-family: 'DM Mono', monospace; font-size: 15px; letter-spacing: 0.06em; text-transform: uppercase; }
 .access-expiring { color: #8b6914;      font-family: 'DM Mono', monospace; font-size: 15px; letter-spacing: 0.06em; text-transform: uppercase; }
 
-/* ── Scrollbar ── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: var(--cream); }
 ::-webkit-scrollbar-thumb { background: var(--border-dark); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--ink-muted); }
 
-/* ── Spinner ── */
 .stSpinner > div { border-top-color: var(--rust) !important; }
 
-/* ── Metric native ── */
 [data-testid="stMetric"] {
     background: var(--paper);
     border: 1px solid var(--border);
@@ -925,11 +836,11 @@ def db_stats():
         (now - datetime.fromisoformat(t["created_at"].replace("Z", "+00:00"))) > timedelta(hours=24)
     )
     return {
-        "total": len(tickets),
-        "open": sum(1 for t in tickets if t["status"] == "Open"),
+        "total":       len(tickets),
+        "open":        sum(1 for t in tickets if t["status"] == "Open"),
         "in_progress": sum(1 for t in tickets if t["status"] == "In Progress"),
-        "resolved": sum(1 for t in tickets if t["status"] == "Resolved"),
-        "overdue": overdue,
+        "resolved":    sum(1 for t in tickets if t["status"] == "Resolved"),
+        "overdue":     overdue,
     }
 
 def is_overdue(created_at_str: str) -> bool:
@@ -955,14 +866,132 @@ def auto_save_note_to_resolved(ticket_query: str, note: str):
         else:
             db.table("resolved_issues").update({"solution": note.strip()}).eq("query", ticket_query).execute()
             st.toast("🧠 Learned answer updated in `resolved_issues` table in Supabase", icon="☁️")
+        # ── IMPORTANT: clear the semantic cache so new answer is picked up ──
+        load_learned_answers_semantic.clear()
         return True
     except Exception:
         return False
 
 
 # ════════════════════════════════════════════════════════
-#  LEARNED ANSWERS LOOKUP
+#  SEMANTIC LEARNED ANSWERS  (replaces keyword matching)
 # ════════════════════════════════════════════════════════
+
+# Threshold: cosine similarity >= this value → use the learned answer.
+# 0.45 is permissive enough to match paraphrases like:
+#   "cobra means"  ↔  "what is cobra"          (~0.71)
+#   "tell me about cobra" ↔ "define cobra"      (~0.68)
+#   "python list"  ↔  "explain python lists"    (~0.75)
+# Lower it carefully — going below ~0.38 starts returning false positives.
+_SEMANTIC_LEARNED_THRESHOLD = 0.45
+
+
+@st.cache_resource(
+    show_spinner="🧠 Loading learned answers into semantic index…",
+    ttl=300,   # refresh every 5 minutes so newly added answers appear quickly
+)
+def load_learned_answers_semantic(_cache_bust: int = 0):
+    """
+    Pulls all admin-written solutions from Supabase and encodes them
+    with the same transformer model used for PDF Q&A.
+
+    Returns: (model, question_embeddings_tensor, [(query_text, solution_text)])
+    All three are None / [] on failure so callers can guard gracefully.
+
+    _cache_bust is incremented by auto_save_note_to_resolved() so that
+    st.cache_resource re-runs immediately after a new answer is saved.
+    """
+    try:
+        from sentence_transformers import SentenceTransformer
+        db = get_db()
+        if db is None:
+            return None, None, []
+
+        pairs = []   # (stored_question, admin_solution)
+
+        # Source 1 — resolved_issues table (primary store)
+        try:
+            rows = db.table("resolved_issues").select("query, solution").execute().data or []
+            for r in rows:
+                q = (r.get("query") or "").strip()
+                s = (r.get("solution") or "").strip()
+                if q and s:
+                    pairs.append((q, s))
+        except Exception:
+            pass
+
+        # Source 2 — tickets that have an admin note (secondary / legacy store)
+        try:
+            rows = (
+                db.table("tickets")
+                  .select("query, admin_note")
+                  .not_.is_("admin_note", "null")
+                  .execute()
+                  .data or []
+            )
+            for r in rows:
+                q = (r.get("query") or "").strip()
+                s = (r.get("admin_note") or "").strip()
+                if q and s:
+                    # Avoid exact duplicates already pulled from resolved_issues
+                    if (q, s) not in pairs:
+                        pairs.append((q, s))
+        except Exception:
+            pass
+
+        if not pairs:
+            return None, None, []
+
+        model = SentenceTransformer("multi-qa-mpnet-base-dot-v1")
+        questions  = [p[0] for p in pairs]
+        embeddings = model.encode(questions, convert_to_tensor=True, show_progress_bar=False)
+        return model, embeddings, pairs
+
+    except Exception as e:
+        st.warning(f"Learned-answer semantic loader error: {e}")
+        return None, None, []
+
+
+def check_learned_answers(query: str):
+    """
+    Semantic similarity search over admin-written solutions.
+
+    Returns a result dict (same shape as before) if a good match is found,
+    otherwise returns None.
+
+    Matching logic:
+      1. Encode the user query with the transformer.
+      2. Compute cosine similarity against all stored question embeddings.
+      3. If best score >= _SEMANTIC_LEARNED_THRESHOLD → return that solution.
+      4. No match → return None (caller will log it as a failed query).
+    """
+    model, embeddings, pairs = load_learned_answers_semantic()
+
+    if model is not None and embeddings is not None and len(pairs) > 0:
+        try:
+            from sentence_transformers import util
+            q_emb  = model.encode(query.lower(), convert_to_tensor=True)
+            scores = util.cos_sim(q_emb, embeddings)[0]
+            best_i = int(scores.argmax())
+            best_s = float(scores[best_i])
+
+            if best_s >= _SEMANTIC_LEARNED_THRESHOLD:
+                matched_q, solution = pairs[best_i]
+                return {
+                    "solution":      solution,
+                    "matched_query": matched_q,
+                    "score":         best_s,
+                    "source":        "learned",
+                }
+        except Exception:
+            pass
+
+    # ── Graceful keyword fallback (model unavailable) ────────────────────────
+    # This only runs if sentence-transformers can't be imported.
+    return _check_learned_answers_keyword(query)
+
+
+# ── Keyword fallback (kept as safety net) ────────────────────────────────────
 
 _STOP_WORDS = {
     "what", "is", "are", "the", "a", "an", "of", "in", "on", "at",
@@ -999,9 +1028,10 @@ def _keyword_score(query: str, stored_query: str) -> float:
         return max(jaccard, 0.35)
     return 0.0
 
-_LEARNED_THRESHOLD = 0.30
+_LEARNED_KEYWORD_THRESHOLD = 0.30
 
-def check_learned_answers(query: str):
+def _check_learned_answers_keyword(query: str):
+    """Original keyword-based fallback — used only when the semantic model is unavailable."""
     db = get_db()
     if db is None:
         return None
@@ -1030,7 +1060,7 @@ def check_learned_answers(query: str):
                 best_score, best_solution, best_matched = score, sol, q
     except Exception:
         pass
-    if best_solution and best_score >= _LEARNED_THRESHOLD:
+    if best_solution and best_score >= _LEARNED_KEYWORD_THRESHOLD:
         return {
             "solution":      best_solution,
             "matched_query": best_matched,
@@ -1097,7 +1127,7 @@ def load_qa_pairs():
 
 
 # ════════════════════════════════════════════════════════
-#  SEMANTIC SEARCH MODEL
+#  SEMANTIC SEARCH MODEL  (PDF)
 # ════════════════════════════════════════════════════════
 _Q_THRESHOLD   = 0.60
 _A_THRESHOLD   = 0.65
@@ -1122,20 +1152,28 @@ def load_model_and_embeddings():
 
 
 # ════════════════════════════════════════════════════════
-#  ANSWER LOOKUP  (PDF → Learned)
+#  ANSWER LOOKUP  ── PDF first, then Learned (semantic)
 # ════════════════════════════════════════════════════════
 def answer_question(query: str) -> dict:
+    """
+    Search order:
+      1. PDF knowledge base (semantic, high-confidence threshold)
+      2. Learned answers from resolved tickets (semantic, lower threshold)
+      3. Not found → caller shows ticket form
+    """
+    # ── Step 1: PDF ──────────────────────────────────────────────────────────
     model, q_embeddings, a_embeddings, pairs, util = load_model_and_embeddings()
-    if model is not None and q_embeddings is not None and a_embeddings is not None and pairs is not None and util is not None:
+    if model is not None and q_embeddings is not None and pairs:
         try:
-            query_embedding = model.encode(query.lower(), convert_to_tensor=True)
-            q_scores        = util.cos_sim(query_embedding, q_embeddings)[0]
-            best_q_idx      = int(q_scores.argmax())
-            best_q_score    = float(q_scores[best_q_idx])
-            a_scores        = util.cos_sim(query_embedding, a_embeddings)[0]
-            best_a_idx      = int(a_scores.argmax())
-            best_a_score    = float(a_scores[best_a_idx])
+            query_embedding  = model.encode(query.lower(), convert_to_tensor=True)
+            q_scores         = util.cos_sim(query_embedding, q_embeddings)[0]
+            best_q_idx       = int(q_scores.argmax())
+            best_q_score     = float(q_scores[best_q_idx])
+            a_scores         = util.cos_sim(query_embedding, a_embeddings)[0]
+            best_a_idx       = int(a_scores.argmax())
+            best_a_score     = float(a_scores[best_a_idx])
             weighted_a_score = best_a_score * _ANSWER_WEIGHT
+
             if best_q_score >= _Q_THRESHOLD or best_a_score >= _A_THRESHOLD:
                 if best_q_score >= weighted_a_score:
                     chosen_idx, chosen_score, match_source = best_q_idx, best_q_score, "question"
@@ -1143,25 +1181,40 @@ def answer_question(query: str) -> dict:
                     chosen_idx, chosen_score, match_source = best_a_idx, best_a_score, "answer"
                 question, answer = pairs[chosen_idx]
                 return {
-                    "found": True, "answer": answer.strip(), "matched": question.strip(),
-                    "score": chosen_score, "match_src": match_source,
-                    "pdf_error": False, "source": "pdf",
+                    "found":     True,
+                    "answer":    answer.strip(),
+                    "matched":   question.strip(),
+                    "score":     chosen_score,
+                    "match_src": match_source,
+                    "pdf_error": False,
+                    "source":    "pdf",
                 }
         except Exception:
             pass
 
+    # ── Step 2: Learned answers (semantic) ───────────────────────────────────
     learned = check_learned_answers(query)
     if learned:
         return {
-            "found": True, "answer": learned["solution"], "matched": learned["matched_query"],
-            "score": learned["score"], "match_src": "learned", "pdf_error": False,
-            "source": learned.get("source", "learned"),
+            "found":     True,
+            "answer":    learned["solution"],
+            "matched":   learned["matched_query"],
+            "score":     learned["score"],
+            "match_src": "learned",
+            "pdf_error": False,
+            "source":    learned.get("source", "learned"),
         }
 
+    # ── Step 3: Nothing found ────────────────────────────────────────────────
     pdf_unavailable = (model is None or q_embeddings is None)
     return {
-        "found": False, "answer": "", "matched": "", "score": 0,
-        "match_src": "none", "pdf_error": pdf_unavailable, "source": "none",
+        "found":     False,
+        "answer":    "",
+        "matched":   "",
+        "score":     0,
+        "match_src": "none",
+        "pdf_error": pdf_unavailable,
+        "source":    "none",
     }
 
 
@@ -1170,7 +1223,10 @@ def answer_question(query: str) -> dict:
 # ════════════════════════════════════════════════════════
 def tickets_to_csv(tickets: list) -> bytes:
     output = io.StringIO()
-    writer = csv.DictWriter(output, fieldnames=["id","user_id","job_role","query","priority","status","admin_note","created_at"])
+    writer = csv.DictWriter(
+        output,
+        fieldnames=["id","user_id","job_role","query","priority","status","admin_note","created_at"],
+    )
     writer.writeheader()
     for t in tickets:
         writer.writerow({k: t.get(k, "") for k in writer.fieldnames})
@@ -1312,7 +1368,7 @@ def _role_badge_class(role: str) -> str:
     }.get(role, "role-all")
 
 
-# ─── DB helpers for Doc Library ────────────────────────
+# ── DB helpers for Doc Library ────────────────────────────────────────────────
 def db_get_documents():
     db = get_db()
     if db is None:
@@ -1408,7 +1464,15 @@ def db_submit_access_request(doc_id, user_id, user_role, reason):
     db = get_db()
     if db is None:
         raise ConnectionError("Supabase not configured.")
-    existing = db.table("doc_access_requests").select("id, status").eq("doc_id", doc_id).eq("user_id", user_id).eq("status", "Pending").execute().data or []
+    existing = (
+        db.table("doc_access_requests")
+          .select("id, status")
+          .eq("doc_id", doc_id)
+          .eq("user_id", user_id)
+          .eq("status", "Pending")
+          .execute()
+          .data or []
+    )
     if existing:
         return None
     row = {"doc_id": doc_id, "user_id": user_id, "user_role": user_role, "reason": reason, "status": "Pending"}
@@ -1637,12 +1701,7 @@ def page_admin():
             st.toast("Signed out", icon="🔒")
             st.rerun()
 
-    admin_tab1, admin_tab2, admin_tab3, admin_tab4 = st.tabs([
-        "🎫 Ticket Management",
-        "📊 Analytics & Knowledge Gap",
-        "📋 Approval Pipeline",
-        "📁 Doc Visibility",
-    ])
+    admin_tab1, admin_tab2 = st.tabs(["Ticket Management", "Doc Validator"])
 
     with admin_tab1:
         try:
@@ -1767,6 +1826,7 @@ def page_admin():
                             try:
                                 db_update_ticket(tid, new_status, note)
                                 if note.strip():
+                                    # auto_save_note_to_resolved also clears the semantic cache
                                     auto_save_note_to_resolved(ticket_query, note)
                                 st.success("Ticket updated.")
                                 st.rerun()
@@ -1782,23 +1842,9 @@ def page_admin():
                                 st.error(str(e))
 
     with admin_tab2:
-        page_analytics()
-        st.markdown("---")
-        page_knowledge_gap()
-
-    with admin_tab3:
-        if PIPELINE_AVAILABLE:
-            page_approval_pipeline()
-        else:
-            st.error("`approval_pipeline.py` is missing.")
-
-    with admin_tab4:
-        page_doc_visibility()
+        _render_doc_validator()
 
 
-# ════════════════════════════════════════════════════════
-#  DOC VALIDATOR UI
-# ════════════════════════════════════════════════════════
 # ════════════════════════════════════════════════════════
 #  DOC VALIDATOR UI
 # ════════════════════════════════════════════════════════
@@ -2298,7 +2344,6 @@ def page_doc_visibility():
 
     dv_tab1, dv_tab2, dv_tab3 = st.tabs(["Browse Documents","My Access","Admin — Manage Library"])
 
-    # ── TAB 1 — BROWSE DOCUMENTS ─────────────────────────────────────────────
     with dv_tab1:
         st.markdown("### Browse Document Library")
 
@@ -2404,9 +2449,8 @@ def page_doc_visibility():
                     st.markdown("---")
                     st.markdown("#### ◑ Pending Access Requests")
                     for doc, req in pending_req:
-                        sensitivity = doc.get("sensitivity","Normal")
-                        min_role    = doc.get("min_role","Employee")
-                        role_cls    = _role_badge_class(min_role)
+                        min_role = doc.get("min_role","Employee")
+                        role_cls = _role_badge_class(min_role)
                         st.markdown(
                             f"<div class='doc-card doc-card-pending'>"
                             f"<span class='role-badge {role_cls}'>{min_role}+</span>&nbsp;"
@@ -2459,8 +2503,8 @@ def page_doc_visibility():
                                     st.warning("Please provide a reason for the request.")
                                 else:
                                     try:
-                                        result = db_submit_access_request(doc_id, viewer_id.strip(), viewer_role, reason.strip())
-                                        if result is None:
+                                        res = db_submit_access_request(doc_id, viewer_id.strip(), viewer_role, reason.strip())
+                                        if res is None:
                                             st.info("You already have a pending request for this document.")
                                         else:
                                             st.success("Request submitted. You will be notified when approved.")
@@ -2468,7 +2512,6 @@ def page_doc_visibility():
                                     except Exception as ex:
                                         st.error(f"Failed: {ex}")
 
-    # ── TAB 2 — MY ACCESS ─────────────────────────────────────────────────────
     with dv_tab2:
         st.markdown("### My Access Dashboard")
 
@@ -2546,7 +2589,6 @@ def page_doc_visibility():
                         unsafe_allow_html=True,
                     )
 
-    # ── TAB 3 — ADMIN: MANAGE LIBRARY ─────────────────────────────────────────
     with dv_tab3:
         if not st.session_state.get("admin_logged_in"):
             st.warning("Please log in via the Admin Panel to manage the document library.")
@@ -2816,6 +2858,24 @@ def page_setup():
             st.toast("Semantic model loaded into RAM cache", icon="⚡")
             st.info(f"{len(pairs)} Q embeddings + {len(pairs)} A embeddings ready.")
 
+    # ── NEW: test the semantic learned-answer index ──────────────────────────
+    if st.button("Test Semantic Learned Answers", key="setup_test_learned"):
+        model, embeddings, pairs = load_learned_answers_semantic()
+        if model is None:
+            st.warning("No learned answers indexed yet, or model unavailable.")
+        else:
+            st.success(f"Learned-answer semantic index ready — {len(pairs)} answer(s) indexed.")
+            st.info(
+                "These answers are matched using cosine similarity ≥ "
+                f"{_SEMANTIC_LEARNED_THRESHOLD:.2f}, so paraphrases like "
+                "'cobra means' will match 'what is cobra'."
+            )
+            with st.expander("Preview indexed questions"):
+                for q, s in pairs[:10]:
+                    st.markdown(f"**Q:** {q[:140]}")
+                    st.markdown(f"**A:** {s[:140]}")
+                    st.markdown("---")
+
     st.markdown("---")
     st.markdown("### Learned Answers (from resolved tickets)")
     if st.button("View All Learned Answers", key="setup_view_learned"):
@@ -2870,6 +2930,10 @@ with st.sidebar:
     page = st.radio("Navigation", [
         "🔍 Employee Portal",
         "🛡️ Admin Panel",
+        "📊 Analytics",
+        "🕳️ Knowledge Gap Report",
+        "📁 Doc Visibility",
+        "📋 Approval Pipeline",
         "⚙️ Setup / Config",
     ], label_visibility="collapsed")
 
@@ -2889,422 +2953,15 @@ if page == "🔍 Employee Portal":
     page_employee()
 elif page == "🛡️ Admin Panel":
     page_admin()
-elif page == "⚙️ Setup / Config":
-    page_setup()
-    )
-    "
-                "We search the KB first — if no answer, a support ticket is raised.",
-                use_container_width=True,
-                key="ap_page_incident_btn",
-            ):
-                st.session_state["ap_page_type"] = "incident"
-                st.session_state["ap_page_inc_show_form"] = False
-                st.session_state["ap_page_inc_kb_status"] = None
-
-        with col_b:
-            if st.button(
-                "📄 Document Approval Ticket\n\nRequest creation or approval of a document. "
-                "Routed through the correct approval chain automatically.",
-                use_container_width=True,
-                key="ap_page_doc_btn",
-            ):
-                st.session_state["ap_page_type"] = "doc"
-
-        st.markdown("---")
-
-        ap_type = st.session_state.get("ap_page_type")
-
-        # ── INCIDENT flow ─────────────────────────────────────────────────
-        if ap_type == "incident":
-            st.markdown("### 🚨 Incident Ticket")
-            c1, c2 = st.columns([4, 1])
-            with c1:
-                inc_q = st.text_input(
-                    "",
-                    placeholder="Describe the issue or ask a question…",
-                    label_visibility="collapsed",
-                    key="ap_page_inc_q",
-                )
-            with c2:
-                inc_search = st.button("Search →", use_container_width=True, key="ap_page_inc_search")
-
-            if inc_search and inc_q.strip():
-                with st.spinner("Searching knowledge base…"):
-                    result = answer_question(inc_q.strip())
-
-                if result["found"]:
-                    src = result.get("source", "pdf")
-                    if src == "learned":
-                        st.markdown("#### ✦ Answer Found")
-                        st.markdown(f"<div class='learned-box'>{result['answer']}</div>", unsafe_allow_html=True)
-                    else:
-                        st.markdown("#### ✦ Answer Found")
-                        st.markdown(f"<div class='answer-box'>{result['answer']}</div>", unsafe_allow_html=True)
-
-                    st.markdown("---")
-                    ca, cb, _ = st.columns([1, 1, 4])
-                    with ca:
-                        if st.button("👍 Helpful", key="ap_page_helpful"):
-                            st.success("Glad it helped!")
-                    with cb:
-                        if st.button("👎 Not helpful", key="ap_page_nothelpful"):
-                            db_log_failed_query(inc_q.strip())
-                            st.session_state["ap_page_inc_show_form"] = True
-                            st.session_state["ap_page_inc_query_cache"] = inc_q.strip()
-                            st.warning("Sorry! Please raise a ticket below.")
-                else:
-                    st.markdown(
-                        "<div class='no-answer-box'>No answer found. "
-                        "Please fill in the ticket below.</div>",
-                        unsafe_allow_html=True,
-                    )
-                    db_log_failed_query(inc_q.strip())
-                    st.session_state["ap_page_inc_show_form"] = True
-                    st.session_state["ap_page_inc_query_cache"] = inc_q.strip()
-
-            elif inc_search:
-                st.warning("Please enter a question.")
-
-            if st.session_state.get("ap_page_inc_show_form", False):
-                st.markdown("---")
-                st.markdown("### 🎫 Raise a Support Ticket")
-                prefill_q = st.session_state.get("ap_page_inc_query_cache", "")
-                ic1, ic2 = st.columns(2)
-                with ic1:
-                    inc_uid  = st.text_input("Employee ID *", placeholder="e.g. EMP-1042", key="ap_inc_uid")
-                    inc_role = st.selectbox(
-                        "Job Role *",
-                        ["Select…","Software Engineer","Data Analyst","QA Engineer",
-                         "DevOps Engineer","Product Manager","HR / Operations","Other"],
-                        key="ap_inc_role",
-                    )
-                with ic2:
-                    inc_prio = st.selectbox("Priority *", ["Medium","High","Low"], key="ap_inc_prio")
-
-                if prefill_q:
-                    st.markdown(
-                        f"<small style='color:#8b3a2a; font-family: DM Mono, monospace; font-size:17px;'>"
-                        f"Search query: {prefill_q}</small>",
-                        unsafe_allow_html=True,
-                    )
-                inc_detail = st.text_area(
-                    "Describe your problem in detail *",
-                    placeholder="Add more details…",
-                    height=120,
-                    key="ap_inc_detail",
-                )
-                sc1, sc2, _ = st.columns([1, 1, 4])
-                with sc1:
-                    if st.button("Submit Ticket →", use_container_width=True, key="ap_inc_submit"):
-                        errors = []
-                        if not inc_uid.strip():   errors.append("Employee ID required.")
-                        if inc_role == "Select…": errors.append("Select your job role.")
-                        final_q = prefill_q or inc_detail.strip()
-                        if not final_q:           errors.append("Problem description required.")
-                        for e in errors: st.error(e)
-                        if not errors:
-                            try:
-                                t = db_create_ticket(inc_uid.strip(), inc_role, final_q, inc_prio)
-                                st.success(f"✅ Ticket #{t.get('id','–')} submitted!")
-                                st.session_state["ap_page_inc_show_form"] = False
-                            except Exception as ex:
-                                st.error(f"Failed: {ex}")
-                with sc2:
-                    if st.button("Cancel", use_container_width=True, key="ap_inc_cancel"):
-                        st.session_state["ap_page_inc_show_form"] = False
-                        st.rerun()
-
-        # ── DOC APPROVAL flow ─────────────────────────────────────────────
-        elif ap_type == "doc":
-            st.markdown("### 📄 Document Approval Ticket")
-            st.markdown(
-                "<p style='color:#6b5f55; font-size:20px;'>"
-                "Fill in your details and the document info. "
-                "The system will route it through the correct approval chain.</p>",
-                unsafe_allow_html=True,
-            )
-            st.markdown("---")
-
-            st.markdown("##### 👤 Your Details")
-            d1, d2 = st.columns(2)
-            with d1:
-                doc_emp_id   = st.text_input("Employee ID *", placeholder="e.g. EMP-1042", key="ap_doc_emp_id")
-            with d2:
-                doc_emp_name = st.text_input("Your Name *", placeholder="e.g. Priya K.", key="ap_doc_emp_name")
-
-            st.markdown("---")
-            st.markdown("##### 📄 Document Details")
-
-            from approval_pipeline import DOC_CATEGORIES, _build_chain, _create as _ap_create, _escalation_label, _fmt as _ap_fmt
-
-            cat_keys = list(DOC_CATEGORIES.keys())
-            da1, da2 = st.columns(2)
-            with da1:
-                doc_title = st.text_input("Document Title *", placeholder="e.g. Database Backup Procedure", key="ap_doc_title")
-                doc_cat   = st.selectbox("Document Category *", cat_keys,
-                                         format_func=lambda c: DOC_CATEGORIES[c]["label"], key="ap_doc_cat")
-            with da2:
-                avail_sub = DOC_CATEGORIES[st.session_state.get("ap_doc_cat", cat_keys[0])]["subtypes"]
-                doc_sub   = st.selectbox("Document Subtype *", avail_sub, key="ap_doc_sub")
-                doc_urg   = st.selectbox("Urgency *", ["Normal","URGENT","CRITICAL"], key="ap_doc_urg")
-
-            doc_desc = st.text_area(
-                "What does this document need to cover? *",
-                placeholder="Describe the purpose and scope…",
-                height=100, key="ap_doc_desc",
-            )
-
-            chosen_cat = st.session_state.get("ap_doc_cat", cat_keys[0])
-            chain      = _build_chain(chosen_cat)
-            cfg        = DOC_CATEGORIES[chosen_cat]
-            if cfg["auto"]:
-                route_str = "✅ Auto-approved instantly"
-            else:
-                route_str = " → ".join(chain) + f"  ·  {_escalation_label()} per level"
-            st.caption(f"Approval route: {route_str}")
-
-            st.markdown("---")
-            if st.button("🚀 Submit for Approval", type="primary", key="ap_doc_submit"):
-                errors = []
-                if not doc_emp_id.strip():   errors.append("Employee ID required.")
-                if not doc_emp_name.strip(): errors.append("Your name required.")
-                if not doc_title.strip():    errors.append("Document title required.")
-                if not doc_desc.strip():     errors.append("Document description required.")
-                for e in errors: st.error(e)
-                if not errors:
-                    requester_str = f"{doc_emp_name.strip()} · {doc_emp_id.strip()}"
-                    try:
-                        req = _ap_create(
-                            title       = doc_title.strip(),
-                            category    = chosen_cat,
-                            subtype     = st.session_state.get("ap_doc_sub", avail_sub[0]),
-                            description = doc_desc.strip(),
-                            urgency     = doc_urg,
-                            requester   = requester_str,
-                        )
-                        if req["done"]:
-                            st.success(f"✅ {req['id']} — '{doc_title}' auto-approved instantly!")
-                        else:
-                            ch = req["chain"]
-                            st.success(
-                                f"✅ {req['id']} submitted → routed to **{ch[0]}**. "
-                                f"Full chain: **{' → '.join(ch)}**. "
-                                f"Each approver has **{_escalation_label()}** to respond."
-                            )
-                    except Exception as ex:
-                        st.error(f"Submission failed: {ex}")
-
-            # ── Document Access Request ───────────────────────────────────
-            st.markdown("---")
-            st.markdown("### 📂 Request Access to an Existing Document")
-            st.markdown(
-                "<p style='color:#6b5f55; font-size:20px;'>"
-                "Fill in your details, select a document, enter a password and click Request Access. "
-                "Senior roles (Manager and above) get instant access and can view the document right here. "
-                "Employees go through the approval chain.</p>",
-                unsafe_allow_html=True,
-            )
-
-            all_docs_list = db_get_documents()
-
-            acc1, acc2, acc3 = st.columns(3)
-            with acc1:
-                access_emp_id = st.text_input(
-                    "Employee ID *",
-                    placeholder="e.g. EMP-1042",
-                    key="ap_acc_emp_id",
-                )
-            with acc2:
-                access_role = st.selectbox(
-                    "Your Role *",
-                    ["Select…", "Employee", "Manager", "Tech Manager", "CTO", "CEO"],
-                    key="ap_acc_role",
-                )
-            with acc3:
-                access_doc = st.selectbox(
-                    "Document *",
-                    ["Select…"] + [d["title"] for d in all_docs_list],
-                    key="ap_acc_doc",
-                )
-
-            SENIOR_ROLES = {"Manager", "Tech Manager", "CTO", "CEO"}
-
-            if access_role in SENIOR_ROLES:
-                st.text_input(
-                    "Set a view password *",
-                    type="password",
-                    placeholder="You'll enter this below to view the document…",
-                    key="ap_acc_pwd",
-                )
-
-            if access_role == "Employee":
-                st.text_area(
-                    "Reason for access *",
-                    placeholder="Briefly explain why you need access to this document…",
-                    height=80,
-                    key="ap_acc_reason",
-                )
-
-            if st.button("Request Document Access →", key="ap_acc_submit"):
-                errors = []
-                if not access_emp_id.strip():  errors.append("Employee ID required.")
-                if access_role == "Select…":   errors.append("Select your role.")
-                if access_doc == "Select…":    errors.append("Select a document.")
-                if access_role in SENIOR_ROLES:
-                    if not st.session_state.get("ap_acc_pwd", "").strip():
-                        errors.append("Set a view password.")
-                elif access_role == "Employee":
-                    if not st.session_state.get("ap_acc_reason", "").strip():
-                        errors.append("Reason for access required.")
-                for e in errors: st.error(e)
-
-                if not errors:
-                    matched_doc = next((d for d in all_docs_list if d["title"] == access_doc), None)
-                    if not matched_doc:
-                        st.error("Document not found in the library.")
-                    else:
-                        doc_id = matched_doc["id"]
-                        if access_role in SENIOR_ROLES:
-                            db_grant_access(
-                                doc_id     = doc_id,
-                                user_id    = access_emp_id.strip(),
-                                user_role  = access_role,
-                                granted_by = "System (Senior Bypass)",
-                            )
-                            view_pwd = st.session_state.get("ap_acc_pwd", "").strip()
-                            if view_pwd:
-                                st.session_state["ap_granted_doc_id"]  = doc_id
-                                st.session_state["ap_granted_doc_pwd"] = view_pwd
-                            st.success(
-                                f"✅ Instant access granted to **{access_emp_id.strip()}** "
-                                f"({access_role}) for **{access_doc}**. "
-                                f"Scroll down to view the document."
-                            )
-                        else:
-                            try:
-                                result = db_submit_access_request(
-                                    doc_id    = doc_id,
-                                    user_id   = access_emp_id.strip(),
-                                    user_role = access_role,
-                                    reason    = st.session_state.get("ap_acc_reason", "").strip(),
-                                )
-                                if result is None:
-                                    st.info("You already have a pending request for this document.")
-                                else:
-                                    st.success(
-                                        f"✅ Access request submitted for **{access_doc}**. "
-                                        f"Your request will follow the approval hierarchy. "
-                                        f"View-only access (no download) once approved. "
-                                        f"Auto-revokes after 7 days."
-                                    )
-                            except Exception as ex:
-                                st.error(f"Failed to submit request: {ex}")
-
-            # ── Inline Document Viewer ────────────────────────────────────
-            granted_doc_id  = st.session_state.get("ap_granted_doc_id")
-            granted_doc_pwd = st.session_state.get("ap_granted_doc_pwd", "")
-
-            if granted_doc_id and granted_doc_pwd:
-                granted_doc = next((d for d in all_docs_list if d["id"] == granted_doc_id), None)
-                if granted_doc:
-                    st.markdown("---")
-                    st.markdown(
-                        f"<div style='background:var(--paper); border:1px solid #7ab898; "
-                        f"border-left:4px solid #3d5a4a; border-radius:3px; padding:18px 22px; margin-bottom:12px;'>"
-                        f"<p style='margin:0; font-family:Playfair Display,serif; font-size:22px; color:#1a1612; font-weight:700;'>"
-                        f"📄 {granted_doc['title']}</p>"
-                        f"<p style='margin:4px 0 0; font-family:DM Mono,monospace; font-size:13px; color:#3d5a4a; "
-                        f"letter-spacing:0.08em; text-transform:uppercase;'>Access granted · View-only · Expires in 7 days</p>"
-                        f"</div>",
-                        unsafe_allow_html=True,
-                    )
-
-                    col_view, col_clear, _ = st.columns([1, 1, 4])
-                    with col_view:
-                        view_clicked = st.button("🔓 View Document", key="ap_view_doc_btn", use_container_width=True)
-                    with col_clear:
-                        if st.button("✖ Clear Access", key="ap_clear_doc_btn", use_container_width=True):
-                            st.session_state.pop("ap_granted_doc_id", None)
-                            st.session_state.pop("ap_granted_doc_pwd", None)
-                            st.session_state.pop("ap_doc_visible", None)
-                            st.rerun()
-
-                    if view_clicked:
-                        st.session_state["ap_doc_visible"] = True
-
-                    if st.session_state.get("ap_doc_visible"):
-                        description    = granted_doc.get("description", "")
-                        content        = granted_doc.get("content_preview", "")
-                        file_url       = granted_doc.get("file_url", "")
-
-                        inner = ""
-                        if description:
-                            inner += f"<p style='margin:0 0 8px; font-family:EB Garamond,serif; font-size:22px;'><strong>About:</strong> {description}</p><hr style='border:none;border-top:1px solid #d4c9bc;margin:10px 0;'>"
-                        if content:
-                            inner += f"<p style='font-family:EB Garamond,serif; font-size:22px; line-height:1.8; color:#3d3530;'>{content}</p>"
-                        if file_url:
-                            inner += (
-                                f"<a href='{file_url}' target='_blank' "
-                                f"style='display:inline-block; margin-top:12px; background:#3d5a4a; "
-                                f"color:#fff; padding:12px 24px; border-radius:3px; "
-                                f"font-family:EB Garamond,serif; font-size:20px; text-decoration:none;'>"
-                                f"📎 Open Full Document ↗</a>"
-                            )
-                        if not content and not file_url:
-                            inner += "<p style='color:#9c8e82; font-family:EB Garamond,serif; font-size:20px;'>No content preview or file link available. Please contact the document owner.</p>"
-
-                        st.markdown(
-                            f"<div style='background:#faf7f2; border:1px solid #d4c9bc; "
-                            f"border-left:4px solid #3d5a4a; border-radius:3px; "
-                            f"padding:24px 28px; margin-top:8px;'>{inner}</div>"
-                            f"<small style='color:#9c8e82; font-family:DM Mono,monospace; font-size:14px;'>"
-                            f"🔒 View-only. No download permitted. Access auto-expires in 7 days.</small>",
-                            unsafe_allow_html=True,
-                        )
-
-            # ── Approver review ───────────────────────────────────────────
-            st.markdown("---")
-            st.markdown("### 🔐 Approver Review")
-            st.markdown(
-                "<p style='color:#6b5f55; font-size:20px;'>"
-                "Approvers: log in to your role tab below to action pending requests.</p>",
-                unsafe_allow_html=True,
-            )
-
-            from approval_pipeline import _view_role, _init, _load_requests, _check_expiry, _migrate_chain, _db_update
-
-            _init()
-            if not st.session_state.ap_loaded:
-                _load_requests()
-
-            for r in st.session_state.ap_requests:
-                if _migrate_chain(r):
-                    _db_update(r)
-
-            escalated = []
-            for r in st.session_state.ap_requests:
-                bi, bd = r.get("stage_idx", 0), r.get("done", False)
-                _check_expiry(r)
-                if r.get("stage_idx", 0) != bi or (r.get("done") and not bd):
-                    escalated.append(r)
-            if escalated:
-                st.rerun()
-
-            def _n(role):
-                return sum(1 for r in st.session_state.ap_requests
-                           if not r["done"] and r["chain"] and r["chain"][r["stage_idx"]] == role)
-
-            role_tabs = st.tabs([
-                f"👨‍💼 Team Lead ({_n('Team Lead')})",
-                f"👩‍💻 Tech Manager ({_n('Tech Manager')})",
-                f"🧑‍🔬 CTO ({_n('CTO')})",
-                f"👑 CEO ({_n('CEO')})",
-            ])
-            with role_tabs[0]: _view_role("Team Lead")
-            with role_tabs[1]: _view_role("Tech Manager")
-            with role_tabs[2]: _view_role("CTO")
-            with role_tabs[3]: _view_role("CEO")
-
+elif page == "📊 Analytics":
+    page_analytics()
+elif page == "🕳️ Knowledge Gap Report":
+    page_knowledge_gap()
+elif page == "📁 Doc Visibility":
+    page_doc_visibility()
+elif page == "📋 Approval Pipeline":
+    if PIPELINE_AVAILABLE:
+        page_approval_pipeline()
     else:
         st.error("`approval_pipeline.py` is missing from your project folder.")
 elif page == "⚙️ Setup / Config":
