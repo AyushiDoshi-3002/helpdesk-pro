@@ -3237,34 +3237,32 @@ elif page == "📋 Approval Pipeline":
                         st.session_state["ap_doc_visible"] = True
 
                     if st.session_state.get("ap_doc_visible"):
-                        st.markdown(
-                            "<div style='background:#faf7f2; border:1px solid #d4c9bc; "
-                            "border-left:4px solid #3d5a4a; border-radius:3px; "
-                            "padding:24px 28px; margin-top:8px;'>",
-                            unsafe_allow_html=True,
-                        )
-                        if granted_doc.get("description"):
-                            st.markdown(f"**About:** {granted_doc['description']}")
-                            st.markdown("---")
-                        if granted_doc.get("content_preview"):
-                            st.markdown(granted_doc["content_preview"])
-                        if granted_doc.get("file_url"):
-                            file_url = granted_doc["file_url"]
-                            st.markdown(
+                        description    = granted_doc.get("description", "")
+                        content        = granted_doc.get("content_preview", "")
+                        file_url       = granted_doc.get("file_url", "")
+
+                        inner = ""
+                        if description:
+                            inner += f"<p style='margin:0 0 8px; font-family:EB Garamond,serif; font-size:22px;'><strong>About:</strong> {description}</p><hr style='border:none;border-top:1px solid #d4c9bc;margin:10px 0;'>"
+                        if content:
+                            inner += f"<p style='font-family:EB Garamond,serif; font-size:22px; line-height:1.8; color:#3d3530;'>{content}</p>"
+                        if file_url:
+                            inner += (
                                 f"<a href='{file_url}' target='_blank' "
-                                f"style='display:inline-block; margin-top:12px; "
-                                f"background:#3d5a4a; color:#fff; padding:12px 24px; "
-                                f"border-radius:3px; font-family:EB Garamond,serif; "
-                                f"font-size:20px; text-decoration:none;'>"
-                                f"📎 Open Full Document ↗</a>",
-                                unsafe_allow_html=True,
+                                f"style='display:inline-block; margin-top:12px; background:#3d5a4a; "
+                                f"color:#fff; padding:12px 24px; border-radius:3px; "
+                                f"font-family:EB Garamond,serif; font-size:20px; text-decoration:none;'>"
+                                f"📎 Open Full Document ↗</a>"
                             )
-                        if not granted_doc.get("content_preview") and not granted_doc.get("file_url"):
-                            st.info("No content preview or file link available. Please contact the document owner.")
-                        st.markdown("</div>", unsafe_allow_html=True)
+                        if not content and not file_url:
+                            inner += "<p style='color:#9c8e82; font-family:EB Garamond,serif; font-size:20px;'>No content preview or file link available. Please contact the document owner.</p>"
+
                         st.markdown(
-                            "<small style='color:#9c8e82; font-family:DM Mono,monospace; font-size:14px;'>"
-                            "🔒 View-only. No download permitted. Access auto-expires in 7 days.</small>",
+                            f"<div style='background:#faf7f2; border:1px solid #d4c9bc; "
+                            f"border-left:4px solid #3d5a4a; border-radius:3px; "
+                            f"padding:24px 28px; margin-top:8px;'>{inner}</div>"
+                            f"<small style='color:#9c8e82; font-family:DM Mono,monospace; font-size:14px;'>"
+                            f"🔒 View-only. No download permitted. Access auto-expires in 7 days.</small>",
                             unsafe_allow_html=True,
                         )
 
