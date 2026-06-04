@@ -1780,8 +1780,8 @@ def page_admin():
                                 st.rerun()
                             except Exception as e:
                                 st.error(str(e))
-                                
-  with admin_tab2:
+
+    with admin_tab2:
         page_analytics()
         st.markdown("---")
         page_knowledge_gap()
