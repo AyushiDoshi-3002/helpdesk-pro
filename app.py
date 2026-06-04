@@ -1637,9 +1637,12 @@ def page_admin():
             st.toast("Signed out", icon="🔒")
             st.rerun()
 
-    admin_tab1, admin_tab2 = st.tabs(["Ticket Management", "Doc Validator"])
-
-    with admin_tab1:
+    admin_tab1, admin_tab2, admin_tab3, admin_tab4 = st.tabs([
+    "🎫 Ticket Management",
+    "📊 Analytics & Knowledge Gap",
+    "📋 Approval Pipeline",
+    "📁 Doc Visibility",
+])
         try:
             stats = db_stats()
             cols  = st.columns(5)
@@ -1775,10 +1778,20 @@ def page_admin():
                                 st.rerun()
                             except Exception as e:
                                 st.error(str(e))
+                                
+   with admin_tab2:
+        page_analytics()
+        st.markdown("---")
+        page_knowledge_gap()
 
-    with admin_tab2:
-        _render_doc_validator()
+    with admin_tab3:
+        if PIPELINE_AVAILABLE:
+            page_approval_pipeline()
+        else:
+            st.error("`approval_pipeline.py` is missing.")
 
+    with admin_tab4:
+        page_doc_visibility()
 
 # ════════════════════════════════════════════════════════
 #  DOC VALIDATOR UI
@@ -2849,14 +2862,10 @@ with st.sidebar:
     )
 
     page = st.radio("Navigation", [
-        "🔍 Employee Portal",
-        "📋 Approval Pipeline",
-        "🛡️ Admin Panel",
-        "📊 Analytics",
-        "🕳️ Knowledge Gap Report",
-        "📁 Doc Visibility",
-        "⚙️ Setup / Config",
-    ], label_visibility="collapsed")
+    "🔍 Employee Portal",
+    "🛡️ Admin Panel",
+    "⚙️ Setup / Config",
+], label_visibility="collapsed")
 
     st.markdown("---")
 
@@ -2874,15 +2883,8 @@ if page == "🔍 Employee Portal":
     page_employee()
 elif page == "🛡️ Admin Panel":
     page_admin()
-elif page == "📊 Analytics":
-    page_analytics()
-elif page == "🕳️ Knowledge Gap Report":
-    page_knowledge_gap()
-elif page == "📁 Doc Visibility":
-    page_doc_visibility()
-elif page == "📋 Approval Pipeline":
-    if PIPELINE_AVAILABLE:
-        st.markdown("# 📋 Approval Pipeline")
+elif page == "⚙️ Setup / Config":
+    page_setup()
         st.markdown(
             "<p style='color:#6b5f55; font-size:26px; font-family: EB Garamond, serif;'>"
             "Choose your ticket type, or review and action pending approval requests.</p>",
