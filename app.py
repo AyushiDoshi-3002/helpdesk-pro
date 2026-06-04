@@ -3236,15 +3236,28 @@ elif page == "📋 Approval Pipeline":
                                 "padding:24px 28px; margin-top:8px;'>",
                                 unsafe_allow_html=True,
                             )
+                            # Always show description if present
                             if granted_doc.get("description"):
                                 st.markdown(f"**About:** {granted_doc['description']}")
                                 st.markdown("---")
+                            # Show content preview if present
                             if granted_doc.get("content_preview"):
                                 st.markdown(granted_doc["content_preview"])
-                            elif granted_doc.get("file_url"):
-                                st.markdown(f"📎 [Open Full Document]({granted_doc['file_url']})")
-                            else:
-                                st.info("No content preview available for this document.")
+                            # Show file URL as button if present
+                            if granted_doc.get("file_url"):
+                                file_url = granted_doc["file_url"]
+                                st.markdown(
+                                    f"<a href='{file_url}' target='_blank' "
+                                    f"style='display:inline-block; margin-top:12px; "
+                                    f"background:#3d5a4a; color:#fff; padding:12px 24px; "
+                                    f"border-radius:3px; font-family:EB Garamond,serif; "
+                                    f"font-size:20px; text-decoration:none;'>"
+                                    f"📎 Open Full Document ↗</a>",
+                                    unsafe_allow_html=True,
+                                )
+                            # If neither content nor URL
+                            if not granted_doc.get("content_preview") and not granted_doc.get("file_url"):
+                                st.info("No content preview or file link available for this document. Please contact the document owner.")
                             st.markdown("</div>", unsafe_allow_html=True)
                             st.markdown(
                                 "<small style='color:#9c8e82; font-family:DM Mono,monospace; font-size:14px;'>"
