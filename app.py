@@ -1638,11 +1638,13 @@ def page_admin():
             st.rerun()
 
     admin_tab1, admin_tab2, admin_tab3, admin_tab4 = st.tabs([
-    "🎫 Ticket Management",
-    "📊 Analytics & Knowledge Gap",
-    "📋 Approval Pipeline",
-    "📁 Doc Visibility",
-])
+        "🎫 Ticket Management",
+        "📊 Analytics & Knowledge Gap",
+        "📋 Approval Pipeline",
+        "📁 Doc Visibility",
+    ])
+
+    with admin_tab1:
         try:
             stats = db_stats()
             cols  = st.columns(5)
@@ -2889,10 +2891,12 @@ if page == "🔍 Employee Portal":
     page_employee()
 elif page == "🛡️ Admin Panel":
     page_admin()
+if page == "🔍 Employee Portal":
+    page_employee()
+elif page == "🛡️ Admin Panel":
+    page_admin()
 elif page == "⚙️ Setup / Config":
     page_setup()
-        st.markdown(
-            "<p style='color:#6b5f55; font-size:26px; font-family: EB Garamond, serif;'>"
             "Choose your ticket type, or review and action pending approval requests.</p>",
             unsafe_allow_html=True,
         )
