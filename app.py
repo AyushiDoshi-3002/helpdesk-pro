@@ -2892,15 +2892,7 @@ elif page == "🛡️ Admin Panel":
 elif page == "⚙️ Setup / Config":
     page_setup()
     )
-    st.markdown("---")
-
-        if "ap_page_type" not in st.session_state:
-            st.session_state["ap_page_type"] = None
-
-        col_a, col_b = st.columns(2)
-        with col_a:
-            if st.button(
-                "🚨 Incident Ticket\n\nReport a bug, problem or technical issue. "
+    "
                 "We search the KB first — if no answer, a support ticket is raised.",
                 use_container_width=True,
                 key="ap_page_incident_btn",
