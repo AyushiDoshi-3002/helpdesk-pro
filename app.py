@@ -2891,7 +2891,6 @@ elif page == "🛡️ Admin Panel":
     page_admin()
 elif page == "⚙️ Setup / Config":
     page_setup()
-            unsafe_allow_html=True,
         )
         st.markdown("---")
 
