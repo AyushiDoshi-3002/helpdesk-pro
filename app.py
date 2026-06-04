@@ -2868,10 +2868,10 @@ with st.sidebar:
     )
 
     page = st.radio("Navigation", [
-    "🔍 Employee Portal",
-    "🛡️ Admin Panel",
-    "⚙️ Setup / Config",
-], label_visibility="collapsed")
+        "🔍 Employee Portal",
+        "🛡️ Admin Panel",
+        "⚙️ Setup / Config",
+    ], label_visibility="collapsed")
 
     st.markdown("---")
 
@@ -2882,6 +2882,15 @@ with st.sidebar:
         "<p style='font-family: DM Mono, monospace; font-size: 13px; color: #3a3028; "
         "letter-spacing: 0.06em; margin-top: 16px;'>Powered by Supabase + pdfplumber</p>",
         unsafe_allow_html=True,
+    )
+
+
+if page == "🔍 Employee Portal":
+    page_employee()
+elif page == "🛡️ Admin Panel":
+    page_admin()
+elif page == "⚙️ Setup / Config":
+    page_setup()
     )
 
 
