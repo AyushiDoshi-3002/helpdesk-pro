@@ -1779,7 +1779,7 @@ def page_admin():
                             except Exception as e:
                                 st.error(str(e))
                                 
-   with admin_tab2:
+  with admin_tab2:
         page_analytics()
         st.markdown("---")
         page_knowledge_gap()
@@ -1792,6 +1792,12 @@ def page_admin():
 
     with admin_tab4:
         page_doc_visibility()
+
+
+# ════════════════════════════════════════════════════════
+#  DOC VALIDATOR UI
+# ════════════════════════════════════════════════════════
+def _render_doc_validator():
 
 # ════════════════════════════════════════════════════════
 #  DOC VALIDATOR UI
