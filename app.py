@@ -2892,16 +2892,7 @@ elif page == "🛡️ Admin Panel":
 elif page == "⚙️ Setup / Config":
     page_setup()
     )
-
-
-if page == "🔍 Employee Portal":
-    page_employee()
-elif page == "🛡️ Admin Panel":
-    page_admin()
-elif page == "⚙️ Setup / Config":
-    page_setup()
-        )
-        st.markdown("---")
+    st.markdown("---")
 
         if "ap_page_type" not in st.session_state:
             st.session_state["ap_page_type"] = None
