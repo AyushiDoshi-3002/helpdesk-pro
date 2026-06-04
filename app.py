@@ -1799,8 +1799,6 @@ def page_admin():
 # ════════════════════════════════════════════════════════
 #  DOC VALIDATOR UI
 # ════════════════════════════════════════════════════════
-def _render_doc_validator():
-
 # ════════════════════════════════════════════════════════
 #  DOC VALIDATOR UI
 # ════════════════════════════════════════════════════════
@@ -2887,10 +2885,6 @@ with st.sidebar:
     )
 
 
-if page == "🔍 Employee Portal":
-    page_employee()
-elif page == "🛡️ Admin Panel":
-    page_admin()
 if page == "🔍 Employee Portal":
     page_employee()
 elif page == "🛡️ Admin Panel":
