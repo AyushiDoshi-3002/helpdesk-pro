@@ -2889,10 +2889,6 @@ if page == "🔍 Employee Portal":
     page_employee()
 elif page == "🛡️ Admin Panel":
     page_admin()
-if page == "🔍 Employee Portal":
-    page_employee()
-elif page == "🛡️ Admin Panel":
-    page_admin()
 elif page == "⚙️ Setup / Config":
     page_setup()
             unsafe_allow_html=True,
