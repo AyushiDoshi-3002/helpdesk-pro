@@ -3021,7 +3021,6 @@ elif page == "📋 Approval Pipeline":
         # ── DOC APPROVAL flow ─────────────────────────────────────────────
         elif ap_type == "doc":
             st.markdown("### 📄 Document Approval Ticket")
-            show_storage_info_button()
             st.markdown(
                 "<p style='color:#6b5f55; font-size:20px;'>"
                 "Fill in your details and the document info. "
@@ -3104,10 +3103,13 @@ elif page == "📋 Approval Pipeline":
             st.markdown("### 📂 Request Access to an Existing Document")
             st.markdown(
                 "<p style='color:#6b5f55; font-size:20px;'>"
-                "If the document already exists, request access below. "
-                "Senior roles get instant access. Employees go through the approval chain.</p>",
+                "Fill in your details, select a document, enter a password and click Request Access. "
+                "Senior roles (Manager and above) get instant access and can view the document right here. "
+                "Employees go through the approval chain.</p>",
                 unsafe_allow_html=True,
             )
+
+            all_docs_list = db_get_documents()
 
             acc1, acc2, acc3 = st.columns(3)
             with acc1:
@@ -3123,7 +3125,6 @@ elif page == "📋 Approval Pipeline":
                     key="ap_acc_role",
                 )
             with acc3:
-                all_docs_list = db_get_documents()
                 access_doc = st.selectbox(
                     "Document *",
                     ["Select…"] + [d["title"] for d in all_docs_list],
@@ -3133,15 +3134,15 @@ elif page == "📋 Approval Pipeline":
             SENIOR_ROLES = {"Manager", "Tech Manager", "CTO", "CEO"}
 
             if access_role in SENIOR_ROLES:
-                doc_view_pwd = st.text_input(
-                    "Set a view password for this document *",
+                st.text_input(
+                    "Set a view password *",
                     type="password",
-                    placeholder="Password to protect the document view…",
+                    placeholder="You'll enter this below to view the document…",
                     key="ap_acc_pwd",
                 )
 
             if access_role == "Employee":
-                access_reason = st.text_area(
+                st.text_area(
                     "Reason for access *",
                     placeholder="Briefly explain why you need access to this document…",
                     height=80,
@@ -3174,51 +3175,15 @@ elif page == "📋 Approval Pipeline":
                                 user_role  = access_role,
                                 granted_by = "System (Senior Bypass)",
                             )
+                            view_pwd = st.session_state.get("ap_acc_pwd", "").strip()
+                            if view_pwd:
+                                st.session_state["ap_granted_doc_id"]  = doc_id
+                                st.session_state["ap_granted_doc_pwd"] = view_pwd
                             st.success(
                                 f"✅ Instant access granted to **{access_emp_id.strip()}** "
                                 f"({access_role}) for **{access_doc}**. "
-                                f"View-only, no download, expires in 7 days."
+                                f"Scroll down to view the document."
                             )
-                            st.markdown(
-                                "<div style='background:#e8f4ea; border-left:3px solid #3d5a4a; "
-                                "border-radius:3px; padding:14px 18px; margin:10px 0; "
-                                "font-family: EB Garamond, serif; font-size:20px; color:#1a3a2a;'>"
-                                "🔒 Document is <strong>view-only</strong>. "
-                                "No download permitted. Access auto-expires in <strong>7 days</strong>."
-                                "</div>",
-                                unsafe_allow_html=True,
-                            )
-                            view_pwd = st.session_state.get("ap_acc_pwd", "").strip()
-                            if view_pwd:
-                                st.session_state[f"doc_view_unlocked_{doc_id}"] = view_pwd
-
-                            if st.session_state.get(f"doc_view_unlocked_{doc_id}"):
-                                st.markdown("---")
-                                st.markdown("### 📄 Document Viewer")
-                                pwd_attempt = st.text_input(
-                                    "Enter document password to view",
-                                    type="password",
-                                    key=f"doc_view_pwd_{doc_id}",
-                                    placeholder="Enter the password you set above…",
-                                )
-                                if st.button("🔓 View Document", key=f"doc_view_btn_{doc_id}"):
-                                    correct_pwd = st.session_state.get(f"doc_view_unlocked_{doc_id}", "")
-                                    if pwd_attempt == correct_pwd:
-                                        st.markdown(
-                                            "<div style='background:#faf7f2; border:1px solid #d4c9bc; "
-                                            "border-left:3px solid #3d5a4a; border-radius:3px; "
-                                            "padding:24px 28px; margin-top:12px;'>",
-                                            unsafe_allow_html=True,
-                                        )
-                                        if matched_doc.get("content_preview"):
-                                            st.markdown(matched_doc["content_preview"])
-                                        if matched_doc.get("file_url"):
-                                            st.markdown(f"📎 [Open Full Document]({matched_doc['file_url']})")
-                                        if not matched_doc.get("content_preview") and not matched_doc.get("file_url"):
-                                            st.info("No content preview available for this document.")
-                                        st.markdown("</div>", unsafe_allow_html=True)
-                                    else:
-                                        st.error("Incorrect password.")
                         else:
                             try:
                                 result = db_submit_access_request(
@@ -3238,6 +3203,60 @@ elif page == "📋 Approval Pipeline":
                                     )
                             except Exception as ex:
                                 st.error(f"Failed to submit request: {ex}")
+
+            # ── Inline Document Viewer ────────────────────────────────────
+            granted_doc_id  = st.session_state.get("ap_granted_doc_id")
+            granted_doc_pwd = st.session_state.get("ap_granted_doc_pwd", "")
+
+            if granted_doc_id and granted_doc_pwd:
+                granted_doc = next((d for d in all_docs_list if d["id"] == granted_doc_id), None)
+                if granted_doc:
+                    st.markdown("---")
+                    st.markdown(
+                        f"<div style='background:var(--paper); border:1px solid #7ab898; "
+                        f"border-left:4px solid #3d5a4a; border-radius:3px; padding:18px 22px; margin-bottom:12px;'>"
+                        f"<p style='margin:0; font-family:Playfair Display,serif; font-size:22px; color:#1a1612; font-weight:700;'>"
+                        f"📄 {granted_doc['title']}</p>"
+                        f"<p style='margin:4px 0 0; font-family:DM Mono,monospace; font-size:13px; color:#3d5a4a; "
+                        f"letter-spacing:0.08em; text-transform:uppercase;'>Access granted · View-only · Expires in 7 days</p>"
+                        f"</div>",
+                        unsafe_allow_html=True,
+                    )
+                    pwd_attempt = st.text_input(
+                        "Enter your document password to view",
+                        type="password",
+                        placeholder="Enter the password you just set…",
+                        key="ap_view_pwd_attempt",
+                    )
+                    if st.button("🔓 View Document", key="ap_view_doc_btn"):
+                        if pwd_attempt == granted_doc_pwd:
+                            st.markdown(
+                                "<div style='background:#faf7f2; border:1px solid #d4c9bc; "
+                                "border-left:4px solid #3d5a4a; border-radius:3px; "
+                                "padding:24px 28px; margin-top:8px;'>",
+                                unsafe_allow_html=True,
+                            )
+                            if granted_doc.get("description"):
+                                st.markdown(f"**About:** {granted_doc['description']}")
+                                st.markdown("---")
+                            if granted_doc.get("content_preview"):
+                                st.markdown(granted_doc["content_preview"])
+                            elif granted_doc.get("file_url"):
+                                st.markdown(f"📎 [Open Full Document]({granted_doc['file_url']})")
+                            else:
+                                st.info("No content preview available for this document.")
+                            st.markdown("</div>", unsafe_allow_html=True)
+                            st.markdown(
+                                "<small style='color:#9c8e82; font-family:DM Mono,monospace; font-size:14px;'>"
+                                "🔒 View-only. No download permitted. Access auto-expires in 7 days.</small>",
+                                unsafe_allow_html=True,
+                            )
+                        else:
+                            st.error("Incorrect password. Please try again.")
+                    if st.button("✖ Clear Access", key="ap_clear_doc_btn"):
+                        st.session_state.pop("ap_granted_doc_id", None)
+                        st.session_state.pop("ap_granted_doc_pwd", None)
+                        st.rerun()
 
             # ── Approver review ───────────────────────────────────────────
             st.markdown("---")
