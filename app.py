@@ -1614,60 +1614,6 @@ def page_setup():
 
 
 # ════════════════════════════════════════════════════════
-#  PAGE: APPROVAL PIPELINE (full submit + view, sidebar item)
-# ════════════════════════════════════════════════════════
-def page_approval_pipeline_full():
-    if not PIPELINE_AVAILABLE:
-        st.error("`approval_pipeline.py` is missing from your project folder.")
-        return
-
-    try:
-        from approval_pipeline import (
-            page_approval_pipeline, _create as _ap_create,
-            _view_submit, DOC_CATEGORIES, _build_chain,
-            _escalation_label, _fmt as _ap_fmt,
-        )
-        page_approval_pipeline()
-    except Exception as e:
-        # Fallback: render manually if page_approval_pipeline errors
-        st.markdown("# 📋 Approval Pipeline")
-        st.markdown(
-            "<p style='color:#6b5f55;font-size:26px;font-family:EB Garamond,serif;'>"
-            "Submit document approval requests and track their progress through the approval chain.</p>",
-            unsafe_allow_html=True,
-        )
-        st.markdown("---")
-
-        _ap_init()
-        if not st.session_state.ap_loaded:
-            _ap_load_requests()
-
-        for r in st.session_state.ap_requests:
-            if _migrate_chain(r):
-                _ap_db_update(r)
-
-        escalated = []
-        for r in st.session_state.ap_requests:
-            bi, bd = r.get("stage_idx", 0), r.get("done", False)
-            _check_expiry(r)
-            if r.get("stage_idx", 0) != bi or (r.get("done") and not bd):
-                escalated.append(r)
-        if escalated:
-            msgs = []
-            for r in escalated:
-                last = r["history"][-1] if r["history"] else {}
-                msgs.append(f"⚠️ **Auto-escalated {r['id']}: {r['title']}** — {last.get('action','')}")
-            st.session_state.ap_escalation_msgs = msgs
-            st.rerun()
-
-        for msg in st.session_state.get("ap_escalation_msgs", []):
-            st.markdown(f"<div class='ap-escalation-banner'>{msg}</div>", unsafe_allow_html=True)
-        st.session_state.ap_escalation_msgs = []
-
-        st.error(f"Could not load full pipeline page: {e}")
-
-
-# ════════════════════════════════════════════════════════
 #  SIDEBAR + ROUTING
 # ════════════════════════════════════════════════════════
 with st.sidebar:
@@ -1729,7 +1675,11 @@ with st.sidebar:
 if page == "🔍 Employee Portal":
     page_employee()
 elif page == "📋 Approval Pipeline":
-    page_approval_pipeline_full()
+    if PIPELINE_AVAILABLE:
+        from approval_pipeline import page_approval_pipeline
+        page_approval_pipeline()
+    else:
+        st.error("`approval_pipeline.py` is missing from your project folder.")
 elif page == "🛡️ Admin Panel":
     page_admin()
 elif page == "⚙️ Setup / Config":
