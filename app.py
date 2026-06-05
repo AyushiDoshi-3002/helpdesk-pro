@@ -5,7 +5,6 @@ import requests
 import csv
 from datetime import datetime, timezone, timedelta
 from collections import Counter
-from storage_info import show_storage_info_button
 
 # ── IST Timezone (UTC+5:30) ───────────────────────────────────────────────────
 IST = timezone(timedelta(hours=5, minutes=30))
@@ -24,7 +23,6 @@ def _to_ist(dt_str: str) -> str:
 
 st.set_page_config(page_title="HelpDesk Pro", page_icon="🤖", layout="wide", initial_sidebar_state="expanded")
 
-# ── Font size injection via JS (bypasses Streamlit CSS scoping) ──
 import streamlit.components.v1 as components
 components.html("""
 <script>
@@ -33,7 +31,6 @@ components.html("""
         var style = document.createElement('style');
         style.id = 'font-override-inject';
         style.innerHTML = `
-
             html { font-size: 20px !important; }
             body { font-size: 20px !important; }
             p, span, div, li, td, th, label, a,
@@ -50,7 +47,8 @@ components.html("""
             }
             button, button span, button p {
                 font-size: 20px !important;
-                font-family: 'EB Garamond', Georgia, serif !important}
+                font-family: 'EB Garamond', Georgia, serif !important;
+            }
             label, label p, label span {
                 font-size: 20px !important;
                 font-family: 'EB Garamond', Georgia, serif !important;
@@ -79,21 +77,16 @@ components.html("""
         document.head.appendChild(style);
     }
     applyFonts();
-    // Re-apply after Streamlit rerenders
     var observer = new MutationObserver(applyFonts);
     observer.observe(document.body, { childList: true, subtree: true });
 })();
 </script>
 """, height=0)
 
-
-
 st.markdown("""
 <style>
-/* ── Quarry-inspired Design System ── */
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=DM+Mono:wght@400;500&display=swap');
 
-/* ── CSS Variables ── */
 :root {
     --cream:       #f5f0e8;
     --cream-dark:  #ede7d9;
@@ -118,43 +111,29 @@ st.markdown("""
     --shadow-md:   rgba(26,22,18,0.14);
 }
 
-/* ── Base Reset ── */
 html, body, [class*="css"] {
     font-family: 'EB Garamond', Georgia, serif;
     color: var(--ink);
     background: var(--cream);
     font-size: 20px;
 }
-
 h1, h2, h3, h4, h5 {
     font-family: 'Playfair Display', Georgia, serif !important;
     color: var(--ink) !important;
     letter-spacing: -0.01em;
 }
-
 code, pre, .stCode {
     font-family: 'DM Mono', monospace !important;
     font-size: 20px !important;
 }
-
-/* ── App Background ── */
-.stApp,
-[data-testid="stAppViewContainer"],
-[data-testid="stMain"],
-.main {
+.stApp, [data-testid="stAppViewContainer"], [data-testid="stMain"], .main {
     background: var(--cream) !important;
 }
-
-/* ── Sidebar ── */
 section[data-testid="stSidebar"] {
     background: var(--ink) !important;
     border-right: 1px solid #2a2420;
 }
-
-section[data-testid="stSidebar"] * {
-    color: var(--cream) !important;
-}
-
+section[data-testid="stSidebar"] * { color: var(--cream) !important; }
 section[data-testid="stSidebar"] .stRadio label {
     font-family: 'EB Garamond', serif !important;
     font-size: 24px !important;
@@ -164,16 +143,8 @@ section[data-testid="stSidebar"] .stRadio label {
     cursor: pointer;
     transition: color 0.2s;
 }
-
-section[data-testid="stSidebar"] .stRadio label:hover {
-    color: white !important;
-}
-
-section[data-testid="stSidebar"] hr {
-    border-color: #3a3028 !important;
-    margin: 12px 0;
-}
-
+section[data-testid="stSidebar"] .stRadio label:hover { color: white !important; }
+section[data-testid="stSidebar"] hr { border-color: #3a3028 !important; margin: 12px 0; }
 section[data-testid="stSidebar"] .stButton > button {
     background: transparent !important;
     border: 1px solid #3a3028 !important;
@@ -183,581 +154,193 @@ section[data-testid="stSidebar"] .stButton > button {
     letter-spacing: 0.04em;
     transition: all 0.2s;
 }
-
 section[data-testid="stSidebar"] .stButton > button:hover {
     background: #2a2420 !important;
     border-color: #6b5f55 !important;
     color: white !important;
 }
+[data-testid="stMainBlockContainer"] { padding: 2rem 3rem; max-width: 1400px; }
 
-/* ── Main content padding ── */
-[data-testid="stMainBlockContainer"] {
-    padding: 2rem 3rem;
-    max-width: 1400px;
-}
-
-/* ── Answer / Content boxes ── */
 .answer-box {
-    background: var(--paper);
-    border-radius: 3px;
-    padding: 24px 28px;
-    border-left: 3px solid var(--rust);
-    font-size: 24px;
-    line-height: 1.9;
-    color: var(--ink-light);
-    font-family: 'EB Garamond', serif;
-    box-shadow: 0 1px 8px var(--shadow);
-    margin: 8px 0;
+    background: var(--paper); border-radius: 3px; padding: 24px 28px;
+    border-left: 3px solid var(--rust); font-size: 24px; line-height: 1.9;
+    color: var(--ink-light); font-family: 'EB Garamond', serif;
+    box-shadow: 0 1px 8px var(--shadow); margin: 8px 0;
 }
-
 .no-answer-box {
-    background: var(--rust-pale);
-    border-radius: 3px;
-    padding: 18px 22px;
-    border-left: 3px solid var(--rust-light);
-    color: var(--rust);
-    font-size: 23px;
-    font-family: 'EB Garamond', serif;
+    background: var(--rust-pale); border-radius: 3px; padding: 18px 22px;
+    border-left: 3px solid var(--rust-light); color: var(--rust);
+    font-size: 23px; font-family: 'EB Garamond', serif;
 }
-
 .learned-box {
-    background: var(--paper);
-    border-radius: 3px;
-    padding: 24px 28px;
-    border-left: 3px solid var(--sage);
-    font-size: 24px;
-    line-height: 1.9;
-    color: var(--ink-light);
-    font-family: 'EB Garamond', serif;
+    background: var(--paper); border-radius: 3px; padding: 24px 28px;
+    border-left: 3px solid var(--sage); font-size: 24px; line-height: 1.9;
+    color: var(--ink-light); font-family: 'EB Garamond', serif;
     box-shadow: 0 1px 8px var(--shadow);
 }
-
-/* ── Status Badges ── */
 .badge-open {
-    background: var(--amber-light);
-    color: var(--amber);
-    padding: 3px 12px;
-    border-radius: 2px;
-    font-size: 16px;
-    font-weight: 500;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    font-family: 'DM Mono', monospace;
-    border: 1px solid #d4b830;
+    background: var(--amber-light); color: var(--amber); padding: 3px 12px;
+    border-radius: 2px; font-size: 16px; font-weight: 500; letter-spacing: 0.08em;
+    text-transform: uppercase; font-family: 'DM Mono', monospace; border: 1px solid #d4b830;
 }
-
 .badge-inprogress {
-    background: var(--slate-light);
-    color: var(--slate);
-    padding: 3px 12px;
-    border-radius: 2px;
-    font-size: 16px;
-    font-weight: 500;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    font-family: 'DM Mono', monospace;
-    border: 1px solid #8ab0cc;
+    background: var(--slate-light); color: var(--slate); padding: 3px 12px;
+    border-radius: 2px; font-size: 16px; font-weight: 500; letter-spacing: 0.08em;
+    text-transform: uppercase; font-family: 'DM Mono', monospace; border: 1px solid #8ab0cc;
 }
-
 .badge-resolved {
-    background: var(--sage-light);
-    color: var(--sage);
-    padding: 3px 12px;
-    border-radius: 2px;
-    font-size: 16px;
-    font-weight: 500;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    font-family: 'DM Mono', monospace;
-    border: 1px solid #7ab898;
+    background: var(--sage-light); color: var(--sage); padding: 3px 12px;
+    border-radius: 2px; font-size: 16px; font-weight: 500; letter-spacing: 0.08em;
+    text-transform: uppercase; font-family: 'DM Mono', monospace; border: 1px solid #7ab898;
 }
-
 .badge-overdue {
-    background: var(--rust-pale);
-    color: var(--rust);
-    padding: 3px 12px;
-    border-radius: 2px;
-    font-size: 16px;
-    font-weight: 500;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    font-family: 'DM Mono', monospace;
-    border: 1px solid #c4543a;
+    background: var(--rust-pale); color: var(--rust); padding: 3px 12px;
+    border-radius: 2px; font-size: 16px; font-weight: 500; letter-spacing: 0.08em;
+    text-transform: uppercase; font-family: 'DM Mono', monospace; border: 1px solid #c4543a;
 }
-
-/* ── Priority Pills ── */
 .prio-high {
-    background: var(--rust-pale);
-    color: var(--rust);
-    padding: 2px 10px;
-    border-radius: 2px;
-    font-size: 16px;
-    font-weight: 500;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    font-family: 'DM Mono', monospace;
+    background: var(--rust-pale); color: var(--rust); padding: 2px 10px;
+    border-radius: 2px; font-size: 16px; font-weight: 500; letter-spacing: 0.08em;
+    text-transform: uppercase; font-family: 'DM Mono', monospace;
 }
-
 .prio-medium {
-    background: var(--amber-light);
-    color: var(--amber);
-    padding: 2px 10px;
-    border-radius: 2px;
-    font-size: 16px;
-    font-weight: 500;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    font-family: 'DM Mono', monospace;
+    background: var(--amber-light); color: var(--amber); padding: 2px 10px;
+    border-radius: 2px; font-size: 16px; font-weight: 500; letter-spacing: 0.08em;
+    text-transform: uppercase; font-family: 'DM Mono', monospace;
 }
-
 .prio-low {
-    background: var(--sage-light);
-    color: var(--sage);
-    padding: 2px 10px;
-    border-radius: 2px;
-    font-size: 16px;
-    font-weight: 500;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    font-family: 'DM Mono', monospace;
+    background: var(--sage-light); color: var(--sage); padding: 2px 10px;
+    border-radius: 2px; font-size: 16px; font-weight: 500; letter-spacing: 0.08em;
+    text-transform: uppercase; font-family: 'DM Mono', monospace;
 }
-
-/* ── Buttons ── */
 div.stButton > button {
-    background: var(--ink) !important;
-    color: #f5f0e8 !important;
-    border: 1px solid var(--ink) !important;
-    border-radius: 2px !important;
-    padding: 14px 28px !important;
-    font-family: 'EB Garamond', serif !important;
-    font-size: 22px !important;
-    font-weight: 500 !important;
-    letter-spacing: 0.04em !important;
-    transition: all 0.18s ease !important;
-    box-shadow: none !important;
-    min-height: 52px !important;
-    line-height: 1.4 !important;
+    background: var(--ink) !important; color: #f5f0e8 !important;
+    border: 1px solid var(--ink) !important; border-radius: 2px !important;
+    padding: 14px 28px !important; font-family: 'EB Garamond', serif !important;
+    font-size: 22px !important; font-weight: 500 !important;
+    letter-spacing: 0.04em !important; transition: all 0.18s ease !important;
+    box-shadow: none !important; min-height: 52px !important; line-height: 1.4 !important;
 }
-
-div.stButton > button p,
-div.stButton > button span,
-div.stButton > button div {
-    color: #f5f0e8 !important;
-    background: transparent !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    border: none !important;
-    font-size: inherit !important;
-    font-family: inherit !important;
-    letter-spacing: inherit !important;
-    line-height: inherit !important;
+div.stButton > button p, div.stButton > button span, div.stButton > button div {
+    color: #f5f0e8 !important; background: transparent !important; padding: 0 !important;
+    margin: 0 !important; border: none !important; font-size: inherit !important;
+    font-family: inherit !important; letter-spacing: inherit !important; line-height: inherit !important;
 }
+div.stButton > button:hover { background: var(--rust) !important; border-color: var(--rust) !important; color: #ffffff !important; }
+div.stButton > button:hover p, div.stButton > button:hover span, div.stButton > button:hover div { color: #ffffff !important; }
+div.stButton > button[kind="primary"] { background: var(--rust) !important; border-color: var(--rust) !important; color: #ffffff !important; }
+div.stButton > button[kind="primary"] p, div.stButton > button[kind="primary"] span, div.stButton > button[kind="primary"] div { color: #ffffff !important; }
+div.stButton > button[kind="primary"]:hover { background: var(--rust-light) !important; border-color: var(--rust-light) !important; color: #ffffff !important; }
 
-div.stButton > button:hover {
-    background: var(--rust) !important;
-    border-color: var(--rust) !important;
-    color: #ffffff !important;
-}
-
-div.stButton > button:hover p,
-div.stButton > button:hover span,
-div.stButton > button:hover div {
-    color: #ffffff !important;
-}
-
-div.stButton > button[kind="primary"] {
-    background: var(--rust) !important;
-    border-color: var(--rust) !important;
-    color: #ffffff !important;
-}
-
-div.stButton > button[kind="primary"] p,
-div.stButton > button[kind="primary"] span,
-div.stButton > button[kind="primary"] div {
-    color: #ffffff !important;
-}
-
-div.stButton > button[kind="primary"]:hover {
-    background: var(--rust-light) !important;
-    border-color: var(--rust-light) !important;
-    color: #ffffff !important;
-}
-
-/* ── Metric Cards ── */
 .metric-card {
-    background: var(--paper);
-    border-radius: 3px;
-    padding: 24px 22px;
-    text-align: left;
-    border: 1px solid var(--border);
-    box-shadow: 0 1px 6px var(--shadow);
-    position: relative;
-    overflow: hidden;
+    background: var(--paper); border-radius: 3px; padding: 24px 22px; text-align: left;
+    border: 1px solid var(--border); box-shadow: 0 1px 6px var(--shadow);
+    position: relative; overflow: hidden;
 }
-
 .metric-card::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 2px;
-    background: var(--rust);
+    content: ''; position: absolute; top: 0; left: 0; right: 0;
+    height: 2px; background: var(--rust);
 }
-
 .metric-number {
-    font-family: 'Playfair Display', serif !important;
-    font-size: 54px !important;
-    font-weight: 700 !important;
-    color: var(--ink) !important;
-    line-height: 1;
-    margin-bottom: 8px;
+    font-family: 'Playfair Display', serif !important; font-size: 54px !important;
+    font-weight: 700 !important; color: var(--ink) !important; line-height: 1; margin-bottom: 8px;
 }
-
 .metric-label {
-    font-size: 16px;
-    color: var(--ink-muted);
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    font-family: 'DM Mono', monospace;
+    font-size: 16px; color: var(--ink-muted); letter-spacing: 0.1em;
+    text-transform: uppercase; font-family: 'DM Mono', monospace;
 }
-
-/* ── Knowledge Gap cards ── */
 .gap-card {
-    background: var(--paper);
-    border-radius: 3px;
-    padding: 18px 22px;
-    margin-bottom: 10px;
-    border-left: 3px solid var(--rust);
-    border: 1px solid var(--border);
+    background: var(--paper); border-radius: 3px; padding: 18px 22px; margin-bottom: 10px;
+    border-left: 3px solid var(--rust); border: 1px solid var(--border);
     box-shadow: 0 1px 4px var(--shadow);
 }
+.gap-count { font-family: 'Playfair Display', serif; font-size: 28px; font-weight: 700; color: var(--rust); }
+.timeline-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 8px; vertical-align: middle; }
 
-.gap-count {
-    font-family: 'Playfair Display', serif;
-    font-size: 28px;
-    font-weight: 700;
-    color: var(--rust);
+.stTextInput > div > div > input, .stTextArea > div > div > textarea {
+    background: var(--paper) !important; border: 1px solid var(--border) !important;
+    border-radius: 2px !important; color: var(--ink) !important;
+    font-family: 'EB Garamond', serif !important; font-size: 24px !important;
+    padding: 16px 20px !important; line-height: 1.6 !important;
 }
-
-.timeline-dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    display: inline-block;
-    margin-right: 8px;
-    vertical-align: middle;
+.stTextInput > div > div > input::placeholder, .stTextArea > div > div > textarea::placeholder {
+    color: var(--ink-faint) !important; font-size: 22px !important;
+    font-style: italic !important; font-family: 'EB Garamond', serif !important;
 }
-
-/* ── Inputs & Forms ── */
-.stTextInput > div > div > input,
-.stTextArea > div > div > textarea {
-    background: var(--paper) !important;
-    border: 1px solid var(--border) !important;
-    border-radius: 2px !important;
-    color: var(--ink) !important;
-    font-family: 'EB Garamond', serif !important;
-    font-size: 24px !important;
-    padding: 16px 20px !important;
-    line-height: 1.6 !important;
+.stSelectbox > div > div, .stSelectbox > div > div > div {
+    background: var(--paper) !important; border: 1px solid var(--border) !important;
+    border-radius: 2px !important; color: var(--ink) !important;
+    font-family: 'EB Garamond', serif !important; font-size: 24px !important; min-height: 56px !important;
 }
-
-.stTextInput > div > div > input::placeholder,
-.stTextArea > div > div > textarea::placeholder {
-    color: var(--ink-faint) !important;
-    font-size: 22px !important;
-    font-style: italic !important;
-    font-family: 'EB Garamond', serif !important;
+[data-baseweb="select"] span, [data-baseweb="select"] div {
+    font-family: 'EB Garamond', serif !important; font-size: 24px !important; color: var(--ink) !important;
 }
-
-.stSelectbox > div > div,
-.stSelectbox > div > div > div {
-    background: var(--paper) !important;
-    border: 1px solid var(--border) !important;
-    border-radius: 2px !important;
-    color: var(--ink) !important;
-    font-family: 'EB Garamond', serif !important;
-    font-size: 24px !important;
-    min-height: 56px !important;
+.stTextInput > div > div > input:focus, .stTextArea > div > div > textarea:focus {
+    border-color: var(--rust) !important; box-shadow: 0 0 0 1px var(--rust) !important;
 }
-
-[data-baseweb="select"] span,
-[data-baseweb="select"] div {
-    font-family: 'EB Garamond', serif !important;
-    font-size: 24px !important;
-    color: var(--ink) !important;
+label[data-testid="stWidgetLabel"], label[data-testid="stWidgetLabel"] p {
+    font-family: 'EB Garamond', serif !important; font-size: 23px !important;
+    font-weight: 600 !important; letter-spacing: 0.01em !important;
+    text-transform: none !important; color: var(--ink) !important;
 }
-
-.stTextInput > div > div > input:focus,
-.stTextArea > div > div > textarea:focus {
-    border-color: var(--rust) !important;
-    box-shadow: 0 0 0 1px var(--rust) !important;
-}
-
-label[data-testid="stWidgetLabel"],
-label[data-testid="stWidgetLabel"] p {
-    font-family: 'EB Garamond', serif !important;
-    font-size: 23px !important;
-    font-weight: 600 !important;
-    letter-spacing: 0.01em !important;
-    text-transform: none !important;
-    color: var(--ink) !important;
-}
-
-/* ── Expanders ── */
 [data-testid="stExpander"] {
-    background: var(--paper) !important;
-    border: 1px solid var(--border) !important;
-    border-radius: 3px !important;
-    margin-bottom: 8px;
+    background: var(--paper) !important; border: 1px solid var(--border) !important;
+    border-radius: 3px !important; margin-bottom: 8px;
 }
-
 [data-testid="stExpander"] > div:first-child {
-    font-family: 'EB Garamond', serif !important;
-    font-size: 22px !important;
-    color: var(--ink-light) !important;
+    font-family: 'EB Garamond', serif !important; font-size: 22px !important; color: var(--ink-light) !important;
 }
-
-/* ── Tabs ── */
 .stTabs [data-baseweb="tab-list"] {
-    background: transparent !important;
-    border-bottom: 1px solid var(--border) !important;
-    gap: 0 !important;
+    background: transparent !important; border-bottom: 1px solid var(--border) !important; gap: 0 !important;
 }
-
 .stTabs [data-baseweb="tab"] {
-    background: transparent !important;
-    border-radius: 0 !important;
-    border-bottom: 2px solid transparent !important;
-    color: var(--ink-muted) !important;
-    font-family: 'DM Mono', monospace !important;
-    font-size: 16px !important;
-    letter-spacing: 0.06em !important;
-    text-transform: uppercase !important;
-    padding: 12px 20px !important;
-    margin-bottom: -1px;
-    transition: all 0.15s;
+    background: transparent !important; border-radius: 0 !important;
+    border-bottom: 2px solid transparent !important; color: var(--ink-muted) !important;
+    font-family: 'DM Mono', monospace !important; font-size: 16px !important;
+    letter-spacing: 0.06em !important; text-transform: uppercase !important;
+    padding: 12px 20px !important; margin-bottom: -1px; transition: all 0.15s;
 }
+.stTabs [aria-selected="true"] { border-bottom-color: var(--rust) !important; color: var(--rust) !important; }
+.stAlert { border-radius: 3px !important; border-left-width: 3px !important; font-family: 'EB Garamond', serif !important; font-size: 24px !important; }
+.stAlert p, .stAlert div, .stAlert span { font-family: 'EB Garamond', serif !important; font-size: 24px !important; }
+hr { border: none !important; border-top: 1px solid var(--border) !important; margin: 20px 0 !important; }
+small, .stCaption { font-family: 'DM Mono', monospace !important; font-size: 17px !important; color: var(--ink-faint) !important; letter-spacing: 0.03em; }
+[data-testid="stMarkdownContainer"] p { font-family: 'EB Garamond', serif; font-size: 24px; line-height: 1.85; color: var(--ink-light); }
+[data-testid="stMarkdownContainer"] li, [data-testid="stMarkdownContainer"] ul, [data-testid="stMarkdownContainer"] ol { font-family: 'EB Garamond', serif; font-size: 24px; line-height: 1.85; color: var(--ink-light); }
 
-.stTabs [aria-selected="true"] {
-    border-bottom-color: var(--rust) !important;
-    color: var(--rust) !important;
-}
-
-/* ── Alerts / Info boxes ── */
-.stAlert {
-    border-radius: 3px !important;
-    border-left-width: 3px !important;
-    font-family: 'EB Garamond', serif !important;
-    font-size: 24px !important;
-}
-
-.stAlert p, .stAlert div, .stAlert span {
-    font-family: 'EB Garamond', serif !important;
-    font-size: 24px !important;
-}
-
-/* ── Success / Error / Warning ── */
-[data-testid="stNotification"] {
-    font-family: 'EB Garamond', serif !important;
-    font-size: 24px !important;
-    border-radius: 3px !important;
-}
-
-/* ── Divider ── */
-hr {
-    border: none !important;
-    border-top: 1px solid var(--border) !important;
-    margin: 20px 0 !important;
-}
-
-/* ── Captions & small text ── */
-small, .stCaption {
-    font-family: 'DM Mono', monospace !important;
-    font-size: 17px !important;
-    color: var(--ink-faint) !important;
-    letter-spacing: 0.03em;
-}
-
-/* ── Markdown paragraph text ── */
-[data-testid="stMarkdownContainer"] p {
-    font-family: 'EB Garamond', serif;
-    font-size: 24px;
-    line-height: 1.85;
-    color: var(--ink-light);
-}
-
-[data-testid="stMarkdownContainer"] li,
-[data-testid="stMarkdownContainer"] ul,
-[data-testid="stMarkdownContainer"] ol {
-    font-family: 'EB Garamond', serif;
-    font-size: 24px;
-    line-height: 1.85;
-    color: var(--ink-light);
-}
-
-/* ── Doc Validator styles ── */
-.validator-card {
-    background: var(--paper);
-    border-radius: 3px;
-    padding: 24px;
-    border: 1px solid var(--border);
-    box-shadow: 0 2px 10px var(--shadow);
-    margin-bottom: 20px;
-}
-
-.sensitive-badge {
-    display: inline-block;
-    background: var(--rust-pale);
-    color: var(--rust);
-    border: 1px solid #c4543a;
-    border-radius: 2px;
-    padding: 4px 14px;
-    font-size: 15px;
-    font-weight: 500;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    font-family: 'DM Mono', monospace;
-}
-
-.normal-badge {
-    display: inline-block;
-    background: var(--sage-light);
-    color: var(--sage);
-    border: 1px solid #7ab898;
-    border-radius: 2px;
-    padding: 4px 14px;
-    font-size: 15px;
-    font-weight: 500;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    font-family: 'DM Mono', monospace;
-}
-
-.chain-step {
-    display: inline-flex;
-    align-items: center;
-    background: var(--cream-dark);
-    border: 1px solid var(--border-dark);
-    border-radius: 2px;
-    padding: 8px 16px;
-    font-size: 17px;
-    font-weight: 500;
-    color: var(--ink-light);
-    margin: 4px;
-    font-family: 'DM Mono', monospace;
-    letter-spacing: 0.03em;
-}
-
-.chain-arrow {
-    font-size: 22px;
-    color: var(--ink-faint);
-    margin: 0 2px;
-}
-
-.auto-approve-box {
-    background: var(--paper);
-    border: 1px solid #7ab898;
-    border-left: 3px solid var(--sage);
-    border-radius: 3px;
-    padding: 20px 24px;
-}
-
-.sensitive-box {
-    background: var(--paper);
-    border: 1px solid #c4543a;
-    border-left: 3px solid var(--rust);
-    border-radius: 3px;
-    padding: 20px 24px;
-}
-
-.validator-title {
-    font-family: 'Playfair Display', serif;
-    font-size: 32px;
-    font-weight: 700;
-    color: var(--ink);
-    margin-bottom: 4px;
-}
-
-.keyword-tag {
-    display: inline-block;
-    background: var(--cream-dark);
-    color: var(--ink-muted);
-    border-radius: 2px;
-    padding: 3px 12px;
-    font-size: 15px;
-    margin: 2px;
-    border: 1px solid var(--border);
-    font-family: 'DM Mono', monospace;
-    letter-spacing: 0.03em;
-}
-
-/* ── Doc Library Cards ── */
-.doc-card {
-    background: var(--paper);
-    border-radius: 3px;
-    padding: 18px 22px;
-    margin-bottom: 10px;
-    border: 1px solid var(--border);
-    box-shadow: 0 1px 4px var(--shadow);
-    position: relative;
-}
-
-.doc-card-restricted  { border-left: 3px solid var(--rust); }
-.doc-card-accessible  { border-left: 3px solid var(--sage); }
-.doc-card-pending     { border-left: 3px solid var(--amber); }
-
-.role-badge {
-    display: inline-block;
-    padding: 3px 12px;
-    border-radius: 2px;
-    font-size: 14px;
-    font-weight: 500;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    font-family: 'DM Mono', monospace;
-}
-
-.role-ceo    { background: #1a1612; color: #f5f0e8; }
-.role-cto    { background: var(--slate); color: #f5f0e8; }
-.role-tech   { background: var(--slate-light); color: var(--slate); border: 1px solid #8ab0cc; }
-.role-mgr    { background: var(--amber-light); color: var(--amber); border: 1px solid #d4b830; }
-.role-emp    { background: var(--sage-light); color: var(--sage); border: 1px solid #7ab898; }
-.role-all    { background: var(--cream-dark); color: var(--ink-muted); border: 1px solid var(--border); }
-
+.doc-card { background: var(--paper); border-radius: 3px; padding: 18px 22px; margin-bottom: 10px; border: 1px solid var(--border); box-shadow: 0 1px 4px var(--shadow); position: relative; }
+.doc-card-restricted { border-left: 3px solid var(--rust); }
+.doc-card-accessible { border-left: 3px solid var(--sage); }
+.doc-card-pending    { border-left: 3px solid var(--amber); }
+.role-badge { display: inline-block; padding: 3px 12px; border-radius: 2px; font-size: 14px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; font-family: 'DM Mono', monospace; }
+.role-ceo  { background: #1a1612; color: #f5f0e8; }
+.role-cto  { background: var(--slate); color: #f5f0e8; }
+.role-tech { background: var(--slate-light); color: var(--slate); border: 1px solid #8ab0cc; }
+.role-mgr  { background: var(--amber-light); color: var(--amber); border: 1px solid #d4b830; }
+.role-emp  { background: var(--sage-light); color: var(--sage); border: 1px solid #7ab898; }
+.role-all  { background: var(--cream-dark); color: var(--ink-muted); border: 1px solid var(--border); }
 .access-granted  { color: var(--sage);  font-family: 'DM Mono', monospace; font-size: 15px; letter-spacing: 0.06em; text-transform: uppercase; }
 .access-denied   { color: var(--rust);  font-family: 'DM Mono', monospace; font-size: 15px; letter-spacing: 0.06em; text-transform: uppercase; }
 .access-pending  { color: var(--amber); font-family: 'DM Mono', monospace; font-size: 15px; letter-spacing: 0.06em; text-transform: uppercase; }
 .access-expiring { color: #8b6914;      font-family: 'DM Mono', monospace; font-size: 15px; letter-spacing: 0.06em; text-transform: uppercase; }
-
-/* ── Scrollbar ── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: var(--cream); }
 ::-webkit-scrollbar-thumb { background: var(--border-dark); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--ink-muted); }
-
-/* ── Spinner ── */
 .stSpinner > div { border-top-color: var(--rust) !important; }
+[data-testid="stMetric"] { background: var(--paper); border: 1px solid var(--border); border-radius: 3px; padding: 16px 20px; }
+[data-testid="stMetricValue"] { font-family: 'Playfair Display', serif !important; font-size: 42px !important; color: var(--ink) !important; }
+[data-testid="stMetricLabel"] { font-family: 'DM Mono', monospace !important; font-size: 15px !important; letter-spacing: 0.06em !important; text-transform: uppercase !important; color: var(--ink-muted) !important; }
 
-/* ── Metric native ── */
-[data-testid="stMetric"] {
-    background: var(--paper);
-    border: 1px solid var(--border);
-    border-radius: 3px;
-    padding: 16px 20px;
-}
-
-[data-testid="stMetricValue"] {
-    font-family: 'Playfair Display', serif !important;
-    font-size: 42px !important;
-    color: var(--ink) !important;
-}
-
-[data-testid="stMetricLabel"] {
-    font-family: 'DM Mono', monospace !important;
-    font-size: 15px !important;
-    letter-spacing: 0.06em !important;
-    text-transform: uppercase !important;
-    color: var(--ink-muted) !important;
-}
+/* Approval pipeline CSS */
+.ap-policy-box { background: linear-gradient(135deg,#fffbeb,#fef3c7); border: 1.5px solid #fcd34d; border-radius: 14px; padding: 16px 20px; margin: 12px 0; }
+.ap-chain-role { background: white; border: 1.5px solid #fcd34d; border-radius: 10px; padding: 6px 14px; font-size: 13px; font-weight: 600; color: #92400e; display: inline-block; margin: 2px; }
+.ap-chain-arrow { font-size: 18px; color: #d97706; margin: 0 2px; }
+.ap-timer-chip { background: #fef3c7; border: 1px solid #fcd34d; border-radius: 8px; padding: 2px 8px; font-size: 11px; font-weight: 700; color: #92400e; display: inline-block; margin: 2px; }
+.ap-esc-item { background: #fff7ed; border-left: 3px solid #f97316; border-radius: 0 8px 8px 0; padding: 8px 14px; margin: 6px 0; font-size: 13px; color: #9a3412; }
+.ap-deadline-chip { display: inline-block; background: #fef9c3; border: 1px solid #fde047; border-radius: 8px; padding: 3px 10px; font-size: 12px; color: #713f12; margin-top: 4px; }
+.ap-role-reminder { background: #fffbeb; border: 1.5px solid #fcd34d; border-radius: 10px; padding: 12px 16px; margin-bottom: 12px; font-size: 13px; color: #92400e; }
+.ap-escalation-banner { background: linear-gradient(135deg,#fff7ed,#ffedd5); border: 1.5px solid #fed7aa; border-radius: 12px; padding: 14px 18px; margin: 10px 0; font-size: 13px; color: #9a3412; line-height: 1.7; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -766,7 +349,13 @@ small, .stCaption {
 #  IMPORT APPROVAL PIPELINE
 # ════════════════════════════════════════════════════════
 try:
-    from approval_pipeline import page_approval_pipeline, DOC_CATEGORIES, _build_chain, _classify_request
+    from approval_pipeline import (
+        DOC_CATEGORIES, _build_chain, _classify_request,
+        _init as _ap_init, _load_requests as _ap_load_requests,
+        _check_expiry, _migrate_chain, _db_update as _ap_db_update,
+        _view_role, _escalation_label, _fmt as _ap_fmt,
+        ROLE_PASSWORDS as AP_ROLE_PASSWORDS,
+    )
     PIPELINE_AVAILABLE = True
 except ImportError:
     PIPELINE_AVAILABLE = False
@@ -792,20 +381,17 @@ CREATE TABLE IF NOT EXISTS tickets (
     admin_note  TEXT,
     created_at  TIMESTAMPTZ DEFAULT NOW()
 );
-
 CREATE TABLE IF NOT EXISTS resolved_issues (
     id         BIGSERIAL PRIMARY KEY,
     query      TEXT NOT NULL,
     solution   TEXT NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
-
 CREATE TABLE IF NOT EXISTS failed_queries (
     id         BIGSERIAL PRIMARY KEY,
     query      TEXT NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
-
 CREATE TABLE IF NOT EXISTS documents (
     id              BIGSERIAL PRIMARY KEY,
     title           TEXT NOT NULL,
@@ -818,7 +404,6 @@ CREATE TABLE IF NOT EXISTS documents (
     content_preview TEXT,
     created_at      TIMESTAMPTZ DEFAULT NOW()
 );
-
 CREATE TABLE IF NOT EXISTS doc_access (
     id          BIGSERIAL PRIMARY KEY,
     doc_id      BIGINT NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
@@ -829,7 +414,6 @@ CREATE TABLE IF NOT EXISTS doc_access (
     expires_at  TIMESTAMPTZ DEFAULT (NOW() + INTERVAL '7 days'),
     status      TEXT NOT NULL DEFAULT 'Approved'
 );
-
 CREATE TABLE IF NOT EXISTS doc_access_requests (
     id           BIGSERIAL PRIMARY KEY,
     doc_id       BIGINT NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
@@ -841,7 +425,6 @@ CREATE TABLE IF NOT EXISTS doc_access_requests (
     reviewed_at  TIMESTAMPTZ,
     created_at   TIMESTAMPTZ DEFAULT NOW()
 );
-
 ALTER TABLE tickets DISABLE ROW LEVEL SECURITY;
 ALTER TABLE resolved_issues DISABLE ROW LEVEL SECURITY;
 ALTER TABLE failed_queries DISABLE ROW LEVEL SECURITY;
@@ -865,15 +448,12 @@ def db_create_ticket(user_id, job_role, query, priority):
     if db is None:
         raise ConnectionError("Supabase not configured.")
     row = {"user_id": user_id, "job_role": job_role, "query": query, "priority": priority, "status": "Open"}
-    try:
-        result = db.table("tickets").insert(row).execute()
-        if result.data:
-            ticket = result.data[0]
-            st.toast(f"🎫 Ticket #{ticket.get('id')} saved to `tickets` table in Supabase!", icon="☁️")
-            return ticket
-        raise Exception("No data returned from insert")
-    except Exception as e:
-        raise Exception(f"Insert failed: {e}")
+    result = db.table("tickets").insert(row).execute()
+    if result.data:
+        ticket = result.data[0]
+        st.toast(f"🎫 Ticket #{ticket.get('id')} saved to Supabase!", icon="☁️")
+        return ticket
+    raise Exception("No data returned from insert")
 
 def db_get_tickets(status_filter=None):
     db = get_db()
@@ -892,27 +472,21 @@ def db_update_ticket(tid, status, note):
     db = get_db()
     if db is None:
         raise ConnectionError("Supabase not configured.")
-    try:
-        db.table("tickets").update({"status": status, "admin_note": note}).eq("id", tid).execute()
-        st.toast(f"✏️ Ticket #{tid} updated in `tickets` table → status: {status}", icon="☁️")
-    except Exception as e:
-        raise Exception(f"Update failed: {e}")
+    db.table("tickets").update({"status": status, "admin_note": note}).eq("id", tid).execute()
+    st.toast(f"✏️ Ticket #{tid} updated → {status}", icon="☁️")
 
 def db_delete_ticket(tid):
     db = get_db()
     if db:
-        try:
-            db.table("tickets").delete().eq("id", tid).execute()
-            st.toast(f"🗑️ Ticket #{tid} deleted from `tickets` table in Supabase", icon="☁️")
-        except Exception as e:
-            raise Exception(f"Delete failed: {e}")
+        db.table("tickets").delete().eq("id", tid).execute()
+        st.toast(f"🗑️ Ticket #{tid} deleted", icon="☁️")
 
 def db_log_failed_query(query: str):
     db = get_db()
     if db:
         try:
             db.table("failed_queries").insert({"query": query}).execute()
-            st.toast("📋 Unanswered question logged to `failed_queries` table in Supabase", icon="☁️")
+            st.toast("📋 Logged to failed_queries", icon="☁️")
         except Exception:
             pass
 
@@ -939,10 +513,6 @@ def is_overdue(created_at_str: str) -> bool:
     except Exception:
         return False
 
-
-# ════════════════════════════════════════════════════════
-#  AUTO-SAVE NOTE TO RESOLVED ISSUES
-# ════════════════════════════════════════════════════════
 def auto_save_note_to_resolved(ticket_query: str, note: str):
     db = get_db()
     if db is None or not note.strip() or not ticket_query.strip():
@@ -951,25 +521,31 @@ def auto_save_note_to_resolved(ticket_query: str, note: str):
         existing = db.table("resolved_issues").select("id").eq("query", ticket_query).execute()
         if not existing.data:
             db.table("resolved_issues").insert({"query": ticket_query, "solution": note.strip()}).execute()
-            st.toast("🧠 Admin note saved as new learned answer in `resolved_issues` table!", icon="☁️")
+            st.toast("🧠 Admin note saved as learned answer!", icon="☁️")
         else:
             db.table("resolved_issues").update({"solution": note.strip()}).eq("query", ticket_query).execute()
-            st.toast("🧠 Learned answer updated in `resolved_issues` table in Supabase", icon="☁️")
+            st.toast("🧠 Learned answer updated!", icon="☁️")
         return True
     except Exception:
         return False
 
+def tickets_to_csv(tickets: list) -> bytes:
+    output = io.StringIO()
+    writer = csv.DictWriter(output, fieldnames=["id","user_id","job_role","query","priority","status","admin_note","created_at"])
+    writer.writeheader()
+    for t in tickets:
+        writer.writerow({k: t.get(k, "") for k in writer.fieldnames})
+    return output.getvalue().encode("utf-8")
+
 
 # ════════════════════════════════════════════════════════
-#  LEARNED ANSWERS LOOKUP
+#  LEARNED ANSWERS
 # ════════════════════════════════════════════════════════
-
 _STOP_WORDS = {
-    "what", "is", "are", "the", "a", "an", "of", "in", "on", "at",
-    "to", "for", "and", "or", "how", "why", "when", "where", "who",
-    "does", "do", "can", "could", "would", "should", "explain",
-    "tell", "me", "about", "difference", "between", "use", "using",
-    "means", "mean", "define", "definition", "describe", "give",
+    "what","is","are","the","a","an","of","in","on","at","to","for","and","or",
+    "how","why","when","where","who","does","do","can","could","would","should",
+    "explain","tell","me","about","difference","between","use","using","means",
+    "mean","define","definition","describe","give",
 }
 
 def _normalize(text: str) -> str:
@@ -980,70 +556,55 @@ def _content_words(text: str) -> set:
     return {w for w in words if w not in _STOP_WORDS}
 
 def _keyword_score(query: str, stored_query: str) -> float:
-    q_norm = _normalize(query)
-    s_norm = _normalize(stored_query)
-    if q_norm == s_norm:
-        return 1.0
-    if q_norm in s_norm or s_norm in q_norm:
-        return 0.85
-    q_words = _content_words(query)
-    s_words = _content_words(stored_query)
-    if not q_words or not s_words:
-        return 0.0
+    q_norm = _normalize(query); s_norm = _normalize(stored_query)
+    if q_norm == s_norm: return 1.0
+    if q_norm in s_norm or s_norm in q_norm: return 0.85
+    q_words = _content_words(query); s_words = _content_words(stored_query)
+    if not q_words or not s_words: return 0.0
     intersection = q_words & s_words
     shorter = q_words if len(q_words) <= len(s_words) else s_words
-    if intersection == shorter and len(shorter) >= 1:
-        return 0.80
+    if intersection == shorter and len(shorter) >= 1: return 0.80
     jaccard = len(intersection) / len(q_words | s_words)
-    if intersection:
-        return max(jaccard, 0.35)
-    return 0.0
+    return max(jaccard, 0.35) if intersection else 0.0
 
 _LEARNED_THRESHOLD = 0.30
 
 def check_learned_answers(query: str):
     db = get_db()
-    if db is None:
-        return None
+    if db is None: return None
     best_score, best_solution, best_matched = 0.0, None, None
     try:
         resp = db.table("tickets").select("query, admin_note").not_.is_("admin_note", "null").execute()
         for row in (resp.data or []):
             note = (row.get("admin_note") or "").strip()
             q    = (row.get("query") or "").strip()
-            if not note or not q:
-                continue
+            if not note or not q: continue
             score = _keyword_score(query, q)
             if score > best_score:
                 best_score, best_solution, best_matched = score, note, q
-    except Exception:
-        pass
+    except Exception: pass
     try:
         resp2 = db.table("resolved_issues").select("query, solution").execute()
         for row in (resp2.data or []):
             sol = (row.get("solution") or "").strip()
             q   = (row.get("query") or "").strip()
-            if not sol or not q:
-                continue
+            if not sol or not q: continue
             score = _keyword_score(query, q)
             if score > best_score:
                 best_score, best_solution, best_matched = score, sol, q
-    except Exception:
-        pass
+    except Exception: pass
     if best_solution and best_score >= _LEARNED_THRESHOLD:
-        return {
-            "solution":      best_solution,
-            "matched_query": best_matched,
-            "score":         best_score,
-            "source":        "learned",
-        }
+        return {"solution": best_solution, "matched_query": best_matched, "score": best_score, "source": "learned"}
     return None
 
 
 # ════════════════════════════════════════════════════════
-#  PDF DOWNLOAD
+#  PDF + SEMANTIC SEARCH
 # ════════════════════════════════════════════════════════
 _PDF_PUBLIC_URL = "https://jvulbphmksdebkkkhgvh.supabase.co/storage/v1/object/public/Documents/questions.pdf"
+_Q_THRESHOLD   = 0.60
+_A_THRESHOLD   = 0.65
+_ANSWER_WEIGHT = 0.85
 
 @st.cache_resource(show_spinner="📄 Downloading PDF from Supabase…")
 def get_pdf_bytes(_v=3):
@@ -1057,59 +618,39 @@ def get_pdf_bytes(_v=3):
         st.warning(f"PDF download failed: {e}")
         return None
 
-
-# ════════════════════════════════════════════════════════
-#  Q&A EXTRACTION FROM PDF
-# ════════════════════════════════════════════════════════
 @st.cache_resource(show_spinner="📄 Extracting Q&A from PDF…")
 def load_qa_pairs():
     pdf_bytes = get_pdf_bytes()
-    if not pdf_bytes:
-        return []
+    if not pdf_bytes: return []
     try:
         import pdfplumber
         text = ""
         with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
             for page in pdf.pages:
                 page_text = page.extract_text()
-                if page_text:
-                    text += page_text + "\n"
+                if page_text: text += page_text + "\n"
     except Exception as e:
         st.warning(f"pdfplumber failed: {e}")
         return []
     text = text.lower()
     qa_pairs = []
     for part in re.split(r'q\.', text):
-        if "answer" not in part:
-            continue
+        if "answer" not in part: continue
         try:
             q_part, a_part = part.split("answer", 1)
-            question = q_part.strip()
-            answer   = a_part.strip()
-            if "enroll" in answer or "course" in answer:
-                continue
-            if len(answer) < 30 or len(question) < 5:
-                continue
+            question = q_part.strip(); answer = a_part.strip()
+            if "enroll" in answer or "course" in answer: continue
+            if len(answer) < 30 or len(question) < 5: continue
             qa_pairs.append((question, answer))
-        except Exception:
-            continue
+        except Exception: continue
     return qa_pairs
-
-
-# ════════════════════════════════════════════════════════
-#  SEMANTIC SEARCH MODEL
-# ════════════════════════════════════════════════════════
-_Q_THRESHOLD   = 0.60
-_A_THRESHOLD   = 0.65
-_ANSWER_WEIGHT = 0.85
 
 @st.cache_resource(show_spinner="🧠 Loading semantic search model…")
 def load_model_and_embeddings():
     try:
         from sentence_transformers import SentenceTransformer, util
         pairs = load_qa_pairs()
-        if not pairs:
-            return None, None, None, None, None
+        if not pairs: return None, None, None, None, None
         model        = SentenceTransformer('multi-qa-mpnet-base-dot-v1')
         questions    = [q for q, _ in pairs]
         answers      = [a for _, a in pairs]
@@ -1120,21 +661,15 @@ def load_model_and_embeddings():
         st.warning(f"Semantic model error: {e}")
         return None, None, None, None, None
 
-
-# ════════════════════════════════════════════════════════
-#  ANSWER LOOKUP  (PDF → Learned)
-# ════════════════════════════════════════════════════════
 def answer_question(query: str) -> dict:
     model, q_embeddings, a_embeddings, pairs, util = load_model_and_embeddings()
-    if model is not None and q_embeddings is not None and a_embeddings is not None and pairs is not None and util is not None:
+    if model is not None and q_embeddings is not None and pairs is not None:
         try:
-            query_embedding = model.encode(query.lower(), convert_to_tensor=True)
-            q_scores        = util.cos_sim(query_embedding, q_embeddings)[0]
-            best_q_idx      = int(q_scores.argmax())
-            best_q_score    = float(q_scores[best_q_idx])
-            a_scores        = util.cos_sim(query_embedding, a_embeddings)[0]
-            best_a_idx      = int(a_scores.argmax())
-            best_a_score    = float(a_scores[best_a_idx])
+            query_embedding  = model.encode(query.lower(), convert_to_tensor=True)
+            q_scores         = util.cos_sim(query_embedding, q_embeddings)[0]
+            best_q_idx       = int(q_scores.argmax()); best_q_score = float(q_scores[best_q_idx])
+            a_scores         = util.cos_sim(query_embedding, a_embeddings)[0]
+            best_a_idx       = int(a_scores.argmax()); best_a_score = float(a_scores[best_a_idx])
             weighted_a_score = best_a_score * _ANSWER_WEIGHT
             if best_q_score >= _Q_THRESHOLD or best_a_score >= _A_THRESHOLD:
                 if best_q_score >= weighted_a_score:
@@ -1142,122 +677,25 @@ def answer_question(query: str) -> dict:
                 else:
                     chosen_idx, chosen_score, match_source = best_a_idx, best_a_score, "answer"
                 question, answer = pairs[chosen_idx]
-                return {
-                    "found": True, "answer": answer.strip(), "matched": question.strip(),
-                    "score": chosen_score, "match_src": match_source,
-                    "pdf_error": False, "source": "pdf",
-                }
-        except Exception:
-            pass
-
+                return {"found": True, "answer": answer.strip(), "matched": question.strip(),
+                        "score": chosen_score, "match_src": match_source, "pdf_error": False, "source": "pdf"}
+        except Exception: pass
     learned = check_learned_answers(query)
     if learned:
-        return {
-            "found": True, "answer": learned["solution"], "matched": learned["matched_query"],
-            "score": learned["score"], "match_src": "learned", "pdf_error": False,
-            "source": learned.get("source", "learned"),
-        }
-
-    pdf_unavailable = (model is None or q_embeddings is None)
-    return {
-        "found": False, "answer": "", "matched": "", "score": 0,
-        "match_src": "none", "pdf_error": pdf_unavailable, "source": "none",
-    }
-
-
-# ════════════════════════════════════════════════════════
-#  CSV EXPORT HELPER
-# ════════════════════════════════════════════════════════
-def tickets_to_csv(tickets: list) -> bytes:
-    output = io.StringIO()
-    writer = csv.DictWriter(output, fieldnames=["id","user_id","job_role","query","priority","status","admin_note","created_at"])
-    writer.writeheader()
-    for t in tickets:
-        writer.writerow({k: t.get(k, "") for k in writer.fieldnames})
-    return output.getvalue().encode("utf-8")
-
-
-# ════════════════════════════════════════════════════════
-#  DOC VALIDATOR LOGIC
-# ════════════════════════════════════════════════════════
-_SENSITIVE_KEYWORDS = [
-    "vpn","virtual private network","network access","firewall","proxy",
-    "remote access","zero trust","ssl vpn","ipsec",
-    "security","cybersecurity","penetration test","pentest","vulnerability",
-    "encryption","cryptography","access control","identity","iam",
-    "sso","single sign-on","mfa","multi-factor","certificate","ssl","tls",
-    "legal","contract","nda","agreement","gdpr","compliance","audit",
-    "regulation","policy","terms of service","data protection","privacy",
-    "financial","budget","invoice","payment","salary","payroll",
-    "revenue","expense","accounting","tax","billing",
-    "infrastructure","cloud","aws","gcp","azure","kubernetes","k8s",
-    "server","database schema","production","disaster recovery","backup",
-    "pii","personal data","sensitive data","confidential","classified",
-    "secret","restricted","privileged",
-]
-
-_NORMAL_KEYWORDS = [
-    "faq","onboarding","general","guide","how to","tutorial",
-    "overview","introduction","readme","changelog","release notes",
-    "meeting notes","team update","announcement",
-]
-
-def classify_doc_sensitivity(title: str, description: str) -> dict:
-    combined = (title + " " + description).lower()
-    matched_sensitive = [kw for kw in _SENSITIVE_KEYWORDS if kw in combined]
-    matched_normal    = [kw for kw in _NORMAL_KEYWORDS    if kw in combined]
-
-    if matched_sensitive:
-        if PIPELINE_AVAILABLE:
-            result   = _classify_request(f"I need to create a document about {title}. {description}")
-            category = result.get("category", "Security")
-            chain    = _build_chain(category)
-            if not chain:
-                chain    = ["Team Lead", "Tech Manager", "CTO", "CEO"]
-                category = "Security"
-        else:
-            category = "Security"
-            chain    = ["Team Lead", "Tech Manager", "CTO", "CEO"]
-
-        return {
-            "is_sensitive":     True,
-            "category":         category,
-            "matched_keywords": matched_sensitive[:6],
-            "chain":            chain,
-            "reason": (
-                f"This document contains sensitive content "
-                f"({', '.join(matched_sensitive[:3])}…) and must go through "
-                f"the full approval pipeline."
-            ),
-        }
-    else:
-        return {
-            "is_sensitive":     False,
-            "category":         "General",
-            "matched_keywords": matched_normal[:6],
-            "chain":            [],
-            "reason":           "This document does not contain sensitive content and will be auto-approved instantly.",
-        }
+        return {"found": True, "answer": learned["solution"], "matched": learned["matched_query"],
+                "score": learned["score"], "match_src": "learned", "pdf_error": False, "source": learned.get("source", "learned")}
+    return {"found": False, "answer": "", "matched": "", "score": 0, "match_src": "none",
+            "pdf_error": (model is None or q_embeddings is None), "source": "none"}
 
 
 # ════════════════════════════════════════════════════════
 #  TICKET INTENT DETECTOR
 # ════════════════════════════════════════════════════════
 _TICKET_INTENT_PHRASES = [
-    "raise a ticket","raise ticket","raise a query","raise query",
-    "raise an issue","raise issue","raise a request","raise request",
-    "submit a ticket","submit ticket","submit a query","submit query",
-    "create a ticket","create ticket","open a ticket","open ticket",
-    "log a ticket","log ticket","log an issue","log issue",
-    "file a ticket","file a complaint","file a request",
-    "i want to raise","i need to raise","i want to submit","i need to submit",
-    "i want to create a ticket","i need to create a ticket",
-    "i want to report","i need to report",
-    "report an issue","report a problem","report a bug",
-    "need help ticket","need support ticket","need a support ticket",
-    "contact support","reach support","get support",
-    "need human help","talk to someone","speak to admin",
-    "escalate","escalate this","escalate issue",
+    "raise a ticket","raise ticket","raise a query","raise query","raise an issue","raise issue",
+    "submit a ticket","submit ticket","create a ticket","create ticket","open a ticket","log a ticket",
+    "report an issue","report a problem","report a bug","need help ticket","contact support","get support",
+    "need human help","talk to someone","speak to admin","escalate",
 ]
 
 def _is_ticket_intent(text: str) -> bool:
@@ -1266,75 +704,44 @@ def _is_ticket_intent(text: str) -> bool:
 
 
 # ════════════════════════════════════════════════════════
-#  DOC VISIBILITY — ROLE HIERARCHY
+#  DOC VISIBILITY — ROLE HIERARCHY + HELPERS
 # ════════════════════════════════════════════════════════
 ROLE_HIERARCHY    = ["Employee", "Manager", "Tech Manager", "CTO", "CEO"]
 AUTO_ACCESS_ROLES = {"CTO", "CEO"}
-APPROVER_ROLES    = {"Tech Manager", "CTO", "CEO"}
 
 def _role_level(role: str) -> int:
-    try:
-        return ROLE_HIERARCHY.index(role)
-    except ValueError:
-        return 0
+    try: return ROLE_HIERARCHY.index(role)
+    except ValueError: return 0
 
 def _can_auto_access(user_role: str, doc_min_role: str) -> bool:
-    if user_role in AUTO_ACCESS_ROLES:
-        return True
+    if user_role in AUTO_ACCESS_ROLES: return True
     return _role_level(user_role) >= _role_level(doc_min_role)
 
-def _needs_approval(user_role: str, doc_min_role: str) -> bool:
-    return not _can_auto_access(user_role, doc_min_role)
-
 def _sensitivity_color(sensitivity: str) -> str:
-    return {
-        "Normal":       "var(--sage)",
-        "Restricted":   "var(--amber)",
-        "Confidential": "var(--rust)",
-        "Top Secret":   "#1a1612",
-    }.get(sensitivity, "var(--ink-muted)")
+    return {"Normal": "var(--sage)", "Restricted": "var(--amber)", "Confidential": "var(--rust)", "Top Secret": "#1a1612"}.get(sensitivity, "var(--ink-muted)")
 
 def _sensitivity_bg(sensitivity: str) -> str:
-    return {
-        "Normal":       "var(--sage-light)",
-        "Restricted":   "var(--amber-light)",
-        "Confidential": "var(--rust-pale)",
-        "Top Secret":   "#e8e0d0",
-    }.get(sensitivity, "var(--cream-dark)")
+    return {"Normal": "var(--sage-light)", "Restricted": "var(--amber-light)", "Confidential": "var(--rust-pale)", "Top Secret": "#e8e0d0"}.get(sensitivity, "var(--cream-dark)")
 
 def _role_badge_class(role: str) -> str:
-    return {
-        "CEO":          "role-ceo",
-        "CTO":          "role-cto",
-        "Tech Manager": "role-tech",
-        "Manager":      "role-mgr",
-        "Employee":     "role-emp",
-    }.get(role, "role-all")
+    return {"CEO": "role-ceo", "CTO": "role-cto", "Tech Manager": "role-tech", "Manager": "role-mgr", "Employee": "role-emp"}.get(role, "role-all")
 
-
-# ─── DB helpers for Doc Library ────────────────────────
 def db_get_documents():
     db = get_db()
-    if db is None:
-        return []
+    if db is None: return []
     try:
         return db.table("documents").select("*").order("created_at", desc=True).execute().data or []
     except Exception as e:
-        st.error(f"Doc fetch error: {e}")
-        return []
+        st.error(f"Doc fetch error: {e}"); return []
 
 def db_add_document(title, description, category, sensitivity, min_role, owner_id, file_url, content_preview):
     db = get_db()
-    if db is None:
-        raise ConnectionError("Supabase not configured.")
-    row = {
-        "title": title, "description": description, "category": category,
-        "sensitivity": sensitivity, "min_role": min_role, "owner_id": owner_id,
-        "file_url": file_url, "content_preview": content_preview,
-    }
+    if db is None: raise ConnectionError("Supabase not configured.")
+    row = {"title": title, "description": description, "category": category, "sensitivity": sensitivity,
+           "min_role": min_role, "owner_id": owner_id, "file_url": file_url, "content_preview": content_preview}
     result = db.table("documents").insert(row).execute()
     if result.data:
-        st.toast(f"📄 Document '{title}' added to `documents` table", icon="☁️")
+        st.toast(f"📄 Document '{title}' added", icon="☁️")
         return result.data[0]
     raise Exception("Insert failed")
 
@@ -1346,43 +753,32 @@ def db_delete_document(doc_id):
 
 def db_get_access_grants(user_id=None, doc_id=None):
     db = get_db()
-    if db is None:
-        return []
+    if db is None: return []
     try:
         q = db.table("doc_access").select("*")
-        if user_id:
-            q = q.eq("user_id", user_id)
-        if doc_id:
-            q = q.eq("doc_id", doc_id)
+        if user_id: q = q.eq("user_id", user_id)
+        if doc_id:  q = q.eq("doc_id", doc_id)
         return q.execute().data or []
-    except Exception:
-        return []
+    except Exception: return []
 
 def db_check_active_grant(user_id: str, doc_id: int):
     grants = db_get_access_grants(user_id=user_id, doc_id=doc_id)
-    now    = datetime.now(timezone.utc)
+    now = datetime.now(timezone.utc)
     for g in grants:
-        if g.get("status") != "Approved":
-            continue
+        if g.get("status") != "Approved": continue
         try:
             exp = datetime.fromisoformat(g["expires_at"].replace("Z", "+00:00"))
-            if exp > now:
-                return g
-        except Exception:
-            pass
+            if exp > now: return g
+        except Exception: pass
     return None
 
 def db_grant_access(doc_id, user_id, user_role, granted_by="System"):
     db = get_db()
-    if db is None:
-        return
+    if db is None: return
     expires = (datetime.now(timezone.utc) + timedelta(days=7)).isoformat()
-    row = {
-        "doc_id": doc_id, "user_id": user_id, "user_role": user_role,
-        "granted_by": granted_by, "expires_at": expires, "status": "Approved",
-    }
+    row = {"doc_id": doc_id, "user_id": user_id, "user_role": user_role, "granted_by": granted_by, "expires_at": expires, "status": "Approved"}
     db.table("doc_access").insert(row).execute()
-    st.toast(f"🔓 Access granted to {user_id} for doc #{doc_id} (7 days)", icon="☁️")
+    st.toast(f"🔓 Access granted to {user_id} (7 days)", icon="☁️")
 
 def db_revoke_access(grant_id):
     db = get_db()
@@ -1392,25 +788,19 @@ def db_revoke_access(grant_id):
 
 def db_get_access_requests(status_filter=None, doc_id=None):
     db = get_db()
-    if db is None:
-        return []
+    if db is None: return []
     try:
         q = db.table("doc_access_requests").select("*").order("created_at", desc=True)
-        if status_filter and status_filter != "All":
-            q = q.eq("status", status_filter)
-        if doc_id:
-            q = q.eq("doc_id", doc_id)
+        if status_filter and status_filter != "All": q = q.eq("status", status_filter)
+        if doc_id: q = q.eq("doc_id", doc_id)
         return q.execute().data or []
-    except Exception:
-        return []
+    except Exception: return []
 
 def db_submit_access_request(doc_id, user_id, user_role, reason):
     db = get_db()
-    if db is None:
-        raise ConnectionError("Supabase not configured.")
+    if db is None: raise ConnectionError("Supabase not configured.")
     existing = db.table("doc_access_requests").select("id, status").eq("doc_id", doc_id).eq("user_id", user_id).eq("status", "Pending").execute().data or []
-    if existing:
-        return None
+    if existing: return None
     row = {"doc_id": doc_id, "user_id": user_id, "user_role": user_role, "reason": reason, "status": "Pending"}
     result = db.table("doc_access_requests").insert(row).execute()
     if result.data:
@@ -1420,12 +810,9 @@ def db_submit_access_request(doc_id, user_id, user_role, reason):
 
 def db_review_access_request(req_id, action, reviewed_by, doc_id=None, user_id=None, user_role=None):
     db = get_db()
-    if db is None:
-        return
+    if db is None: return
     now_str = datetime.now(timezone.utc).isoformat()
-    db.table("doc_access_requests").update({
-        "status": action, "reviewed_by": reviewed_by, "reviewed_at": now_str
-    }).eq("id", req_id).execute()
+    db.table("doc_access_requests").update({"status": action, "reviewed_by": reviewed_by, "reviewed_at": now_str}).eq("id", req_id).execute()
     if action == "Approved" and doc_id and user_id and user_role:
         db_grant_access(doc_id, user_id, user_role, granted_by=reviewed_by)
     st.toast(f"✅ Request #{req_id} {action}", icon="☁️")
@@ -1436,11 +823,7 @@ def db_review_access_request(req_id, action, reviewed_by, doc_id=None, user_id=N
 # ════════════════════════════════════════════════════════
 def page_employee():
     st.markdown("# Employee Help Portal")
-    st.markdown(
-        "<p style='color:#6b5f55; font-size:26px; font-family: EB Garamond, serif;'>"
-        "Ask any question — or type <em>raise a ticket</em> to go straight to support.</p>",
-        unsafe_allow_html=True,
-    )
+    st.markdown("<p style='color:#6b5f55; font-size:26px; font-family: EB Garamond, serif;'>Ask any question — or type <em>raise a ticket</em> to go straight to support.</p>", unsafe_allow_html=True)
     st.markdown("---")
 
     pairs = load_qa_pairs()
@@ -1452,73 +835,37 @@ def page_employee():
     st.markdown("### Ask a Question")
     col1, col2 = st.columns([4, 1])
     with col1:
-        question = st.text_input(
-            "",
-            placeholder="e.g. What is the difference between a list and a tuple?  ·  or: raise a ticket",
-            label_visibility="collapsed",
-        )
+        question = st.text_input("", placeholder="e.g. What is the difference between a list and a tuple?  ·  or: raise a ticket", label_visibility="collapsed")
     with col2:
         search = st.button("Search →", use_container_width=True)
 
     if search and question.strip():
-
         if _is_ticket_intent(question.strip()):
-            st.markdown(
-                "<div style='background: var(--paper); border: 1px solid var(--border); "
-                "border-left: 3px solid var(--rust); border-radius: 3px; padding: 16px 20px; margin-bottom: 8px;'>"
-                "<p style='margin:0; font-family: EB Garamond, serif; font-size:24px; color: var(--ink-light);'>"
-                "Sure — fill in the form below and our team will get back to you."
-                "</p></div>",
-                unsafe_allow_html=True,
-            )
-            st.session_state["show_ticket"]  = True
+            st.markdown("<div style='background:var(--paper);border:1px solid var(--border);border-left:3px solid var(--rust);border-radius:3px;padding:16px 20px;margin-bottom:8px;'><p style='margin:0;font-family:EB Garamond,serif;font-size:24px;color:var(--ink-light);'>Sure — fill in the form below and our team will get back to you.</p></div>", unsafe_allow_html=True)
+            st.session_state["show_ticket"] = True
             st.session_state["ticket_query"] = ""
-
         else:
             with st.spinner("Searching knowledge base…"):
                 result = answer_question(question.strip())
-
             if result.get("pdf_error") and not result["found"]:
                 st.error("Knowledge base unavailable. Please raise a ticket.")
                 db_log_failed_query(question.strip())
-                st.session_state["show_ticket"]  = True
+                st.session_state["show_ticket"] = True
                 st.session_state["ticket_query"] = question.strip()
-
             elif result["found"]:
-                source    = result.get("source", "pdf")
+                source = result.get("source", "pdf")
                 match_src = result.get("match_src", "question")
-
                 if source == "learned":
                     st.markdown("#### ✦ Answer Found")
-                    st.markdown(
-                        "<small style='color:#3d5a4a; font-family: DM Mono, monospace; font-size:17px; "
-                        "letter-spacing:0.06em; text-transform:uppercase;'>"
-                        "Source: Previously resolved support ticket</small>",
-                        unsafe_allow_html=True,
-                    )
-                    st.markdown(
-                        f"<small style='color:#9c8e82; font-family: EB Garamond, serif; font-size:20px;'>"
-                        f"Similar question: <em>{result['matched'][:160]}</em> "
-                        f"&nbsp;·&nbsp; similarity {result['score']:.0%}</small>",
-                        unsafe_allow_html=True,
-                    )
+                    st.markdown(f"<small style='color:#3d5a4a;font-family:DM Mono,monospace;font-size:17px;letter-spacing:0.06em;text-transform:uppercase;'>Source: Previously resolved support ticket</small>", unsafe_allow_html=True)
+                    st.markdown(f"<small style='color:#9c8e82;font-family:EB Garamond,serif;font-size:20px;'>Similar question: <em>{result['matched'][:160]}</em> &nbsp;·&nbsp; similarity {result['score']:.0%}</small>", unsafe_allow_html=True)
                     st.markdown(f"<div class='learned-box'>{result['answer']}</div>", unsafe_allow_html=True)
                 else:
                     st.markdown("#### ✦ Answer Found")
                     match_label = "matched via question" if match_src == "question" else "matched via answer content"
-                    st.markdown(
-                        f"<small style='color:#8b3a2a; font-family: DM Mono, monospace; font-size:17px; "
-                        f"letter-spacing:0.06em; text-transform:uppercase;'>"
-                        f"Source: PDF Knowledge Base &nbsp;·&nbsp; {match_label}</small>",
-                        unsafe_allow_html=True,
-                    )
-                    st.markdown(
-                        f"<small style='color:#9c8e82; font-family: EB Garamond, serif; font-size:20px;'>"
-                        f"Matched: <em>{result['matched'][:120]}</em> &nbsp;·&nbsp; score {result['score']:.2f}</small>",
-                        unsafe_allow_html=True,
-                    )
+                    st.markdown(f"<small style='color:#8b3a2a;font-family:DM Mono,monospace;font-size:17px;letter-spacing:0.06em;text-transform:uppercase;'>Source: PDF Knowledge Base &nbsp;·&nbsp; {match_label}</small>", unsafe_allow_html=True)
+                    st.markdown(f"<small style='color:#9c8e82;font-family:EB Garamond,serif;font-size:20px;'>Matched: <em>{result['matched'][:120]}</em> &nbsp;·&nbsp; score {result['score']:.2f}</small>", unsafe_allow_html=True)
                     st.markdown(f"<div class='answer-box'>{result['answer']}</div>", unsafe_allow_html=True)
-
                 st.markdown("---")
                 col_a, col_b, _ = st.columns([1, 1, 4])
                 with col_a:
@@ -1527,21 +874,15 @@ def page_employee():
                 with col_b:
                     if st.button("👎 Not helpful", key="emp_not_helpful"):
                         db_log_failed_query(question.strip())
-                        st.session_state["show_ticket"]  = True
+                        st.session_state["show_ticket"] = True
                         st.session_state["ticket_query"] = question.strip()
                         st.warning("Sorry! Please raise a ticket below.")
-
             else:
                 st.markdown("#### ✦ No Answer Found")
-                st.markdown(
-                    "<div class='no-answer-box'>No answer found in the knowledge base. "
-                    "Please fill in the ticket details below and our team will help you.</div>",
-                    unsafe_allow_html=True,
-                )
+                st.markdown("<div class='no-answer-box'>No answer found in the knowledge base. Please fill in the ticket details below and our team will help you.</div>", unsafe_allow_html=True)
                 db_log_failed_query(question.strip())
-                st.session_state["show_ticket"]  = True
+                st.session_state["show_ticket"] = True
                 st.session_state["ticket_query"] = question.strip()
-
     elif search:
         st.warning("Please enter a question.")
 
@@ -1552,39 +893,23 @@ def page_employee():
         c1, c2 = st.columns(2)
         with c1:
             user_id  = st.text_input("Employee ID *", placeholder="e.g. EMP-1042", key="emp_user_id")
-            job_role = st.selectbox(
-                "Job Role *",
-                ["Select…","Software Engineer","Data Analyst","QA Engineer",
-                 "DevOps Engineer","Product Manager","HR / Operations","Other"],
-                key="emp_job_role",
-            )
+            job_role = st.selectbox("Job Role *", ["Select…","Software Engineer","Data Analyst","QA Engineer","DevOps Engineer","Product Manager","HR / Operations","Other"], key="emp_job_role")
         with c2:
             priority = st.selectbox("Priority *", ["Medium","High","Low"], key="emp_priority")
 
         original_question = st.session_state.get("ticket_query", "")
         if original_question:
-            st.markdown(
-                f"<small style='color:#8b3a2a; font-family: DM Mono, monospace; font-size:17px; "
-                f"letter-spacing:0.04em;'>Search query: {original_question}</small>",
-                unsafe_allow_html=True,
-            )
-        query_text = st.text_area(
-            "Describe your problem in detail *", value="",
-            placeholder="Add more details about your issue…", height=120, key="emp_query_text",
-        )
+            st.markdown(f"<small style='color:#8b3a2a;font-family:DM Mono,monospace;font-size:17px;letter-spacing:0.04em;'>Search query: {original_question}</small>", unsafe_allow_html=True)
+        query_text = st.text_area("Describe your problem in detail *", value="", placeholder="Add more details about your issue…", height=120, key="emp_query_text")
 
         col_sub, col_cancel, _ = st.columns([1, 1, 4])
         with col_sub:
             if st.button("Submit Ticket →", use_container_width=True, key="emp_submit"):
                 errors = []
-                if not user_id.strip():
-                    errors.append("Employee ID required.")
-                if job_role == "Select…":
-                    errors.append("Select your job role.")
-                if not original_question and not query_text.strip():
-                    errors.append("Problem description required.")
-                for e in errors:
-                    st.error(e)
+                if not user_id.strip(): errors.append("Employee ID required.")
+                if job_role == "Select…": errors.append("Select your job role.")
+                if not original_question and not query_text.strip(): errors.append("Problem description required.")
+                for e in errors: st.error(e)
                 if not errors:
                     final_query = original_question if original_question else query_text.strip()
                     try:
@@ -1601,19 +926,20 @@ def page_employee():
 
 
 # ════════════════════════════════════════════════════════
-#  PAGE: ADMIN PANEL
+#  ADMIN PAGE — 5 TABS
 # ════════════════════════════════════════════════════════
 def page_admin():
     ADMIN_PWD = st.secrets.get("ADMIN_PASSWORD", "admin123")
+
+    # ── Auth gate ─────────────────────────────────────────────────────────────
     if not st.session_state.get("admin_logged_in"):
         st.markdown("# Admin Panel")
         st.markdown("---")
         col, _ = st.columns([1.5, 2.5])
         with col:
             st.markdown(
-                "<div style='background: #faf7f2; border: 1px solid #d4c9bc; border-top: 3px solid #8b3a2a; "
-                "border-radius: 3px; padding: 28px 24px;'>"
-                "<h3 style='font-family: Playfair Display, serif; margin-bottom: 20px;'>Sign In</h3>",
+                "<div style='background:#faf7f2;border:1px solid #d4c9bc;border-top:3px solid #8b3a2a;border-radius:3px;padding:28px 24px;'>"
+                "<h3 style='font-family:Playfair Display,serif;margin-bottom:20px;'>Sign In</h3>",
                 unsafe_allow_html=True,
             )
             pwd = st.text_input("Password", type="password", key="admin_pwd_input")
@@ -1627,9 +953,11 @@ def page_admin():
             st.markdown("</div>", unsafe_allow_html=True)
         return
 
+    # ── Header + logout ───────────────────────────────────────────────────────
     c1, c2 = st.columns([5, 1])
     with c1:
         st.markdown("# Admin Dashboard")
+        st.markdown("<p style='color:#6b5f55;font-size:22px;margin-top:-8px;'>Manage tickets, monitor analytics, track knowledge gaps, control document visibility and oversee approval pipelines — all in one place.</p>", unsafe_allow_html=True)
     with c2:
         st.markdown("<br>", unsafe_allow_html=True)
         if st.button("Sign out", key="admin_logout_btn"):
@@ -1637,403 +965,155 @@ def page_admin():
             st.toast("Signed out", icon="🔒")
             st.rerun()
 
-    admin_tab1, admin_tab2 = st.tabs(["Ticket Management", "Doc Validator"])
+    st.markdown("---")
 
-    with admin_tab1:
-        try:
-            stats = db_stats()
-            cols  = st.columns(5)
-            for col, val, label, icon in zip(
-                cols,
-                [stats["total"], stats["open"], stats["in_progress"], stats["resolved"], stats["overdue"]],
-                ["Total","Open","In Progress","Resolved","Overdue"],
-                ["📋","○","◑","●","⚠"],
-            ):
-                with col:
-                    st.markdown(
-                        f"<div class='metric-card'>"
-                        f"<div class='metric-number'>{val}</div>"
-                        f"<div class='metric-label'>{icon} {label}</div>"
-                        f"</div>",
-                        unsafe_allow_html=True,
-                    )
-        except Exception as e:
-            st.error(f"Stats error: {e}")
+    # ── 5 TABS ────────────────────────────────────────────────────────────────
+    tab_tickets, tab_analytics, tab_knowledge, tab_docs, tab_pipeline = st.tabs([
+        "🎫 Ticket Management",
+        "📊 Analytics",
+        "🕳️ Knowledge Gap",
+        "📁 Doc Visibility",
+        "📋 Approval Pipeline",
+    ])
 
-        st.markdown("---")
+    with tab_tickets:
+        _admin_ticket_management()
 
-        c1, c2, c3, c4 = st.columns([1.5, 1.5, 1.5, 1])
-        with c1:
-            sf = st.selectbox("Status", ["All","Open","In Progress","Resolved","Overdue"], key="admin_filter_status")
-        with c2:
-            pf = st.selectbox("Priority", ["All","High","Medium","Low"], key="admin_filter_priority")
-        with c3:
-            search_term = st.text_input("Search tickets", placeholder="keyword / employee ID", key="admin_search_term")
-        with c4:
-            st.markdown("<br>", unsafe_allow_html=True)
-            export_btn = st.button("Export CSV", use_container_width=True, key="admin_export_btn")
+    with tab_analytics:
+        _admin_analytics()
 
-        try:
-            tickets = db_get_tickets(sf if sf not in ["All","Overdue"] else None)
-        except Exception as e:
-            st.error(f"DB error: {e}")
-            return
+    with tab_knowledge:
+        _admin_knowledge_gap()
 
-        if sf == "Overdue":
-            tickets = [t for t in tickets if t.get("status") == "Open" and is_overdue(t.get("created_at", ""))]
-        if pf != "All":
-            tickets = [t for t in tickets if t.get("priority") == pf]
-        if search_term.strip():
-            kw = search_term.strip().lower()
-            tickets = [t for t in tickets if kw in t.get("query","").lower() or kw in t.get("user_id","").lower()]
+    with tab_docs:
+        _admin_doc_visibility()
 
-        if export_btn:
-            all_tickets = db_get_tickets()
-            csv_bytes   = tickets_to_csv(all_tickets)
-            st.download_button("⬇ Download CSV", data=csv_bytes, file_name="helpdesk_tickets.csv", mime="text/csv", key="admin_download_csv")
-            st.toast("CSV exported", icon="✅")
-
-        if not tickets:
-            st.info("No tickets found.", icon="📭")
-        else:
-            st.markdown(
-                f"<p style='font-family: DM Mono, monospace; font-size: 16px; color: #9c8e82; "
-                f"letter-spacing: 0.06em; text-transform: uppercase;'>{len(tickets)} ticket(s)</p>",
-                unsafe_allow_html=True,
-            )
-
-            for t in tickets:
-                tid          = t.get("id")
-                status       = t.get("status", "Open")
-                priority     = t.get("priority", "Medium")
-                created      = t.get("created_at", "")
-                overdue      = is_overdue(created) and status == "Open"
-                ticket_query = t.get("query", "")
-
-                try:
-                    created_fmt = _to_ist(created)
-                except Exception:
-                    created_fmt = created
-
-                badge_class    = "badge-overdue" if overdue else {"Open":"badge-open","In Progress":"badge-inprogress","Resolved":"badge-resolved"}.get(status,"badge-open")
-                display_status = "OVERDUE" if overdue else status
-                prio_class     = {"High":"prio-high","Medium":"prio-medium","Low":"prio-low"}.get(priority,"prio-medium")
-
-                with st.expander(f"#{tid} — {t.get('user_id','?')} · {t.get('job_role','?')} · {display_status} · {priority} · {created_fmt}"):
-                    st.markdown(
-                        f"<span class='{badge_class}'>{display_status}</span>&nbsp;&nbsp;"
-                        f"<span class='{prio_class}'>{priority}</span>",
-                        unsafe_allow_html=True,
-                    )
-                    st.markdown(f"**Employee:** {t.get('user_id','–')} &nbsp;·&nbsp; **Role:** {t.get('job_role','–')} &nbsp;·&nbsp; **Submitted:** {created_fmt}")
-
-                    st.markdown("**Timeline:**")
-                    st.markdown(f"<span class='timeline-dot' style='background:#8b3a2a'></span> Opened — {created_fmt}", unsafe_allow_html=True)
-                    if status == "In Progress":
-                        st.markdown(f"<span class='timeline-dot' style='background:#2d3d4f'></span> In Progress", unsafe_allow_html=True)
-                    if status == "Resolved":
-                        st.markdown(f"<span class='timeline-dot' style='background:#3d5a4a'></span> Resolved ✓", unsafe_allow_html=True)
-                    if overdue:
-                        st.markdown(f"<span class='timeline-dot' style='background:#8b3a2a'></span> ⚠ Overdue — open for more than 24 hours", unsafe_allow_html=True)
-
-                    st.markdown("**Problem:**")
-                    st.markdown(f"<div class='answer-box'>{ticket_query}</div>", unsafe_allow_html=True)
-                    st.markdown("---")
-
-                    nc1, nc2 = st.columns(2)
-                    with nc1:
-                        new_status = st.selectbox(
-                            "Update Status", ["Open","In Progress","Resolved"],
-                            index=["Open","In Progress","Resolved"].index(status),
-                            key=f"admin_s_{tid}",
-                        )
-                    with nc2:
-                        prefill_note = st.session_state.pop(f"admin_prefill_{tid}", None)
-                        default_note = prefill_note if prefill_note is not None else (t.get("admin_note") or "")
-                        note = st.text_area(
-                            "Admin Note / Solution", value=default_note,
-                            key=f"admin_n_{tid}", height=100,
-                            placeholder="Write solution here…",
-                        )
-
-                    bc1, bc2, _, _ = st.columns([1, 1, 1.5, 1])
-                    with bc1:
-                        if st.button("Save", key=f"admin_save_{tid}", use_container_width=True):
-                            try:
-                                db_update_ticket(tid, new_status, note)
-                                if note.strip():
-                                    auto_save_note_to_resolved(ticket_query, note)
-                                st.success("Ticket updated.")
-                                st.rerun()
-                            except Exception as e:
-                                st.error(str(e))
-                    with bc2:
-                        if st.button("Delete", key=f"admin_del_{tid}", use_container_width=True):
-                            try:
-                                db_delete_ticket(tid)
-                                st.warning("Deleted.")
-                                st.rerun()
-                            except Exception as e:
-                                st.error(str(e))
-
-    with admin_tab2:
-        _render_doc_validator()
+    with tab_pipeline:
+        _admin_approval_pipeline()
 
 
 # ════════════════════════════════════════════════════════
-#  DOC VALIDATOR UI
+#  TAB 1 — TICKET MANAGEMENT
 # ════════════════════════════════════════════════════════
-def _render_doc_validator():
-    st.markdown("""
-    <div style='margin-bottom: 8px;'>
-        <p class='validator-title'>Document Sensitivity Validator</p>
-        <p style='color: #6b5f55; font-size: 24px; margin-top: 0; font-family: EB Garamond, serif;'>
-            Enter your document details below. The system will instantly classify it as
-            <strong>Sensitive</strong> (requires full approval pipeline) or
-            <strong>Normal</strong> (auto-approved).
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
+def _admin_ticket_management():
+    try:
+        stats = db_stats()
+        cols  = st.columns(5)
+        for col, val, label, icon in zip(
+            cols,
+            [stats["total"], stats["open"], stats["in_progress"], stats["resolved"], stats["overdue"]],
+            ["Total","Open","In Progress","Resolved","Overdue"],
+            ["📋","○","◑","●","⚠"],
+        ):
+            with col:
+                st.markdown(f"<div class='metric-card'><div class='metric-number'>{val}</div><div class='metric-label'>{icon} {label}</div></div>", unsafe_allow_html=True)
+    except Exception as e:
+        st.error(f"Stats error: {e}")
 
     st.markdown("---")
 
-    with st.form("doc_validator_form", clear_on_submit=False):
-        col1, col2 = st.columns(2)
-        with col1:
-            doc_title = st.text_input(
-                "Document Title *",
-                placeholder="e.g. VPN Access Policy, Employee Onboarding Guide…",
-                key="dv_title",
-            )
-        with col2:
-            doc_type_hint = st.selectbox(
-                "Document Hint (optional)",
-                ["— Let the system decide —","VPN / Network","Security Policy",
-                 "Legal / Compliance","Financial","Infrastructure",
-                 "Technical Guide","Team Process","FAQ / Onboarding","General"],
-                key="dv_type_hint",
-            )
+    c1, c2, c3, c4 = st.columns([1.5, 1.5, 1.5, 1])
+    with c1:
+        sf = st.selectbox("Status", ["All","Open","In Progress","Resolved","Overdue"], key="admin_filter_status")
+    with c2:
+        pf = st.selectbox("Priority", ["All","High","Medium","Low"], key="admin_filter_priority")
+    with c3:
+        search_term = st.text_input("Search tickets", placeholder="keyword / employee ID", key="admin_search_term")
+    with c4:
+        st.markdown("<br>", unsafe_allow_html=True)
+        export_btn = st.button("Export CSV", use_container_width=True, key="admin_export_btn")
 
-        doc_description = st.text_area(
-            "Document Description *",
-            placeholder="Briefly describe what this document covers, its purpose, and intended audience…",
-            height=120, key="dv_description",
-        )
-
-        validate_btn = st.form_submit_button("Validate Document →", type="primary", use_container_width=False)
-
-    if validate_btn:
-        if not doc_title.strip() or not doc_description.strip():
-            st.warning("Please fill in both the Document Title and Description.")
-        else:
-            hint_text = doc_description.strip()
-            if doc_type_hint != "— Let the system decide —":
-                hint_text += f" {doc_type_hint}"
-
-            result = classify_doc_sensitivity(doc_title.strip(), hint_text)
-            st.session_state["dv_result"]     = result
-            st.session_state["dv_last_title"] = doc_title.strip()
-            st.session_state["dv_last_desc"]  = doc_description.strip()
-
-    result = st.session_state.get("dv_result")
-    if result:
-        st.markdown("---")
-        st.markdown("### Validation Result")
-
-        is_sensitive = result["is_sensitive"]
-
-        if is_sensitive:
-            st.markdown(f"""
-            <div class='sensitive-box'>
-                <div style='display:flex; align-items:center; gap:12px; margin-bottom:14px;'>
-                    <span style='font-size:36px;'>⚠</span>
-                    <div>
-                        <span class='sensitive-badge'>Sensitive Document</span>
-                        <p style='margin:8px 0 0 0; color:#3d3530; font-size:24px; font-family: EB Garamond, serif;'>
-                            {result["reason"]}
-                        </p>
-                    </div>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-
-            st.markdown("<br>", unsafe_allow_html=True)
-
-            if result["matched_keywords"]:
-                kw_html = "".join(f"<span class='keyword-tag'>{kw}</span>" for kw in result["matched_keywords"])
-                st.markdown(f"""
-                <div style='margin-bottom:16px;'>
-                    <p style='font-size:16px; color:#9c8e82; margin-bottom:6px; font-family: DM Mono, monospace; letter-spacing: 0.06em; text-transform: uppercase;'>
-                        Detected sensitive keywords
-                    </p>
-                    {kw_html}
-                </div>
-                """, unsafe_allow_html=True)
-
-            chain = result["chain"]
-            if chain:
-                st.markdown("#### Required Approval Chain")
-                st.markdown(
-                    f"<p style='color:#6b5f55; font-size:23px; margin-top:-8px; font-family: EB Garamond, serif;'>"
-                    f"This document must be approved by all {len(chain)} level(s) before it is published.</p>",
-                    unsafe_allow_html=True,
-                )
-
-                chain_html = ""
-                for i, role in enumerate(chain):
-                    role_icons = {"Team Lead":"◈","Tech Manager":"◉","CTO":"◎","CEO":"◆"}
-                    icon       = role_icons.get(role, "○")
-                    chain_html += f"<span class='chain-step'>{icon} {role}</span>"
-                    if i < len(chain) - 1:
-                        chain_html += "<span class='chain-arrow'> → </span>"
-
-                st.markdown(
-                    f"<div style='display:flex; flex-wrap:wrap; align-items:center; gap:4px; "
-                    f"padding:16px; background:var(--cream-dark); border-radius:3px; "
-                    f"border:1px solid var(--border);'>{chain_html}</div>",
-                    unsafe_allow_html=True,
-                )
-
-                st.markdown("<br>", unsafe_allow_html=True)
-                st.markdown("#### Approval Timeline")
-                for i, role in enumerate(chain):
-                    role_descs = {
-                        "Team Lead":    "Reviews team-level concerns and day-to-day impact.",
-                        "Tech Manager": "Assesses technical risk and implementation feasibility.",
-                        "CTO":          "Evaluates architectural and strategic technology alignment.",
-                        "CEO":          "Final sign-off for company-wide policy and risk exposure.",
-                    }
-                    desc   = role_descs.get(role, "Reviews and approves the document.")
-                    colors = ["#8b3a2a","#2d3d4f","#3d5a4a","#8b6914"]
-                    color  = colors[i % len(colors)]
-                    st.markdown(
-                        f"<div style='display:flex; gap:12px; align-items:flex-start; "
-                        f"margin-bottom:8px; padding:14px 18px; background:var(--paper); "
-                        f"border-radius:3px; border-left:3px solid {color}; border:1px solid var(--border);'>"
-                        f"<div style='min-width:22px; font-family: DM Mono, monospace; color:{color}; font-weight:500; font-size:17px;'>{i+1:02d}</div>"
-                        f"<div>"
-                        f"<p style='margin:0; font-weight:600; color:{color}; font-family: Playfair Display, serif; font-size:22px;'>{role}</p>"
-                        f"<p style='margin:2px 0 0 0; font-size:22px; color:#6b5f55; font-family: EB Garamond, serif;'>{desc}</p>"
-                        f"</div>"
-                        f"</div>",
-                        unsafe_allow_html=True,
-                    )
-
-            st.markdown("---")
-            st.markdown("#### Next Steps")
-            act_col1, act_col2, _ = st.columns([2, 2, 3])
-            with act_col1:
-                if PIPELINE_AVAILABLE:
-                    if st.button("Submit to Pipeline →", use_container_width=True, type="primary", key="dv_submit_pipeline"):
-                        st.session_state["ap_ai_prefill"] = {
-                            "title":    st.session_state.get("dv_last_title", ""),
-                            "category": result.get("category", "Security"),
-                            "subtype":  "Compliance",
-                            "urgency":  "Normal",
-                        }
-                        st.session_state["ap_show_prefill_form"] = True
-                        st.session_state["nav_page"] = "📋 Approval Pipeline"
-                        st.success("Pre-filled. Navigate to the Approval Pipeline page to submit.")
-                else:
-                    st.info("Approval Pipeline not available.")
-            with act_col2:
-                if st.button("Validate Another", use_container_width=True, key="dv_reset"):
-                    st.session_state.pop("dv_result", None)
-                    st.rerun()
-
-        else:
-            st.markdown(f"""
-            <div class='auto-approve-box'>
-                <div style='display:flex; align-items:center; gap:12px; margin-bottom:10px;'>
-                    <span style='font-size:36px; color:#3d5a4a;'>✓</span>
-                    <div>
-                        <span class='normal-badge'>Normal Document — Auto-Approved</span>
-                        <p style='margin:8px 0 0 0; color:#3d3530; font-size:24px; font-family: EB Garamond, serif;'>
-                            {result["reason"]}
-                        </p>
-                    </div>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-
-            st.markdown("<br>", unsafe_allow_html=True)
-
-            if result["matched_keywords"]:
-                kw_html = "".join(
-                    f"<span class='keyword-tag' style='background:#d4e8dc; border-color:#7ab898;'>{kw}</span>"
-                    for kw in result["matched_keywords"]
-                )
-                st.markdown(f"""
-                <div style='margin-bottom:16px;'>
-                    <p style='font-size:16px; color:#9c8e82; margin-bottom:6px; font-family: DM Mono, monospace; letter-spacing: 0.06em; text-transform: uppercase;'>
-                        Detected normal-content keywords
-                    </p>
-                    {kw_html}
-                </div>
-                """, unsafe_allow_html=True)
-
-            st.info(
-                "No approval chain needed. This document will be instantly approved "
-                "when submitted through the Approval Pipeline.",
-                icon="ℹ️",
-            )
-
-            st.markdown("---")
-            act_col1, act_col2, _ = st.columns([2, 2, 3])
-            with act_col1:
-                if PIPELINE_AVAILABLE:
-                    if st.button("Submit to Pipeline →", use_container_width=True, type="primary", key="dv_submit_normal"):
-                        st.session_state["ap_ai_prefill"] = {
-                            "title":    st.session_state.get("dv_last_title", ""),
-                            "category": "General",
-                            "subtype":  "General Info",
-                            "urgency":  "Normal",
-                        }
-                        st.session_state["ap_show_prefill_form"] = True
-                        st.success("Pre-filled. Navigate to the Approval Pipeline page to submit.")
-                else:
-                    st.info("Approval Pipeline not available.")
-            with act_col2:
-                if st.button("Validate Another", use_container_width=True, key="dv_reset_normal"):
-                    st.session_state.pop("dv_result", None)
-                    st.rerun()
-
-    else:
-        st.markdown("""
-        <div style='text-align:center; padding:52px 24px; background:var(--paper);
-                    border-radius:3px; border:1px solid var(--border); margin-top:16px;'>
-            <div style='font-size:52px; margin-bottom:14px; color:#d4c9bc;'>◉</div>
-            <p style='font-size:26px; font-weight:600; color:#1a1612; font-family: Playfair Display, serif; margin:0;'>
-                Enter document details above and click Validate
-            </p>
-            <p style='font-size:22px; color:#9c8e82; margin-top:10px; font-family: EB Garamond, serif;'>
-                The system will instantly classify it and show you the required approval chain.
-            </p>
-            <div style='margin-top:24px; display:flex; justify-content:center; gap:40px; flex-wrap:wrap;'>
-                <div style='text-align:center;'>
-                    <p style='font-family: DM Mono, monospace; font-size:15px; color:#8b3a2a; font-weight:600; margin:4px 0 0; letter-spacing:0.08em; text-transform:uppercase;'>Sensitive</p>
-                    <p style='font-size:19px; color:#9c8e82; margin:2px 0 0; font-family: EB Garamond, serif;'>Full pipeline required</p>
-                </div>
-                <div style='text-align:center;'>
-                    <p style='font-family: DM Mono, monospace; font-size:15px; color:#3d5a4a; font-weight:600; margin:4px 0 0; letter-spacing:0.08em; text-transform:uppercase;'>Normal</p>
-                    <p style='font-size:19px; color:#9c8e82; margin:2px 0 0; font-family: EB Garamond, serif;'>Auto-approved instantly</p>
-                </div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-
-
-# ════════════════════════════════════════════════════════
-#  PAGE: ANALYTICS DASHBOARD
-# ════════════════════════════════════════════════════════
-def page_analytics():
-    if not st.session_state.get("admin_logged_in"):
-        st.warning("Please log in via the Admin Panel first.")
+    try:
+        tickets = db_get_tickets(sf if sf not in ["All","Overdue"] else None)
+    except Exception as e:
+        st.error(f"DB error: {e}")
         return
 
-    st.markdown("# Analytics Dashboard")
-    st.markdown("---")
+    if sf == "Overdue":
+        tickets = [t for t in tickets if t.get("status") == "Open" and is_overdue(t.get("created_at", ""))]
+    if pf != "All":
+        tickets = [t for t in tickets if t.get("priority") == pf]
+    if search_term.strip():
+        kw = search_term.strip().lower()
+        tickets = [t for t in tickets if kw in t.get("query","").lower() or kw in t.get("user_id","").lower()]
 
+    if export_btn:
+        all_tickets = db_get_tickets()
+        csv_bytes   = tickets_to_csv(all_tickets)
+        st.download_button("⬇ Download CSV", data=csv_bytes, file_name="helpdesk_tickets.csv", mime="text/csv", key="admin_download_csv")
+        st.toast("CSV exported", icon="✅")
+
+    if not tickets:
+        st.info("No tickets found.", icon="📭")
+        return
+
+    st.markdown(f"<p style='font-family:DM Mono,monospace;font-size:16px;color:#9c8e82;letter-spacing:0.06em;text-transform:uppercase;'>{len(tickets)} ticket(s)</p>", unsafe_allow_html=True)
+
+    for t in tickets:
+        tid          = t.get("id")
+        status       = t.get("status", "Open")
+        priority     = t.get("priority", "Medium")
+        created      = t.get("created_at", "")
+        overdue      = is_overdue(created) and status == "Open"
+        ticket_query = t.get("query", "")
+        try:
+            created_fmt = _to_ist(created)
+        except Exception:
+            created_fmt = created
+
+        badge_class    = "badge-overdue" if overdue else {"Open":"badge-open","In Progress":"badge-inprogress","Resolved":"badge-resolved"}.get(status,"badge-open")
+        display_status = "OVERDUE" if overdue else status
+        prio_class     = {"High":"prio-high","Medium":"prio-medium","Low":"prio-low"}.get(priority,"prio-medium")
+
+        with st.expander(f"#{tid} — {t.get('user_id','?')} · {t.get('job_role','?')} · {display_status} · {priority} · {created_fmt}"):
+            st.markdown(f"<span class='{badge_class}'>{display_status}</span>&nbsp;&nbsp;<span class='{prio_class}'>{priority}</span>", unsafe_allow_html=True)
+            st.markdown(f"**Employee:** {t.get('user_id','–')} &nbsp;·&nbsp; **Role:** {t.get('job_role','–')} &nbsp;·&nbsp; **Submitted:** {created_fmt}")
+            st.markdown("**Timeline:**")
+            st.markdown(f"<span class='timeline-dot' style='background:#8b3a2a'></span> Opened — {created_fmt}", unsafe_allow_html=True)
+            if status == "In Progress":
+                st.markdown(f"<span class='timeline-dot' style='background:#2d3d4f'></span> In Progress", unsafe_allow_html=True)
+            if status == "Resolved":
+                st.markdown(f"<span class='timeline-dot' style='background:#3d5a4a'></span> Resolved ✓", unsafe_allow_html=True)
+            if overdue:
+                st.markdown(f"<span class='timeline-dot' style='background:#8b3a2a'></span> ⚠ Overdue — open for more than 24 hours", unsafe_allow_html=True)
+            st.markdown("**Problem:**")
+            st.markdown(f"<div class='answer-box'>{ticket_query}</div>", unsafe_allow_html=True)
+            st.markdown("---")
+
+            nc1, nc2 = st.columns(2)
+            with nc1:
+                new_status = st.selectbox("Update Status", ["Open","In Progress","Resolved"],
+                    index=["Open","In Progress","Resolved"].index(status), key=f"admin_s_{tid}")
+            with nc2:
+                prefill_note = st.session_state.pop(f"admin_prefill_{tid}", None)
+                default_note = prefill_note if prefill_note is not None else (t.get("admin_note") or "")
+                note = st.text_area("Admin Note / Solution", value=default_note, key=f"admin_n_{tid}", height=100, placeholder="Write solution here…")
+
+            bc1, bc2, _, _ = st.columns([1, 1, 1.5, 1])
+            with bc1:
+                if st.button("Save", key=f"admin_save_{tid}", use_container_width=True):
+                    try:
+                        db_update_ticket(tid, new_status, note)
+                        if note.strip():
+                            auto_save_note_to_resolved(ticket_query, note)
+                        st.success("Ticket updated.")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(str(e))
+            with bc2:
+                if st.button("Delete", key=f"admin_del_{tid}", use_container_width=True):
+                    try:
+                        db_delete_ticket(tid)
+                        st.warning("Deleted.")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(str(e))
+
+
+# ════════════════════════════════════════════════════════
+#  TAB 2 — ANALYTICS
+# ════════════════════════════════════════════════════════
+def _admin_analytics():
     try:
         import plotly.express as px
         import pandas as pd
@@ -2055,10 +1135,8 @@ def page_analytics():
     resolved        = df[df["status"] == "Resolved"]
     resolution_rate = round(len(resolved) / len(df) * 100, 1) if len(df) else 0
 
-    with col1:
-        st.markdown(f"<div class='metric-card'><div class='metric-number'>{len(df)}</div><div class='metric-label'>Total Tickets</div></div>", unsafe_allow_html=True)
-    with col2:
-        st.markdown(f"<div class='metric-card'><div class='metric-number'>{resolution_rate}%</div><div class='metric-label'>Resolution Rate</div></div>", unsafe_allow_html=True)
+    with col1: st.markdown(f"<div class='metric-card'><div class='metric-number'>{len(df)}</div><div class='metric-label'>Total Tickets</div></div>", unsafe_allow_html=True)
+    with col2: st.markdown(f"<div class='metric-card'><div class='metric-number'>{resolution_rate}%</div><div class='metric-label'>Resolution Rate</div></div>", unsafe_allow_html=True)
     with col3:
         open_count = len(df[df["status"] == "Open"])
         st.markdown(f"<div class='metric-card'><div class='metric-number'>{open_count}</div><div class='metric-label'>Open Tickets</div></div>", unsafe_allow_html=True)
@@ -2066,11 +1144,7 @@ def page_analytics():
         high_prio = len(df[df["priority"] == "High"])
         st.markdown(f"<div class='metric-card'><div class='metric-number'>{high_prio}</div><div class='metric-label'>High Priority</div></div>", unsafe_allow_html=True)
 
-    RUST  = "#8b3a2a"
-    SAGE  = "#3d5a4a"
-    AMBER = "#8b6914"
-    SLATE = "#2d3d4f"
-
+    RUST = "#8b3a2a"; SAGE = "#3d5a4a"; AMBER = "#8b6914"; SLATE = "#2d3d4f"
     st.markdown("---")
     col_a, col_b = st.columns(2)
 
@@ -2078,91 +1152,63 @@ def page_analytics():
         st.markdown("### Tickets Per Day")
         daily = df.groupby("date").size().reset_index(name="count")
         fig1  = px.bar(daily, x="date", y="count", color_discrete_sequence=[RUST], text="count")
-        fig1.update_layout(
-            xaxis_title="", yaxis_title="",
-            plot_bgcolor="#faf7f2", paper_bgcolor="#faf7f2",
-            margin=dict(t=20, b=80), bargap=0.4,
-            font=dict(family="EB Garamond", color="#3d3530", size=18),
+        fig1.update_layout(xaxis_title="", yaxis_title="", plot_bgcolor="#faf7f2", paper_bgcolor="#faf7f2",
+            margin=dict(t=20, b=80), bargap=0.4, font=dict(family="EB Garamond", color="#3d3530", size=18),
             xaxis=dict(tickangle=-35, type="category", tickfont=dict(size=16), gridcolor="#e8e0d0"),
-            yaxis=dict(tickformat="d", dtick=1, gridcolor="#e8e0d0"),
-        )
+            yaxis=dict(tickformat="d", dtick=1, gridcolor="#e8e0d0"))
         fig1.update_traces(textposition="outside", marker_line_width=0)
         st.plotly_chart(fig1, use_container_width=True)
 
     with col_b:
         st.markdown("### Ticket Status Breakdown")
-        status_counts         = df["status"].value_counts().reset_index()
+        status_counts = df["status"].value_counts().reset_index()
         status_counts.columns = ["status","count"]
-        fig2 = px.pie(
-            status_counts, names="status", values="count", color="status",
-            color_discrete_map={"Open": AMBER, "In Progress": SLATE, "Resolved": SAGE},
-            hole=0.4,
-        )
+        fig2 = px.pie(status_counts, names="status", values="count", color="status",
+            color_discrete_map={"Open": AMBER, "In Progress": SLATE, "Resolved": SAGE}, hole=0.4)
         fig2.update_traces(textinfo="label+percent", textfont_size=18)
-        fig2.update_layout(
-            margin=dict(t=20), paper_bgcolor="#faf7f2",
+        fig2.update_layout(margin=dict(t=20), paper_bgcolor="#faf7f2",
             font=dict(family="EB Garamond", color="#3d3530", size=18),
-            legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5),
-        )
+            legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5))
         st.plotly_chart(fig2, use_container_width=True)
 
     col_c, col_d = st.columns(2)
-
     with col_c:
         st.markdown("### Tickets by Priority")
         prio_order  = ["High","Medium","Low"]
         prio_counts = df["priority"].value_counts().reindex(prio_order, fill_value=0).reset_index()
         prio_counts.columns = ["priority","count"]
-        fig3 = px.bar(
-            prio_counts, x="priority", y="count", color="priority",
+        fig3 = px.bar(prio_counts, x="priority", y="count", color="priority",
             color_discrete_map={"High": RUST, "Medium": AMBER, "Low": SAGE},
-            text="count", category_orders={"priority": prio_order},
-        )
-        fig3.update_layout(
-            showlegend=False, plot_bgcolor="#faf7f2", paper_bgcolor="#faf7f2",
-            margin=dict(t=20), bargap=0.45,
-            font=dict(family="EB Garamond", color="#3d3530", size=18),
-            xaxis=dict(title="", gridcolor="#e8e0d0"),
-            yaxis=dict(title="", tickformat="d", dtick=1, gridcolor="#e8e0d0"),
-        )
+            text="count", category_orders={"priority": prio_order})
+        fig3.update_layout(showlegend=False, plot_bgcolor="#faf7f2", paper_bgcolor="#faf7f2",
+            margin=dict(t=20), bargap=0.45, font=dict(family="EB Garamond", color="#3d3530", size=18),
+            xaxis=dict(title="", gridcolor="#e8e0d0"), yaxis=dict(title="", tickformat="d", dtick=1, gridcolor="#e8e0d0"))
         fig3.update_traces(textposition="outside", marker_line_width=0)
         st.plotly_chart(fig3, use_container_width=True)
 
     with col_d:
         st.markdown("### Tickets by Job Role")
-        role_counts         = df["job_role"].value_counts().reset_index()
+        role_counts = df["job_role"].value_counts().reset_index()
         role_counts.columns = ["role","count"]
         fig4 = px.bar(role_counts, x="count", y="role", orientation="h", color_discrete_sequence=[SLATE], text="count")
-        fig4.update_layout(
-            xaxis=dict(title="", tickformat="d", dtick=1, gridcolor="#e8e0d0"),
+        fig4.update_layout(xaxis=dict(title="", tickformat="d", dtick=1, gridcolor="#e8e0d0"),
             yaxis_title="", plot_bgcolor="#faf7f2", paper_bgcolor="#faf7f2",
             margin=dict(t=20, l=140), bargap=0.35,
             font=dict(family="EB Garamond", color="#3d3530", size=18),
-            height=max(300, len(role_counts) * 50),
-        )
+            height=max(300, len(role_counts) * 50))
         fig4.update_traces(textposition="outside", marker_line_width=0)
         st.plotly_chart(fig4, use_container_width=True)
 
     st.markdown("---")
-    st.markdown("### Export Data")
     csv_bytes = tickets_to_csv(tickets)
     st.download_button("⬇ Download All Tickets as CSV", data=csv_bytes, file_name="helpdesk_tickets.csv", mime="text/csv", key="analytics_download_csv")
 
 
 # ════════════════════════════════════════════════════════
-#  PAGE: KNOWLEDGE GAP REPORT
+#  TAB 3 — KNOWLEDGE GAP
 # ════════════════════════════════════════════════════════
-def page_knowledge_gap():
-    if not st.session_state.get("admin_logged_in"):
-        st.warning("Please log in via the Admin Panel first.")
-        return
-
-    st.markdown("# Knowledge Gap Report")
-    st.markdown(
-        "<p style='color:#6b5f55; font-size:26px; font-family: EB Garamond, serif;'>"
-        "Questions employees asked that the system couldn't answer.</p>",
-        unsafe_allow_html=True,
-    )
+def _admin_knowledge_gap():
+    st.markdown("<p style='color:#6b5f55;font-size:26px;font-family:EB Garamond,serif;'>Questions employees asked that the system couldn't answer.</p>", unsafe_allow_html=True)
     st.markdown("---")
 
     db = get_db()
@@ -2181,7 +1227,6 @@ def page_knowledge_gap():
         return
 
     queries = [r["query"] for r in rows]
-
     col1, col2 = st.columns(2)
     with col1:
         st.markdown(f"<div class='metric-card'><div class='metric-number'>{len(queries)}</div><div class='metric-label'>Total Unanswered</div></div>", unsafe_allow_html=True)
@@ -2191,21 +1236,12 @@ def page_knowledge_gap():
 
     st.markdown("---")
     st.markdown("### All Unanswered Questions")
-
     for i, row in enumerate(rows, 1):
-        created = row.get("created_at", "")
         try:
-            date_fmt = _to_ist(created)
+            date_fmt = _to_ist(row.get("created_at", ""))
         except Exception:
-            date_fmt = created
-        st.markdown(
-            f"<div class='gap-card'>"
-            f"<span class='gap-count'>#{i:02d}</span> &nbsp;"
-            f"<strong style='font-family: EB Garamond, serif; font-size:24px;'>{row['query']}</strong>"
-            f"<br><small style='color:#9c8e82; font-family: DM Mono, monospace; font-size:17px;'>Asked {date_fmt}</small>"
-            f"</div>",
-            unsafe_allow_html=True,
-        )
+            date_fmt = row.get("created_at", "")
+        st.markdown(f"<div class='gap-card'><span class='gap-count'>#{i:02d}</span> &nbsp;<strong style='font-family:EB Garamond,serif;font-size:24px;'>{row['query']}</strong><br><small style='color:#9c8e82;font-family:DM Mono,monospace;font-size:17px;'>Asked {date_fmt}</small></div>", unsafe_allow_html=True)
 
     st.markdown("---")
     st.markdown("### Most Requested Missing Topics")
@@ -2220,13 +1256,10 @@ def page_knowledge_gap():
             import pandas as pd
             wdf = pd.DataFrame(word_freq, columns=["keyword","count"])
             fig = px.bar(wdf, x="count", y="keyword", orientation="h", color_discrete_sequence=["#8b3a2a"], text="count")
-            fig.update_layout(
-                xaxis=dict(title="", tickformat="d", dtick=1, gridcolor="#e8e0d0"),
+            fig.update_layout(xaxis=dict(title="", tickformat="d", dtick=1, gridcolor="#e8e0d0"),
                 yaxis_title="", plot_bgcolor="#faf7f2", paper_bgcolor="#faf7f2",
-                margin=dict(t=10, l=120),
-                font=dict(family="EB Garamond", color="#3d3530", size=18),
-                height=max(300, len(wdf) * 40), bargap=0.35,
-            )
+                margin=dict(t=10, l=120), font=dict(family="EB Garamond", color="#3d3530", size=18),
+                height=max(300, len(wdf) * 40), bargap=0.35)
             fig.update_traces(textposition="outside", marker_line_width=0)
             fig.update_yaxes(autorange="reversed", tickfont=dict(size=17))
             st.plotly_chart(fig, use_container_width=True)
@@ -2246,493 +1279,308 @@ def page_knowledge_gap():
 
 
 # ════════════════════════════════════════════════════════
-#  PAGE: DOC VISIBILITY
+#  TAB 4 — DOC VISIBILITY (full admin view)
 # ════════════════════════════════════════════════════════
-def page_doc_visibility():
-    st.markdown("# Document Visibility")
-    st.markdown(
-        "<p style='color:#6b5f55; font-size:26px; font-family: EB Garamond, serif;'>"
-        "Role-based document library. Access is governed by your rank in the hierarchy. "
-        "CTO and CEO can view all documents instantly — Managers and below must request access for restricted content.</p>",
-        unsafe_allow_html=True,
-    )
+def _admin_doc_visibility():
+    st.markdown("<p style='color:#6b5f55;font-size:26px;font-family:EB Garamond,serif;'>Role-based document library. Manage documents and review access requests.</p>", unsafe_allow_html=True)
 
     st.markdown("""
-    <div style='display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:20px; padding:16px 20px;
-                background:var(--paper); border:1px solid var(--border); border-radius:3px;'>
-        <span style='font-family:DM Mono,monospace; font-size:14px; color:var(--ink-faint); letter-spacing:0.1em; text-transform:uppercase; margin-right:4px;'>Hierarchy</span>
-        <span class='role-badge role-emp'>Employee</span>
-        <span style='color:var(--ink-faint);'>→</span>
-        <span class='role-badge role-mgr'>Manager</span>
-        <span style='color:var(--ink-faint);'>→</span>
-        <span class='role-badge role-tech'>Tech Manager</span>
-        <span style='color:var(--ink-faint);'>→</span>
-        <span class='role-badge role-cto'>CTO</span>
-        <span style='color:var(--ink-faint);'>→</span>
+    <div style='display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:20px;padding:16px 20px;background:var(--paper);border:1px solid var(--border);border-radius:3px;'>
+        <span style='font-family:DM Mono,monospace;font-size:14px;color:var(--ink-faint);letter-spacing:0.1em;text-transform:uppercase;margin-right:4px;'>Hierarchy</span>
+        <span class='role-badge role-emp'>Employee</span><span style='color:var(--ink-faint);'>→</span>
+        <span class='role-badge role-mgr'>Manager</span><span style='color:var(--ink-faint);'>→</span>
+        <span class='role-badge role-tech'>Tech Manager</span><span style='color:var(--ink-faint);'>→</span>
+        <span class='role-badge role-cto'>CTO</span><span style='color:var(--ink-faint);'>→</span>
         <span class='role-badge role-ceo'>CEO</span>
-        &nbsp;&nbsp;
-        <span style='font-family:DM Mono,monospace; font-size:15px; color:#3d5a4a; letter-spacing:0.06em;'>CTO &amp; CEO: instant access to all docs · Others: request required for restricted docs</span>
+        &nbsp;&nbsp;<span style='font-family:DM Mono,monospace;font-size:15px;color:#3d5a4a;letter-spacing:0.06em;'>CTO &amp; CEO: instant access · Others: request required for restricted docs</span>
+    </div>
+    """, unsafe_allow_html=True)
+
+    dv_lib1, dv_lib2, dv_lib3 = st.tabs(["Add Document","All Documents","Access Requests"])
+
+    with dv_lib1:
+        st.markdown("#### Add a New Document")
+        with st.form("add_doc_form", clear_on_submit=True):
+            fa1, fa2 = st.columns(2)
+            with fa1:
+                doc_title    = st.text_input("Document Title *", placeholder="e.g. VPN Access Policy")
+                doc_cat      = st.selectbox("Category", ["General","Security","HR","Finance","Engineering","Legal","Operations"])
+                doc_sens     = st.selectbox("Sensitivity Level", ["Normal","Restricted","Confidential","Top Secret"])
+            with fa2:
+                doc_min_role = st.selectbox("Minimum Role to View", ROLE_HIERARCHY, index=0)
+                doc_owner    = st.text_input("Owner ID", placeholder="e.g. EMP-0001")
+                doc_url      = st.text_input("File URL (optional)", placeholder="https://…")
+            doc_desc    = st.text_area("Description", placeholder="What does this document cover?", height=80)
+            doc_preview = st.text_area("Content Preview (shown to authorised users)", placeholder="A summary or excerpt…", height=100)
+            submit_doc  = st.form_submit_button("Add Document →", type="primary")
+
+        if submit_doc:
+            if not doc_title.strip():
+                st.warning("Document title is required.")
+            else:
+                try:
+                    added = db_add_document(doc_title.strip(), doc_desc.strip(), doc_cat,
+                                            doc_sens, doc_min_role, doc_owner.strip(),
+                                            doc_url.strip(), doc_preview.strip())
+                    st.success(f"Document '{added['title']}' added (ID #{added['id']}).")
+                    st.rerun()
+                except Exception as ex:
+                    st.error(f"Failed: {ex}")
+
+    with dv_lib2:
+        st.markdown("#### All Documents in Library")
+        docs = db_get_documents()
+        if not docs:
+            st.info("No documents yet.")
+        else:
+            st.markdown(f"<p style='font-family:DM Mono,monospace;font-size:16px;color:#9c8e82;letter-spacing:0.06em;text-transform:uppercase;'>{len(docs)} document(s)</p>", unsafe_allow_html=True)
+            for doc in docs:
+                doc_id      = doc["id"]
+                sensitivity = doc.get("sensitivity","Normal")
+                min_role    = doc.get("min_role","Employee")
+                role_cls    = _role_badge_class(min_role)
+                s_color     = _sensitivity_color(sensitivity)
+                s_bg        = _sensitivity_bg(sensitivity)
+
+                with st.expander(f"#{doc_id} — {doc['title']}  ·  {doc.get('category','General')}  ·  {min_role}+  ·  {sensitivity}"):
+                    st.markdown(f"<div style='display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;'><span class='role-badge {role_cls}'>{min_role}+</span><span style='display:inline-block;background:{s_bg};color:{s_color};border-radius:2px;padding:2px 10px;font-size:14px;font-family:DM Mono,monospace;font-weight:500;letter-spacing:0.08em;text-transform:uppercase;'>{sensitivity}</span></div>", unsafe_allow_html=True)
+                    if doc.get("description"): st.markdown(f"**Description:** {doc['description']}")
+                    if doc.get("content_preview"): st.markdown(f"**Preview:** {doc['content_preview'][:200]}…")
+                    if doc.get("file_url"): st.markdown(f"📎 **URL:** {doc['file_url']}")
+                    st.markdown(f"<small style='color:#9c8e82;font-family:DM Mono,monospace;'>Owner: {doc.get('owner_id','—')} · Added: {_to_ist(doc.get('created_at',''))}</small>", unsafe_allow_html=True)
+
+                    # Active grants
+                    grants_for_doc = db_get_access_grants(doc_id=doc_id)
+                    now            = datetime.now(timezone.utc)
+                    active_here    = []
+                    for g in grants_for_doc:
+                        if g.get("status") != "Approved": continue
+                        try:
+                            exp = datetime.fromisoformat(g["expires_at"].replace("Z","+00:00"))
+                            if exp > now: active_here.append((g, exp))
+                        except Exception: pass
+
+                    if active_here:
+                        st.markdown(f"**Active grants ({len(active_here)}):**")
+                        for g, exp in active_here:
+                            days_left = (exp - now).days
+                            gc1, gc2  = st.columns([4, 1])
+                            with gc1:
+                                st.markdown(f"<small style='font-family:DM Mono,monospace;font-size:17px;'>👤 {g['user_id']} ({g['user_role']}) — {days_left}d left — granted by {g.get('granted_by','—')}</small>", unsafe_allow_html=True)
+                            with gc2:
+                                if st.button("Revoke", key=f"revoke_{g['id']}", use_container_width=True):
+                                    db_revoke_access(g["id"]); st.rerun()
+
+                    dc1, _ = st.columns([1, 5])
+                    with dc1:
+                        if st.button("Delete Document", key=f"del_doc_{doc_id}", use_container_width=True):
+                            try:
+                                db_delete_document(doc_id)
+                                st.warning("Deleted.")
+                                st.rerun()
+                            except Exception as ex:
+                                st.error(str(ex))
+
+    with dv_lib3:
+        st.markdown("#### Document Access Requests")
+        rf1, rf2 = st.columns(2)
+        with rf1:
+            req_status_filter = st.selectbox("Filter by Status", ["All","Pending","Approved","Rejected"], key="req_status_filter")
+        with rf2:
+            reviewer_id = st.text_input("Reviewer ID (your ID)", placeholder="e.g. CTO-001", key="reviewer_id")
+
+        reqs     = db_get_access_requests(status_filter=req_status_filter)
+        docs_map = {d["id"]: d for d in db_get_documents()}
+
+        if not reqs:
+            st.info("No access requests found.")
+        else:
+            pending_reqs = [r for r in reqs if r["status"] == "Pending"]
+            other_reqs   = [r for r in reqs if r["status"] != "Pending"]
+
+            if pending_reqs:
+                st.markdown(f"<p style='font-family:DM Mono,monospace;font-size:16px;color:#8b6914;letter-spacing:0.06em;'>{len(pending_reqs)} pending request(s) awaiting review</p>", unsafe_allow_html=True)
+                for req in pending_reqs:
+                    doc       = docs_map.get(req["doc_id"])
+                    doc_title = doc["title"] if doc else f"Doc #{req['doc_id']}"
+                    req_id    = req["id"]
+                    with st.expander(f"⏳ #{req_id} — {req['user_id']} ({req['user_role']}) → {doc_title}"):
+                        st.markdown(f"**Employee:** {req['user_id']} &nbsp;·&nbsp; **Role:** {req['user_role']}")
+                        st.markdown(f"**Document:** {doc_title} &nbsp;·&nbsp; Min role: {doc.get('min_role','?') if doc else '?'}")
+                        st.markdown(f"**Reason:** {req.get('reason','—')}")
+                        st.markdown(f"**Requested:** {_to_ist(req.get('created_at',''))}")
+                        if doc:
+                            sens = doc.get("sensitivity","Normal"); min_r = doc.get("min_role","Employee")
+                            s_color = _sensitivity_color(sens); s_bg = _sensitivity_bg(sens)
+                            st.markdown(f"<div style='margin:8px 0;display:flex;gap:8px;'><span class='role-badge {_role_badge_class(min_r)}'>{min_r}+</span><span style='background:{s_bg};color:{s_color};border-radius:2px;padding:2px 10px;font-size:14px;font-family:DM Mono,monospace;font-weight:500;letter-spacing:0.08em;text-transform:uppercase;'>{sens}</span></div>", unsafe_allow_html=True)
+                        ac1, ac2, _ = st.columns([1, 1, 4])
+                        with ac1:
+                            if st.button("Approve — Grant 7-day Access", key=f"approve_{req_id}", use_container_width=True):
+                                if not reviewer_id.strip():
+                                    st.warning("Enter your Reviewer ID first.")
+                                else:
+                                    db_review_access_request(req_id, "Approved", reviewer_id.strip(),
+                                        doc_id=req["doc_id"], user_id=req["user_id"], user_role=req["user_role"])
+                                    st.success(f"Access approved. {req['user_id']} has 7-day access.")
+                                    st.rerun()
+                        with ac2:
+                            if st.button("Reject", key=f"reject_{req_id}", use_container_width=True):
+                                if not reviewer_id.strip():
+                                    st.warning("Enter your Reviewer ID first.")
+                                else:
+                                    db_review_access_request(req_id, "Rejected", reviewer_id.strip())
+                                    st.warning("Request rejected.")
+                                    st.rerun()
+
+            if other_reqs and req_status_filter != "Pending":
+                st.markdown("---")
+                st.markdown("#### Past Requests")
+                for req in other_reqs:
+                    doc       = docs_map.get(req["doc_id"])
+                    doc_title = doc["title"] if doc else f"Doc #{req['doc_id']}"
+                    status    = req["status"]
+                    s_color   = {"Approved":"#3d5a4a","Rejected":"#8b3a2a"}.get(status, "#6b5f55")
+                    st.markdown(f"<div class='doc-card' style='padding:12px 16px;'>#{req['id']} &nbsp;·&nbsp; <strong>{req['user_id']}</strong> ({req['user_role']}) → {doc_title} &nbsp;&nbsp;<span style='color:{s_color};font-family:DM Mono,monospace;font-size:15px;text-transform:uppercase;'>{status}</span><br><small style='color:#9c8e82;font-family:DM Mono,monospace;font-size:17px;'>Reviewed by {req.get('reviewed_by','—')} on {_to_ist(req.get('reviewed_at',''))}</small></div>", unsafe_allow_html=True)
+
+
+# ════════════════════════════════════════════════════════
+#  TAB 5 — APPROVAL PIPELINE (Approver Review)
+# ════════════════════════════════════════════════════════
+def _admin_approval_pipeline():
+    if not PIPELINE_AVAILABLE:
+        st.error("`approval_pipeline.py` is missing. Please add it to your project folder.")
+        return
+
+    st.markdown("<p style='color:#6b5f55;font-size:24px;font-family:EB Garamond,serif;'>Review and action all document approval requests. Each approver logs in to their role tab below.</p>", unsafe_allow_html=True)
+
+    # ── Init + load ───────────────────────────────────────────────────────────
+    _ap_init()
+    if not st.session_state.ap_loaded:
+        _ap_load_requests()
+
+    # ── Migrate stale chains ──────────────────────────────────────────────────
+    for r in st.session_state.ap_requests:
+        if _migrate_chain(r):
+            _ap_db_update(r)
+
+    # ── Auto-escalation ───────────────────────────────────────────────────────
+    escalated = []
+    for r in st.session_state.ap_requests:
+        bi, bd = r.get("stage_idx", 0), r.get("done", False)
+        _check_expiry(r)
+        if r.get("stage_idx", 0) != bi or (r.get("done") and not bd):
+            escalated.append(r)
+
+    if escalated:
+        msgs = []
+        for r in escalated:
+            last = r["history"][-1] if r["history"] else {}
+            msgs.append(f"⚠️ **Auto-escalated {r['id']}: {r['title']}** — {last.get('action','')}")
+        st.session_state.ap_escalation_msgs = msgs
+        st.rerun()
+
+    for msg in st.session_state.get("ap_escalation_msgs", []):
+        st.markdown(f"<div class='ap-escalation-banner'>{msg}</div>", unsafe_allow_html=True)
+    st.session_state.ap_escalation_msgs = []
+
+    # ── Refresh button ────────────────────────────────────────────────────────
+    rc1, rc2 = st.columns([5, 1])
+    with rc2:
+        if st.button("🔄 Refresh", use_container_width=True, key="admin_ap_refresh"):
+            _ap_load_requests(); st.rerun()
+
+    st.markdown("---")
+
+    # ── Policy box ────────────────────────────────────────────────────────────
+    try:
+        esc_label = _escalation_label()
+    except Exception:
+        esc_label = "1 week (168h)"
+
+    st.markdown(f"""
+    <div class="ap-policy-box">
+      <div style="font-size:15px;font-weight:700;color:#92400e;margin-bottom:8px;">⏳ Auto-Escalation Policy — {esc_label} per approver, then moves to the next level</div>
+      <p style="font-size:13px;color:#92400e;margin:0 0 10px;">
+        Each approver has <strong>{esc_label}</strong> to respond.
+        If they don't, the request <strong>moves up one level</strong> automatically.
+        If the final approver also times out, the request is <strong>Expired</strong>.
+      </p>
+      <table style="font-size:13px;color:#92400e;border-collapse:collapse;width:100%">
+        <tr style="border-bottom:1px solid #fcd34d">
+          <td style="padding:6px 10px;font-weight:700;white-space:nowrap;">⚙️ Technical</td>
+          <td style="padding:6px 10px;">
+            <span class="ap-chain-role">Team Lead</span><span class="ap-chain-arrow">→</span>
+            <span class="ap-timer-chip">⏳ {esc_label}</span><span class="ap-chain-arrow">→</span>
+            <span class="ap-chain-role">Tech Manager</span><span class="ap-chain-arrow">→</span>
+            <span class="ap-timer-chip">⏳ {esc_label}</span><span class="ap-chain-arrow">→</span>
+            <span class="ap-chain-role">CTO</span>
+          </td>
+        </tr>
+        <tr style="border-bottom:1px solid #fcd34d">
+          <td style="padding:6px 10px;font-weight:700;white-space:nowrap;">🔧 Operations</td>
+          <td style="padding:6px 10px;">
+            <span class="ap-chain-role">Team Lead</span><span class="ap-chain-arrow">→</span>
+            <span class="ap-timer-chip">⏳ {esc_label}</span><span class="ap-chain-arrow">→</span>
+            <span class="ap-chain-role">Tech Manager</span>
+          </td>
+        </tr>
+        <tr style="border-bottom:1px solid #fcd34d">
+          <td style="padding:6px 10px;font-weight:700;white-space:nowrap;">🔒 Security</td>
+          <td style="padding:6px 10px;">
+            <span class="ap-chain-role">Team Lead</span><span class="ap-chain-arrow">→</span>
+            <span class="ap-timer-chip">⏳ {esc_label}</span><span class="ap-chain-arrow">→</span>
+            <span class="ap-chain-role">Tech Manager</span><span class="ap-chain-arrow">→</span>
+            <span class="ap-timer-chip">⏳ {esc_label}</span><span class="ap-chain-arrow">→</span>
+            <span class="ap-chain-role">CTO</span><span class="ap-chain-arrow">→</span>
+            <span class="ap-timer-chip">⏳ {esc_label}</span><span class="ap-chain-arrow">→</span>
+            <span class="ap-chain-role">CEO</span>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:6px 10px;font-weight:700;white-space:nowrap;">👥 Team</td>
+          <td style="padding:6px 10px;">
+            <span class="ap-chain-role">Team Lead</span>
+            <span style="font-size:11px;color:#b45309;margin-left:8px;">Single approver — expires if no response</span>
+          </td>
+        </tr>
+      </table>
     </div>
     """, unsafe_allow_html=True)
 
     st.markdown("---")
 
-    dv_tab1, dv_tab2, dv_tab3 = st.tabs(["Browse Documents","My Access","Admin — Manage Library"])
+    # ── Pipeline summary stats ────────────────────────────────────────────────
+    all_reqs = st.session_state.ap_requests
+    if all_reqs:
+        counts = {"Pending": 0, "Approved": 0, "Rejected": 0, "Expired": 0}
+        for r in all_reqs:
+            counts[r["status"]] = counts.get(r["status"], 0) + 1
+        mc1, mc2, mc3, mc4 = st.columns(4)
+        mc1.metric("🟡 Pending",  counts["Pending"])
+        mc2.metric("🟢 Approved", counts["Approved"])
+        mc3.metric("🔴 Rejected", counts["Rejected"])
+        mc4.metric("⏰ Expired",  counts["Expired"])
+        st.markdown("---")
 
-    # ── TAB 1 — BROWSE DOCUMENTS ─────────────────────────────────────────────
-    with dv_tab1:
-        st.markdown("### Browse Document Library")
+    # ── Role tabs with live pending counts ────────────────────────────────────
+    def _n(role):
+        return sum(1 for r in st.session_state.ap_requests
+                   if not r["done"] and r["chain"] and r["chain"][r["stage_idx"]] == role)
 
-        ic1, ic2, ic3 = st.columns(3)
-        with ic1:
-            viewer_id = st.text_input("Your Employee ID *", placeholder="e.g. EMP-1042", key="dv_viewer_id")
-        with ic2:
-            viewer_role = st.selectbox("Your Role *", ROLE_HIERARCHY, index=0, key="dv_viewer_role")
-        with ic3:
-            cat_filter = st.selectbox(
-                "Filter by Category",
-                ["All","General","Security","HR","Finance","Engineering","Legal","Operations"],
-                key="dv_cat_filter",
-            )
-
-        if not viewer_id.strip():
-            st.info("Enter your Employee ID to browse documents.", icon="🔍")
-        else:
-            docs = db_get_documents()
-            if cat_filter != "All":
-                docs = [d for d in docs if d.get("category") == cat_filter]
-
-            if not docs:
-                st.info("No documents in the library yet. Ask an admin to add some.")
-            else:
-                accessible, needs_req, pending_req = [], [], []
-                for doc in docs:
-                    doc_id   = doc["id"]
-                    min_role = doc.get("min_role","Employee")
-                    can_auto = _can_auto_access(viewer_role, min_role)
-                    grant    = db_check_active_grant(viewer_id.strip(), doc_id) if not can_auto else None
-                    req_rows = db_get_access_requests(doc_id=doc_id)
-                    my_reqs  = [r for r in req_rows if r["user_id"] == viewer_id.strip()]
-                    pending  = [r for r in my_reqs if r["status"] == "Pending"]
-
-                    if can_auto:
-                        accessible.append((doc, "auto", None))
-                    elif grant:
-                        accessible.append((doc, "granted", grant))
-                    elif pending:
-                        pending_req.append((doc, pending[-1]))
-                    else:
-                        needs_req.append(doc)
-
-                m1, m2, m3 = st.columns(3)
-                with m1:
-                    st.markdown(f"<div class='metric-card'><div class='metric-number'>{len(accessible)}</div><div class='metric-label'>✓ Accessible</div></div>", unsafe_allow_html=True)
-                with m2:
-                    st.markdown(f"<div class='metric-card'><div class='metric-number'>{len(pending_req)}</div><div class='metric-label'>◑ Pending</div></div>", unsafe_allow_html=True)
-                with m3:
-                    st.markdown(f"<div class='metric-card'><div class='metric-number'>{len(needs_req)}</div><div class='metric-label'>✗ Request Required</div></div>", unsafe_allow_html=True)
-
-                st.markdown("---")
-
-                if accessible:
-                    st.markdown("#### ✦ Documents You Can View")
-                    for doc, access_type, grant in accessible:
-                        doc_id      = doc["id"]
-                        sensitivity = doc.get("sensitivity","Normal")
-                        min_role    = doc.get("min_role","Employee")
-                        role_cls    = _role_badge_class(min_role)
-                        s_color     = _sensitivity_color(sensitivity)
-                        s_bg        = _sensitivity_bg(sensitivity)
-
-                        if access_type == "auto":
-                            access_label = f"<span class='access-granted'>✓ Auto-access ({viewer_role})</span>"
-                        else:
-                            if grant:
-                                try:
-                                    exp       = datetime.fromisoformat(grant["expires_at"].replace("Z","+00:00"))
-                                    days_left = (exp - datetime.now(timezone.utc)).days
-                                    if days_left <= 2:
-                                        access_label = f"<span class='access-expiring'>⚠ Granted — expires in {days_left}d</span>"
-                                    else:
-                                        access_label = f"<span class='access-granted'>✓ Granted — {days_left}d remaining</span>"
-                                except Exception:
-                                    access_label = "<span class='access-granted'>✓ Granted</span>"
-                            else:
-                                access_label = "<span class='access-granted'>✓ Granted</span>"
-
-                        with st.expander(f"📄 {doc['title']}  —  {doc.get('category','General')}"):
-                            st.markdown(
-                                f"<div style='display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:12px;'>"
-                                f"<span class='role-badge {role_cls}'>{min_role}+</span>"
-                                f"<span style='display:inline-block; background:{s_bg}; color:{s_color}; border-radius:2px; "
-                                f"padding:2px 10px; font-size:14px; font-family:DM Mono,monospace; font-weight:500; letter-spacing:0.08em; text-transform:uppercase;'>{sensitivity}</span>"
-                                f"&nbsp;{access_label}"
-                                f"</div>",
-                                unsafe_allow_html=True,
-                            )
-                            if doc.get("description"):
-                                st.markdown(f"**Description:** {doc['description']}")
-                            if doc.get("content_preview"):
-                                st.markdown(f"<div class='answer-box' style='font-size:23px;'>{doc['content_preview']}</div>", unsafe_allow_html=True)
-                            if doc.get("file_url"):
-                                st.markdown(f"📎 [Open Document]({doc['file_url']})")
-                            st.markdown(
-                                f"<small style='color:#9c8e82; font-family:DM Mono,monospace;'>Added {_to_ist(doc.get('created_at',''))} · Owner: {doc.get('owner_id','—')}</small>",
-                                unsafe_allow_html=True,
-                            )
-
-                if pending_req:
-                    st.markdown("---")
-                    st.markdown("#### ◑ Pending Access Requests")
-                    for doc, req in pending_req:
-                        sensitivity = doc.get("sensitivity","Normal")
-                        min_role    = doc.get("min_role","Employee")
-                        role_cls    = _role_badge_class(min_role)
-                        st.markdown(
-                            f"<div class='doc-card doc-card-pending'>"
-                            f"<span class='role-badge {role_cls}'>{min_role}+</span>&nbsp;"
-                            f"<strong style='font-family:EB Garamond,serif; font-size:24px;'>{doc['title']}</strong>"
-                            f"&nbsp;&nbsp;<span class='access-pending'>◑ Request pending — submitted {_to_ist(req.get('created_at',''))}</span>"
-                            f"<br><small style='color:#9c8e82; font-family:DM Mono,monospace; font-size:17px;'>Awaiting approval from Tech Manager / CTO / CEO</small>"
-                            f"</div>",
-                            unsafe_allow_html=True,
-                        )
-
-                if needs_req:
-                    st.markdown("---")
-                    st.markdown("#### ✗ Restricted Documents — Request Access")
-                    for doc in needs_req:
-                        doc_id      = doc["id"]
-                        sensitivity = doc.get("sensitivity","Normal")
-                        min_role    = doc.get("min_role","Employee")
-                        role_cls    = _role_badge_class(min_role)
-                        s_color     = _sensitivity_color(sensitivity)
-                        s_bg        = _sensitivity_bg(sensitivity)
-
-                        with st.expander(f"🔒 {doc['title']}  —  {doc.get('category','General')} · min role: {min_role}"):
-                            st.markdown(
-                                f"<div style='display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:10px;'>"
-                                f"<span class='role-badge {role_cls}'>{min_role}+</span>"
-                                f"<span style='display:inline-block; background:{s_bg}; color:{s_color}; border-radius:2px; "
-                                f"padding:2px 10px; font-size:14px; font-family:DM Mono,monospace; font-weight:500; letter-spacing:0.08em; text-transform:uppercase;'>{sensitivity}</span>"
-                                f"<span class='access-denied'>✗ Access restricted</span>"
-                                f"</div>",
-                                unsafe_allow_html=True,
-                            )
-                            if doc.get("description"):
-                                st.markdown(f"**Description:** {doc['description']}")
-
-                            st.markdown(
-                                "<div style='background:var(--rust-pale); border-left:3px solid var(--rust); border-radius:3px; "
-                                "padding:12px 16px; margin:10px 0; font-family:EB Garamond,serif; font-size:23px; color:var(--rust);'>"
-                                "You need approval from a Tech Manager, CTO, or CEO to view this document. "
-                                "Access will be granted for 7 days.</div>",
-                                unsafe_allow_html=True,
-                            )
-
-                            reason = st.text_area(
-                                "Reason for access *",
-                                placeholder="Briefly explain why you need access to this document…",
-                                height=80, key=f"req_reason_{doc_id}",
-                            )
-                            if st.button(f"Request Access →", key=f"req_btn_{doc_id}", use_container_width=False):
-                                if not reason.strip():
-                                    st.warning("Please provide a reason for the request.")
-                                else:
-                                    try:
-                                        result = db_submit_access_request(doc_id, viewer_id.strip(), viewer_role, reason.strip())
-                                        if result is None:
-                                            st.info("You already have a pending request for this document.")
-                                        else:
-                                            st.success("Request submitted. You will be notified when approved.")
-                                            st.rerun()
-                                    except Exception as ex:
-                                        st.error(f"Failed: {ex}")
-
-    # ── TAB 2 — MY ACCESS ─────────────────────────────────────────────────────
-    with dv_tab2:
-        st.markdown("### My Access Dashboard")
-
-        my_id   = st.text_input("Your Employee ID", placeholder="e.g. EMP-1042", key="dv_my_id")
-        my_role = st.selectbox("Your Role", ROLE_HIERARCHY, key="dv_my_role")
-
-        if not my_id.strip():
-            st.info("Enter your Employee ID to see your access status.")
-        else:
-            grants   = db_get_access_grants(user_id=my_id.strip())
-            requests = db_get_access_requests()
-            my_reqs  = [r for r in requests if r["user_id"] == my_id.strip()]
-            docs     = db_get_documents()
-            docs_map = {d["id"]: d for d in docs}
-            now      = datetime.now(timezone.utc)
-
-            active_grants = []
-            for g in grants:
-                if g.get("status") != "Approved":
-                    continue
-                try:
-                    exp = datetime.fromisoformat(g["expires_at"].replace("Z","+00:00"))
-                    if exp > now:
-                        active_grants.append((g, exp))
-                except Exception:
-                    pass
-
-            auto_docs = [d for d in docs if _can_auto_access(my_role, d.get("min_role","Employee"))]
-
-            g1, g2, g3 = st.columns(3)
-            with g1:
-                st.markdown(f"<div class='metric-card'><div class='metric-number'>{len(auto_docs)}</div><div class='metric-label'>Auto-accessible</div></div>", unsafe_allow_html=True)
-            with g2:
-                st.markdown(f"<div class='metric-card'><div class='metric-number'>{len(active_grants)}</div><div class='metric-label'>Granted (active)</div></div>", unsafe_allow_html=True)
-            with g3:
-                pending_count = sum(1 for r in my_reqs if r["status"] == "Pending")
-                st.markdown(f"<div class='metric-card'><div class='metric-number'>{pending_count}</div><div class='metric-label'>Pending requests</div></div>", unsafe_allow_html=True)
-
-            st.markdown("---")
-
-            if active_grants:
-                st.markdown("#### Active Access Grants")
-                for grant, exp in active_grants:
-                    doc = docs_map.get(grant["doc_id"])
-                    if not doc:
-                        continue
-                    days_left = (exp - now).days
-                    expiring  = days_left <= 2
-                    exp_label = f"Expires in {days_left}d" if days_left > 0 else "Expires today"
-                    color     = "#8b6914" if expiring else "#3d5a4a"
-                    st.markdown(
-                        f"<div class='doc-card doc-card-accessible'>"
-                        f"<strong style='font-family:EB Garamond,serif; font-size:24px;'>{doc['title']}</strong>"
-                        f"&nbsp;&nbsp;<span style='color:{color}; font-family:DM Mono,monospace; font-size:15px; text-transform:uppercase; letter-spacing:0.06em;'>{'⚠ ' if expiring else '✓ '}{exp_label}</span>"
-                        f"<br><small style='color:#9c8e82; font-family:DM Mono,monospace; font-size:17px;'>Granted by: {grant.get('granted_by','—')} · {_to_ist(grant.get('granted_at',''))}</small>"
-                        f"</div>",
-                        unsafe_allow_html=True,
-                    )
-
-            if my_reqs:
-                st.markdown("---")
-                st.markdown("#### My Access Requests")
-                for req in my_reqs:
-                    doc       = docs_map.get(req["doc_id"])
-                    doc_title = doc["title"] if doc else f"Doc #{req['doc_id']}"
-                    status    = req["status"]
-                    status_colors = {"Pending":"#8b6914","Approved":"#3d5a4a","Rejected":"#8b3a2a"}
-                    s_color   = status_colors.get(status, "#6b5f55")
-                    st.markdown(
-                        f"<div class='doc-card'>"
-                        f"<strong style='font-family:EB Garamond,serif;'>{doc_title}</strong>&nbsp;&nbsp;"
-                        f"<span style='color:{s_color}; font-family:DM Mono,monospace; font-size:15px; text-transform:uppercase; letter-spacing:0.06em;'>{status}</span>"
-                        f"<br><small style='color:#9c8e82; font-family:DM Mono,monospace; font-size:17px;'>Requested {_to_ist(req.get('created_at',''))} · Reason: {req.get('reason','—')[:80]}</small>"
-                        f"</div>",
-                        unsafe_allow_html=True,
-                    )
-
-    # ── TAB 3 — ADMIN: MANAGE LIBRARY ─────────────────────────────────────────
-    with dv_tab3:
-        if not st.session_state.get("admin_logged_in"):
-            st.warning("Please log in via the Admin Panel to manage the document library.")
-        else:
-            lib_tab1, lib_tab2, lib_tab3 = st.tabs(["Add Document","All Documents","Access Requests"])
-
-            with lib_tab1:
-                st.markdown("#### Add a New Document")
-                with st.form("add_doc_form", clear_on_submit=True):
-                    fa1, fa2 = st.columns(2)
-                    with fa1:
-                        doc_title    = st.text_input("Document Title *", placeholder="e.g. VPN Access Policy")
-                        doc_cat      = st.selectbox("Category", ["General","Security","HR","Finance","Engineering","Legal","Operations"])
-                        doc_sens     = st.selectbox("Sensitivity Level", ["Normal","Restricted","Confidential","Top Secret"])
-                    with fa2:
-                        doc_min_role = st.selectbox("Minimum Role to View", ROLE_HIERARCHY, index=0)
-                        doc_owner    = st.text_input("Owner ID", placeholder="e.g. EMP-0001")
-                        doc_url      = st.text_input("File URL (optional)", placeholder="https://…")
-                    doc_desc    = st.text_area("Description", placeholder="What does this document cover?", height=80)
-                    doc_preview = st.text_area("Content Preview (shown to authorised users)", placeholder="A summary or excerpt of the document…", height=100)
-
-                    submit_doc = st.form_submit_button("Add Document →", type="primary")
-
-                if submit_doc:
-                    if not doc_title.strip():
-                        st.warning("Document title is required.")
-                    else:
-                        try:
-                            added = db_add_document(
-                                doc_title.strip(), doc_desc.strip(), doc_cat,
-                                doc_sens, doc_min_role, doc_owner.strip(),
-                                doc_url.strip(), doc_preview.strip(),
-                            )
-                            st.success(f"Document '{added['title']}' added (ID #{added['id']}).")
-                            st.rerun()
-                        except Exception as ex:
-                            st.error(f"Failed: {ex}")
-
-            with lib_tab2:
-                st.markdown("#### All Documents in Library")
-                docs = db_get_documents()
-                if not docs:
-                    st.info("No documents yet.")
-                else:
-                    st.markdown(
-                        f"<p style='font-family:DM Mono,monospace; font-size:16px; color:#9c8e82; letter-spacing:0.06em; text-transform:uppercase;'>{len(docs)} document(s)</p>",
-                        unsafe_allow_html=True,
-                    )
-                    for doc in docs:
-                        doc_id      = doc["id"]
-                        sensitivity = doc.get("sensitivity","Normal")
-                        min_role    = doc.get("min_role","Employee")
-                        role_cls    = _role_badge_class(min_role)
-                        s_color     = _sensitivity_color(sensitivity)
-                        s_bg        = _sensitivity_bg(sensitivity)
-
-                        with st.expander(f"#{doc_id} — {doc['title']}  ·  {doc.get('category','General')}  ·  {min_role}+  ·  {sensitivity}"):
-                            st.markdown(
-                                f"<div style='display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;'>"
-                                f"<span class='role-badge {role_cls}'>{min_role}+</span>"
-                                f"<span style='display:inline-block; background:{s_bg}; color:{s_color}; border-radius:2px; "
-                                f"padding:2px 10px; font-size:14px; font-family:DM Mono,monospace; font-weight:500; letter-spacing:0.08em; text-transform:uppercase;'>{sensitivity}</span>"
-                                f"</div>",
-                                unsafe_allow_html=True,
-                            )
-                            if doc.get("description"):
-                                st.markdown(f"**Description:** {doc['description']}")
-                            if doc.get("content_preview"):
-                                st.markdown(f"**Preview:** {doc['content_preview'][:200]}…")
-                            if doc.get("file_url"):
-                                st.markdown(f"📎 **URL:** {doc['file_url']}")
-                            st.markdown(
-                                f"<small style='color:#9c8e82; font-family:DM Mono,monospace;'>Owner: {doc.get('owner_id','—')} · Added: {_to_ist(doc.get('created_at',''))}</small>",
-                                unsafe_allow_html=True,
-                            )
-
-                            grants_for_doc = db_get_access_grants(doc_id=doc_id)
-                            now            = datetime.now(timezone.utc)
-                            active_here    = []
-                            for g in grants_for_doc:
-                                if g.get("status") != "Approved":
-                                    continue
-                                try:
-                                    exp = datetime.fromisoformat(g["expires_at"].replace("Z","+00:00"))
-                                    if exp > now:
-                                        active_here.append((g, exp))
-                                except Exception:
-                                    pass
-                            if active_here:
-                                st.markdown(f"**Active grants ({len(active_here)}):**")
-                                for g, exp in active_here:
-                                    days_left = (exp - now).days
-                                    gc1, gc2  = st.columns([4, 1])
-                                    with gc1:
-                                        st.markdown(
-                                            f"<small style='font-family:DM Mono,monospace; font-size:17px;'>"
-                                            f"👤 {g['user_id']} ({g['user_role']}) — {days_left}d left — granted by {g.get('granted_by','—')}"
-                                            f"</small>",
-                                            unsafe_allow_html=True,
-                                        )
-                                    with gc2:
-                                        if st.button("Revoke", key=f"revoke_{g['id']}", use_container_width=True):
-                                            db_revoke_access(g["id"])
-                                            st.rerun()
-
-                            dc1, dc2, _ = st.columns([1, 1, 4])
-                            with dc1:
-                                if st.button("Delete Document", key=f"del_doc_{doc_id}", use_container_width=True):
-                                    try:
-                                        db_delete_document(doc_id)
-                                        st.warning("Deleted.")
-                                        st.rerun()
-                                    except Exception as ex:
-                                        st.error(str(ex))
-
-            with lib_tab3:
-                st.markdown("#### Document Access Requests")
-
-                rf1, rf2 = st.columns(2)
-                with rf1:
-                    req_status_filter = st.selectbox("Filter by Status", ["All","Pending","Approved","Rejected"], key="req_status_filter")
-                with rf2:
-                    reviewer_id = st.text_input("Reviewer ID (your ID)", placeholder="e.g. CTO-001", key="reviewer_id")
-
-                reqs     = db_get_access_requests(status_filter=req_status_filter)
-                docs_map = {d["id"]: d for d in db_get_documents()}
-
-                if not reqs:
-                    st.info("No access requests found.")
-                else:
-                    pending_reqs = [r for r in reqs if r["status"] == "Pending"]
-                    other_reqs   = [r for r in reqs if r["status"] != "Pending"]
-
-                    if pending_reqs:
-                        st.markdown(
-                            f"<p style='font-family:DM Mono,monospace; font-size:16px; color:#8b6914; letter-spacing:0.06em;'>"
-                            f"{len(pending_reqs)} pending request(s) awaiting review</p>",
-                            unsafe_allow_html=True,
-                        )
-                        for req in pending_reqs:
-                            doc       = docs_map.get(req["doc_id"])
-                            doc_title = doc["title"] if doc else f"Doc #{req['doc_id']}"
-                            req_id    = req["id"]
-
-                            with st.expander(f"⏳ #{req_id} — {req['user_id']} ({req['user_role']}) → {doc_title}"):
-                                st.markdown(f"**Employee:** {req['user_id']} &nbsp;·&nbsp; **Role:** {req['user_role']}")
-                                st.markdown(f"**Document:** {doc_title} &nbsp;·&nbsp; Min role: {doc.get('min_role','?') if doc else '?'}")
-                                st.markdown(f"**Reason:** {req.get('reason','—')}")
-                                st.markdown(f"**Requested:** {_to_ist(req.get('created_at',''))}")
-
-                                if doc:
-                                    sens    = doc.get("sensitivity","Normal")
-                                    min_r   = doc.get("min_role","Employee")
-                                    s_color = _sensitivity_color(sens)
-                                    s_bg    = _sensitivity_bg(sens)
-                                    st.markdown(
-                                        f"<div style='margin:8px 0; display:flex; gap:8px;'>"
-                                        f"<span class='role-badge {_role_badge_class(min_r)}'>{min_r}+</span>"
-                                        f"<span style='background:{s_bg}; color:{s_color}; border-radius:2px; padding:2px 10px; font-size:14px; font-family:DM Mono,monospace; font-weight:500; letter-spacing:0.08em; text-transform:uppercase;'>{sens}</span>"
-                                        f"</div>",
-                                        unsafe_allow_html=True,
-                                    )
-
-                                ac1, ac2, _ = st.columns([1, 1, 4])
-                                with ac1:
-                                    if st.button("Approve — Grant 7-day Access", key=f"approve_{req_id}", use_container_width=True):
-                                        if not reviewer_id.strip():
-                                            st.warning("Enter your Reviewer ID first.")
-                                        else:
-                                            db_review_access_request(
-                                                req_id, "Approved", reviewer_id.strip(),
-                                                doc_id=req["doc_id"], user_id=req["user_id"], user_role=req["user_role"],
-                                            )
-                                            st.success(f"Access approved. {req['user_id']} has 7-day access.")
-                                            st.rerun()
-                                with ac2:
-                                    if st.button("Reject", key=f"reject_{req_id}", use_container_width=True):
-                                        if not reviewer_id.strip():
-                                            st.warning("Enter your Reviewer ID first.")
-                                        else:
-                                            db_review_access_request(req_id, "Rejected", reviewer_id.strip())
-                                            st.warning("Request rejected.")
-                                            st.rerun()
-
-                    if other_reqs and req_status_filter != "Pending":
-                        st.markdown("---")
-                        st.markdown("#### Past Requests")
-                        for req in other_reqs:
-                            doc       = docs_map.get(req["doc_id"])
-                            doc_title = doc["title"] if doc else f"Doc #{req['doc_id']}"
-                            status    = req["status"]
-                            status_colors = {"Approved":"#3d5a4a","Rejected":"#8b3a2a"}
-                            s_color   = status_colors.get(status, "#6b5f55")
-                            st.markdown(
-                                f"<div class='doc-card' style='padding:12px 16px;'>"
-                                f"#{req['id']} &nbsp;·&nbsp; <strong>{req['user_id']}</strong> ({req['user_role']}) → {doc_title} &nbsp;&nbsp;"
-                                f"<span style='color:{s_color}; font-family:DM Mono,monospace; font-size:15px; text-transform:uppercase;'>{status}</span>"
-                                f"<br><small style='color:#9c8e82; font-family:DM Mono,monospace; font-size:17px;'>Reviewed by {req.get('reviewed_by','—')} on {_to_ist(req.get('reviewed_at',''))}</small>"
-                                f"</div>",
-                                unsafe_allow_html=True,
-                            )
+    role_tabs = st.tabs([
+        f"👨‍💼 Team Lead ({_n('Team Lead')})",
+        f"👩‍💻 Tech Manager ({_n('Tech Manager')})",
+        f"🧑‍🔬 CTO ({_n('CTO')})",
+        f"👑 CEO ({_n('CEO')})",
+    ])
+    with role_tabs[0]: _view_role("Team Lead")
+    with role_tabs[1]: _view_role("Tech Manager")
+    with role_tabs[2]: _view_role("CTO")
+    with role_tabs[3]: _view_role("CEO")
 
 
 # ════════════════════════════════════════════════════════
-#  PAGE: SETUP
+#  SETUP PAGE
 # ════════════════════════════════════════════════════════
 def page_setup():
     st.markdown("# Setup & Configuration")
@@ -2747,84 +1595,26 @@ def page_setup():
     st.markdown("### Connection Status")
     c1, c2 = st.columns(2)
     with c1:
-        if st.secrets.get("SUPABASE_URL", ""):
-            st.success("Supabase URL configured")
-        else:
-            st.error("Supabase URL missing")
+        if st.secrets.get("SUPABASE_URL", ""): st.success("Supabase URL configured")
+        else: st.error("Supabase URL missing")
     with c2:
-        if st.secrets.get("SUPABASE_KEY", ""):
-            st.success("Supabase Key configured")
-        else:
-            st.error("Supabase Key missing")
+        if st.secrets.get("SUPABASE_KEY", ""): st.success("Supabase Key configured")
+        else: st.error("Supabase Key missing")
 
     st.markdown("---")
     if st.button("Test Database Connection", key="setup_test_db"):
         try:
             db = get_db()
-            if db is None:
-                st.error("Not configured.")
+            if db is None: st.error("Not configured.")
             else:
                 db.table("tickets").select("id").limit(1).execute()
                 st.success("Database connected!")
-                st.toast("Connected to Supabase successfully", icon="☁️")
         except Exception as e:
             st.error(f"Failed: {e}")
 
-    if st.button("Test PDF + Q&A Extraction", key="setup_test_pdf"):
-        pdf_bytes = get_pdf_bytes()
-        if not pdf_bytes:
-            st.error("Could not download PDF.")
-        else:
-            st.success(f"PDF downloaded ({len(pdf_bytes) // 1024} KB)")
-            pairs = load_qa_pairs()
-            if pairs:
-                st.success(f"{len(pairs)} Q&A pairs extracted!")
-                st.toast(f"{len(pairs)} Q&A pairs loaded from PDF", icon="📚")
-                with st.expander("Preview first 5 pairs"):
-                    for q, a in pairs[:5]:
-                        st.markdown(f"**Q:** {q[:200]}")
-                        st.markdown(f"**A:** {a[:200]}")
-                        st.markdown("---")
-            else:
-                st.error("No Q&A pairs found.")
-
-    if st.button("Test Semantic Search Model", key="setup_test_model"):
-        model, q_emb, a_emb, pairs, util = load_model_and_embeddings()
-        if model is None:
-            st.error("Model failed to load.")
-        else:
-            st.success("Model loaded: multi-qa-mpnet-base-dot-v1")
-            st.toast("Semantic model loaded into RAM cache", icon="⚡")
-            st.info(f"{len(pairs)} Q embeddings + {len(pairs)} A embeddings ready.")
-
-    st.markdown("---")
-    st.markdown("### Learned Answers (from resolved tickets)")
-    if st.button("View All Learned Answers", key="setup_view_learned"):
-        db = get_db()
-        if db is None:
-            st.error("Supabase not configured.")
-        else:
-            try:
-                rows = db.table("resolved_issues").select("*").order("created_at", desc=True).execute().data or []
-                if rows:
-                    st.success(f"{len(rows)} learned answer(s) in database.")
-                    for row in rows:
-                        with st.expander(f"{row['query'][:100]}"):
-                            st.markdown(f"**Original question:** {row['query']}")
-                            st.markdown(f"**Admin solution:** {row['solution']}")
-                            st.markdown(
-                                f"<small style='color:#9c8e82; font-family: DM Mono, monospace; font-size:17px;'>"
-                                f"Saved: {_to_ist(row.get('created_at',''))}</small>",
-                                unsafe_allow_html=True,
-                            )
-                else:
-                    st.info("No learned answers yet.")
-            except Exception as e:
-                st.error(f"Error: {e}")
-
 
 # ════════════════════════════════════════════════════════
-#  MAIN — SIDEBAR + ROUTING
+#  SIDEBAR + ROUTING  (only 2 main pages + setup)
 # ════════════════════════════════════════════════════════
 with st.sidebar:
     st.markdown("""
@@ -2842,474 +1632,48 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
 
-    st.markdown(
-        "<p style='font-family: DM Mono, monospace; font-size: 13px; color: #3a3028; "
-        "letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 8px;'>Navigate</p>",
-        unsafe_allow_html=True,
-    )
+    st.markdown("<p style='font-family:DM Mono,monospace;font-size:13px;color:#3a3028;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:8px;'>Navigate</p>", unsafe_allow_html=True)
 
     page = st.radio("Navigation", [
         "🔍 Employee Portal",
-        "📋 Approval Pipeline",
         "🛡️ Admin Panel",
-        "📊 Analytics",
-        "🕳️ Knowledge Gap Report",
-        "📁 Doc Visibility",
         "⚙️ Setup / Config",
     ], label_visibility="collapsed")
 
     st.markdown("---")
 
+    # Show admin capabilities hint if admin is logged in
+    if st.session_state.get("admin_logged_in"):
+        st.markdown("""
+        <div style='margin-top:8px;'>
+            <p style='font-family:DM Mono,monospace;font-size:11px;color:#3a3028;letter-spacing:0.10em;text-transform:uppercase;margin-bottom:8px;'>Admin Capabilities</p>
+        """, unsafe_allow_html=True)
+        capabilities = [
+            "View & manage all tickets",
+            "Update ticket status",
+            "Add solutions & notes",
+            "Export data as CSV",
+            "Monitor analytics",
+            "Manage document library",
+            "Review access requests",
+            "Approve pipeline requests",
+            "Track request history",
+        ]
+        for cap in capabilities:
+            st.markdown(f"<p style='font-family:EB Garamond,serif;font-size:14px;color:#6b5f55;margin:3px 0;padding-left:8px;border-left:2px solid #8b3a2a;'>{'  ' + cap}</p>", unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+
     if not PIPELINE_AVAILABLE:
+        st.markdown("---")
         st.warning("approval_pipeline.py not found.", icon="⚠️")
 
-    st.markdown(
-        "<p style='font-family: DM Mono, monospace; font-size: 13px; color: #3a3028; "
-        "letter-spacing: 0.06em; margin-top: 16px;'>Powered by Supabase + pdfplumber</p>",
-        unsafe_allow_html=True,
-    )
+    st.markdown("<p style='font-family:DM Mono,monospace;font-size:13px;color:#3a3028;letter-spacing:0.06em;margin-top:16px;'>Powered by Supabase + pdfplumber</p>", unsafe_allow_html=True)
 
 
+# ── Routing ───────────────────────────────────────────────────────────────────
 if page == "🔍 Employee Portal":
     page_employee()
 elif page == "🛡️ Admin Panel":
     page_admin()
-elif page == "📊 Analytics":
-    page_analytics()
-elif page == "🕳️ Knowledge Gap Report":
-    page_knowledge_gap()
-elif page == "📁 Doc Visibility":
-    page_doc_visibility()
-elif page == "📋 Approval Pipeline":
-    if PIPELINE_AVAILABLE:
-        st.markdown("# 📋 Approval Pipeline")
-        st.markdown(
-            "<p style='color:#6b5f55; font-size:26px; font-family: EB Garamond, serif;'>"
-            "Choose your ticket type, or review and action pending approval requests.</p>",
-            unsafe_allow_html=True,
-        )
-        st.markdown("---")
-
-        if "ap_page_type" not in st.session_state:
-            st.session_state["ap_page_type"] = None
-
-        col_a, col_b = st.columns(2)
-        with col_a:
-            if st.button(
-                "🚨 Incident Ticket\n\nReport a bug, problem or technical issue. "
-                "We search the KB first — if no answer, a support ticket is raised.",
-                use_container_width=True,
-                key="ap_page_incident_btn",
-            ):
-                st.session_state["ap_page_type"] = "incident"
-                st.session_state["ap_page_inc_show_form"] = False
-                st.session_state["ap_page_inc_kb_status"] = None
-
-        with col_b:
-            if st.button(
-                "📄 Document Approval Ticket\n\nRequest creation or approval of a document. "
-                "Routed through the correct approval chain automatically.",
-                use_container_width=True,
-                key="ap_page_doc_btn",
-            ):
-                st.session_state["ap_page_type"] = "doc"
-
-        st.markdown("---")
-
-        ap_type = st.session_state.get("ap_page_type")
-
-        # ── INCIDENT flow ─────────────────────────────────────────────────
-        if ap_type == "incident":
-            st.markdown("### 🚨 Incident Ticket")
-            c1, c2 = st.columns([4, 1])
-            with c1:
-                inc_q = st.text_input(
-                    "",
-                    placeholder="Describe the issue or ask a question…",
-                    label_visibility="collapsed",
-                    key="ap_page_inc_q",
-                )
-            with c2:
-                inc_search = st.button("Search →", use_container_width=True, key="ap_page_inc_search")
-
-            if inc_search and inc_q.strip():
-                with st.spinner("Searching knowledge base…"):
-                    result = answer_question(inc_q.strip())
-
-                if result["found"]:
-                    src = result.get("source", "pdf")
-                    if src == "learned":
-                        st.markdown("#### ✦ Answer Found")
-                        st.markdown(f"<div class='learned-box'>{result['answer']}</div>", unsafe_allow_html=True)
-                    else:
-                        st.markdown("#### ✦ Answer Found")
-                        st.markdown(f"<div class='answer-box'>{result['answer']}</div>", unsafe_allow_html=True)
-
-                    st.markdown("---")
-                    ca, cb, _ = st.columns([1, 1, 4])
-                    with ca:
-                        if st.button("👍 Helpful", key="ap_page_helpful"):
-                            st.success("Glad it helped!")
-                    with cb:
-                        if st.button("👎 Not helpful", key="ap_page_nothelpful"):
-                            db_log_failed_query(inc_q.strip())
-                            st.session_state["ap_page_inc_show_form"] = True
-                            st.session_state["ap_page_inc_query_cache"] = inc_q.strip()
-                            st.warning("Sorry! Please raise a ticket below.")
-                else:
-                    st.markdown(
-                        "<div class='no-answer-box'>No answer found. "
-                        "Please fill in the ticket below.</div>",
-                        unsafe_allow_html=True,
-                    )
-                    db_log_failed_query(inc_q.strip())
-                    st.session_state["ap_page_inc_show_form"] = True
-                    st.session_state["ap_page_inc_query_cache"] = inc_q.strip()
-
-            elif inc_search:
-                st.warning("Please enter a question.")
-
-            if st.session_state.get("ap_page_inc_show_form", False):
-                st.markdown("---")
-                st.markdown("### 🎫 Raise a Support Ticket")
-                prefill_q = st.session_state.get("ap_page_inc_query_cache", "")
-                ic1, ic2 = st.columns(2)
-                with ic1:
-                    inc_uid  = st.text_input("Employee ID *", placeholder="e.g. EMP-1042", key="ap_inc_uid")
-                    inc_role = st.selectbox(
-                        "Job Role *",
-                        ["Select…","Software Engineer","Data Analyst","QA Engineer",
-                         "DevOps Engineer","Product Manager","HR / Operations","Other"],
-                        key="ap_inc_role",
-                    )
-                with ic2:
-                    inc_prio = st.selectbox("Priority *", ["Medium","High","Low"], key="ap_inc_prio")
-
-                if prefill_q:
-                    st.markdown(
-                        f"<small style='color:#8b3a2a; font-family: DM Mono, monospace; font-size:17px;'>"
-                        f"Search query: {prefill_q}</small>",
-                        unsafe_allow_html=True,
-                    )
-                inc_detail = st.text_area(
-                    "Describe your problem in detail *",
-                    placeholder="Add more details…",
-                    height=120,
-                    key="ap_inc_detail",
-                )
-                sc1, sc2, _ = st.columns([1, 1, 4])
-                with sc1:
-                    if st.button("Submit Ticket →", use_container_width=True, key="ap_inc_submit"):
-                        errors = []
-                        if not inc_uid.strip():   errors.append("Employee ID required.")
-                        if inc_role == "Select…": errors.append("Select your job role.")
-                        final_q = prefill_q or inc_detail.strip()
-                        if not final_q:           errors.append("Problem description required.")
-                        for e in errors: st.error(e)
-                        if not errors:
-                            try:
-                                t = db_create_ticket(inc_uid.strip(), inc_role, final_q, inc_prio)
-                                st.success(f"✅ Ticket #{t.get('id','–')} submitted!")
-                                st.session_state["ap_page_inc_show_form"] = False
-                            except Exception as ex:
-                                st.error(f"Failed: {ex}")
-                with sc2:
-                    if st.button("Cancel", use_container_width=True, key="ap_inc_cancel"):
-                        st.session_state["ap_page_inc_show_form"] = False
-                        st.rerun()
-
-        # ── DOC APPROVAL flow ─────────────────────────────────────────────
-        elif ap_type == "doc":
-            st.markdown("### 📄 Document Approval Ticket")
-            st.markdown(
-                "<p style='color:#6b5f55; font-size:20px;'>"
-                "Fill in your details and the document info. "
-                "The system will route it through the correct approval chain.</p>",
-                unsafe_allow_html=True,
-            )
-            st.markdown("---")
-
-            st.markdown("##### 👤 Your Details")
-            d1, d2 = st.columns(2)
-            with d1:
-                doc_emp_id   = st.text_input("Employee ID *", placeholder="e.g. EMP-1042", key="ap_doc_emp_id")
-            with d2:
-                doc_emp_name = st.text_input("Your Name *", placeholder="e.g. Priya K.", key="ap_doc_emp_name")
-
-            st.markdown("---")
-            st.markdown("##### 📄 Document Details")
-
-            from approval_pipeline import DOC_CATEGORIES, _build_chain, _create as _ap_create, _escalation_label, _fmt as _ap_fmt
-
-            cat_keys = list(DOC_CATEGORIES.keys())
-            da1, da2 = st.columns(2)
-            with da1:
-                doc_title = st.text_input("Document Title *", placeholder="e.g. Database Backup Procedure", key="ap_doc_title")
-                doc_cat   = st.selectbox("Document Category *", cat_keys,
-                                         format_func=lambda c: DOC_CATEGORIES[c]["label"], key="ap_doc_cat")
-            with da2:
-                avail_sub = DOC_CATEGORIES[st.session_state.get("ap_doc_cat", cat_keys[0])]["subtypes"]
-                doc_sub   = st.selectbox("Document Subtype *", avail_sub, key="ap_doc_sub")
-                doc_urg   = st.selectbox("Urgency *", ["Normal","URGENT","CRITICAL"], key="ap_doc_urg")
-
-            doc_desc = st.text_area(
-                "What does this document need to cover? *",
-                placeholder="Describe the purpose and scope…",
-                height=100, key="ap_doc_desc",
-            )
-
-            chosen_cat = st.session_state.get("ap_doc_cat", cat_keys[0])
-            chain      = _build_chain(chosen_cat)
-            cfg        = DOC_CATEGORIES[chosen_cat]
-            if cfg["auto"]:
-                route_str = "✅ Auto-approved instantly"
-            else:
-                route_str = " → ".join(chain) + f"  ·  {_escalation_label()} per level"
-            st.caption(f"Approval route: {route_str}")
-
-            st.markdown("---")
-            if st.button("🚀 Submit for Approval", type="primary", key="ap_doc_submit"):
-                errors = []
-                if not doc_emp_id.strip():   errors.append("Employee ID required.")
-                if not doc_emp_name.strip(): errors.append("Your name required.")
-                if not doc_title.strip():    errors.append("Document title required.")
-                if not doc_desc.strip():     errors.append("Document description required.")
-                for e in errors: st.error(e)
-                if not errors:
-                    requester_str = f"{doc_emp_name.strip()} · {doc_emp_id.strip()}"
-                    try:
-                        req = _ap_create(
-                            title       = doc_title.strip(),
-                            category    = chosen_cat,
-                            subtype     = st.session_state.get("ap_doc_sub", avail_sub[0]),
-                            description = doc_desc.strip(),
-                            urgency     = doc_urg,
-                            requester   = requester_str,
-                        )
-                        if req["done"]:
-                            st.success(f"✅ {req['id']} — '{doc_title}' auto-approved instantly!")
-                        else:
-                            ch = req["chain"]
-                            st.success(
-                                f"✅ {req['id']} submitted → routed to **{ch[0]}**. "
-                                f"Full chain: **{' → '.join(ch)}**. "
-                                f"Each approver has **{_escalation_label()}** to respond."
-                            )
-                    except Exception as ex:
-                        st.error(f"Submission failed: {ex}")
-
-            # ── Document Access Request ───────────────────────────────────
-            st.markdown("---")
-            st.markdown("### 📂 Request Access to an Existing Document")
-            st.markdown(
-                "<p style='color:#6b5f55; font-size:20px;'>"
-                "Fill in your details, select a document, enter a password and click Request Access. "
-                "Senior roles (Manager and above) get instant access and can view the document right here. "
-                "Employees go through the approval chain.</p>",
-                unsafe_allow_html=True,
-            )
-
-            all_docs_list = db_get_documents()
-
-            acc1, acc2, acc3 = st.columns(3)
-            with acc1:
-                access_emp_id = st.text_input(
-                    "Employee ID *",
-                    placeholder="e.g. EMP-1042",
-                    key="ap_acc_emp_id",
-                )
-            with acc2:
-                access_role = st.selectbox(
-                    "Your Role *",
-                    ["Select…", "Employee", "Manager", "Tech Manager", "CTO", "CEO"],
-                    key="ap_acc_role",
-                )
-            with acc3:
-                access_doc = st.selectbox(
-                    "Document *",
-                    ["Select…"] + [d["title"] for d in all_docs_list],
-                    key="ap_acc_doc",
-                )
-
-            SENIOR_ROLES = {"Manager", "Tech Manager", "CTO", "CEO"}
-
-            if access_role in SENIOR_ROLES:
-                st.text_input(
-                    "Set a view password *",
-                    type="password",
-                    placeholder="You'll enter this below to view the document…",
-                    key="ap_acc_pwd",
-                )
-
-            if access_role == "Employee":
-                st.text_area(
-                    "Reason for access *",
-                    placeholder="Briefly explain why you need access to this document…",
-                    height=80,
-                    key="ap_acc_reason",
-                )
-
-            if st.button("Request Document Access →", key="ap_acc_submit"):
-                errors = []
-                if not access_emp_id.strip():  errors.append("Employee ID required.")
-                if access_role == "Select…":   errors.append("Select your role.")
-                if access_doc == "Select…":    errors.append("Select a document.")
-                if access_role in SENIOR_ROLES:
-                    if not st.session_state.get("ap_acc_pwd", "").strip():
-                        errors.append("Set a view password.")
-                elif access_role == "Employee":
-                    if not st.session_state.get("ap_acc_reason", "").strip():
-                        errors.append("Reason for access required.")
-                for e in errors: st.error(e)
-
-                if not errors:
-                    matched_doc = next((d for d in all_docs_list if d["title"] == access_doc), None)
-                    if not matched_doc:
-                        st.error("Document not found in the library.")
-                    else:
-                        doc_id = matched_doc["id"]
-                        if access_role in SENIOR_ROLES:
-                            db_grant_access(
-                                doc_id     = doc_id,
-                                user_id    = access_emp_id.strip(),
-                                user_role  = access_role,
-                                granted_by = "System (Senior Bypass)",
-                            )
-                            view_pwd = st.session_state.get("ap_acc_pwd", "").strip()
-                            if view_pwd:
-                                st.session_state["ap_granted_doc_id"]  = doc_id
-                                st.session_state["ap_granted_doc_pwd"] = view_pwd
-                            st.success(
-                                f"✅ Instant access granted to **{access_emp_id.strip()}** "
-                                f"({access_role}) for **{access_doc}**. "
-                                f"Scroll down to view the document."
-                            )
-                        else:
-                            try:
-                                result = db_submit_access_request(
-                                    doc_id    = doc_id,
-                                    user_id   = access_emp_id.strip(),
-                                    user_role = access_role,
-                                    reason    = st.session_state.get("ap_acc_reason", "").strip(),
-                                )
-                                if result is None:
-                                    st.info("You already have a pending request for this document.")
-                                else:
-                                    st.success(
-                                        f"✅ Access request submitted for **{access_doc}**. "
-                                        f"Your request will follow the approval hierarchy. "
-                                        f"View-only access (no download) once approved. "
-                                        f"Auto-revokes after 7 days."
-                                    )
-                            except Exception as ex:
-                                st.error(f"Failed to submit request: {ex}")
-
-            # ── Inline Document Viewer ────────────────────────────────────
-            granted_doc_id  = st.session_state.get("ap_granted_doc_id")
-            granted_doc_pwd = st.session_state.get("ap_granted_doc_pwd", "")
-
-            if granted_doc_id and granted_doc_pwd:
-                granted_doc = next((d for d in all_docs_list if d["id"] == granted_doc_id), None)
-                if granted_doc:
-                    st.markdown("---")
-                    st.markdown(
-                        f"<div style='background:var(--paper); border:1px solid #7ab898; "
-                        f"border-left:4px solid #3d5a4a; border-radius:3px; padding:18px 22px; margin-bottom:12px;'>"
-                        f"<p style='margin:0; font-family:Playfair Display,serif; font-size:22px; color:#1a1612; font-weight:700;'>"
-                        f"📄 {granted_doc['title']}</p>"
-                        f"<p style='margin:4px 0 0; font-family:DM Mono,monospace; font-size:13px; color:#3d5a4a; "
-                        f"letter-spacing:0.08em; text-transform:uppercase;'>Access granted · View-only · Expires in 7 days</p>"
-                        f"</div>",
-                        unsafe_allow_html=True,
-                    )
-
-                    col_view, col_clear, _ = st.columns([1, 1, 4])
-                    with col_view:
-                        view_clicked = st.button("🔓 View Document", key="ap_view_doc_btn", use_container_width=True)
-                    with col_clear:
-                        if st.button("✖ Clear Access", key="ap_clear_doc_btn", use_container_width=True):
-                            st.session_state.pop("ap_granted_doc_id", None)
-                            st.session_state.pop("ap_granted_doc_pwd", None)
-                            st.session_state.pop("ap_doc_visible", None)
-                            st.rerun()
-
-                    if view_clicked:
-                        st.session_state["ap_doc_visible"] = True
-
-                    if st.session_state.get("ap_doc_visible"):
-                        description    = granted_doc.get("description", "")
-                        content        = granted_doc.get("content_preview", "")
-                        file_url       = granted_doc.get("file_url", "")
-
-                        inner = ""
-                        if description:
-                            inner += f"<p style='margin:0 0 8px; font-family:EB Garamond,serif; font-size:22px;'><strong>About:</strong> {description}</p><hr style='border:none;border-top:1px solid #d4c9bc;margin:10px 0;'>"
-                        if content:
-                            inner += f"<p style='font-family:EB Garamond,serif; font-size:22px; line-height:1.8; color:#3d3530;'>{content}</p>"
-                        if file_url:
-                            inner += (
-                                f"<a href='{file_url}' target='_blank' "
-                                f"style='display:inline-block; margin-top:12px; background:#3d5a4a; "
-                                f"color:#fff; padding:12px 24px; border-radius:3px; "
-                                f"font-family:EB Garamond,serif; font-size:20px; text-decoration:none;'>"
-                                f"📎 Open Full Document ↗</a>"
-                            )
-                        if not content and not file_url:
-                            inner += "<p style='color:#9c8e82; font-family:EB Garamond,serif; font-size:20px;'>No content preview or file link available. Please contact the document owner.</p>"
-
-                        st.markdown(
-                            f"<div style='background:#faf7f2; border:1px solid #d4c9bc; "
-                            f"border-left:4px solid #3d5a4a; border-radius:3px; "
-                            f"padding:24px 28px; margin-top:8px;'>{inner}</div>"
-                            f"<small style='color:#9c8e82; font-family:DM Mono,monospace; font-size:14px;'>"
-                            f"🔒 View-only. No download permitted. Access auto-expires in 7 days.</small>",
-                            unsafe_allow_html=True,
-                        )
-
-            # ── Approver review ───────────────────────────────────────────
-            st.markdown("---")
-            st.markdown("### 🔐 Approver Review")
-            st.markdown(
-                "<p style='color:#6b5f55; font-size:20px;'>"
-                "Approvers: log in to your role tab below to action pending requests.</p>",
-                unsafe_allow_html=True,
-            )
-
-            from approval_pipeline import _view_role, _init, _load_requests, _check_expiry, _migrate_chain, _db_update
-
-            _init()
-            if not st.session_state.ap_loaded:
-                _load_requests()
-
-            for r in st.session_state.ap_requests:
-                if _migrate_chain(r):
-                    _db_update(r)
-
-            escalated = []
-            for r in st.session_state.ap_requests:
-                bi, bd = r.get("stage_idx", 0), r.get("done", False)
-                _check_expiry(r)
-                if r.get("stage_idx", 0) != bi or (r.get("done") and not bd):
-                    escalated.append(r)
-            if escalated:
-                st.rerun()
-
-            def _n(role):
-                return sum(1 for r in st.session_state.ap_requests
-                           if not r["done"] and r["chain"] and r["chain"][r["stage_idx"]] == role)
-
-            role_tabs = st.tabs([
-                f"👨‍💼 Team Lead ({_n('Team Lead')})",
-                f"👩‍💻 Tech Manager ({_n('Tech Manager')})",
-                f"🧑‍🔬 CTO ({_n('CTO')})",
-                f"👑 CEO ({_n('CEO')})",
-            ])
-            with role_tabs[0]: _view_role("Team Lead")
-            with role_tabs[1]: _view_role("Tech Manager")
-            with role_tabs[2]: _view_role("CTO")
-            with role_tabs[3]: _view_role("CEO")
-
-    else:
-        st.error("`approval_pipeline.py` is missing from your project folder.")
 elif page == "⚙️ Setup / Config":
     page_setup()
