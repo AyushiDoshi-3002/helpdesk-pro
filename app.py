@@ -29,6 +29,9 @@ def _to_ist(dt_str: str) -> str:
 
 st.set_page_config(page_title="HelpDesk Pro", page_icon="🤖", layout="wide", initial_sidebar_state="expanded")
 
+# ====================== GLOBAL STYLES ======================
+apply_global_styles()
+
 import streamlit.components.v1 as components
 components.html("""
 <script>
@@ -38,38 +41,11 @@ components.html("""
         style.id = 'font-override-inject';
         style.innerHTML = `
             html { font-size: 20px !important; }
-            body { font-size: 20px !important; }
-            p, span, div, li, td, th, label, a,
-            .stMarkdown p,
-            [data-testid="stMarkdownContainer"] p,
-            [data-testid="stMarkdownContainer"] li,
-            [data-testid="stMarkdownContainer"] span {
+            body, p, span, div, li, td, th, label, a,
+            .stMarkdown p, [data-testid="stMarkdownContainer"] * {
                 font-size: 20px !important;
                 font-family: 'EB Garamond', Georgia, serif !important;
             }
-            input, textarea, select {
-                font-size: 20px !important;
-                font-family: 'EB Garamond', Georgia, serif !important;
-            }
-            button, button span, button p {
-                font-size: 20px !important;
-                font-family: 'EB Garamond', Georgia, serif !important;
-            }
-            label, label p, label span {
-                font-size: 20px !important;
-                font-family: 'EB Garamond', Georgia, serif !important;
-            }
-            [data-baseweb="select"] div,
-            [data-baseweb="select"] span,
-            [role="option"] {
-                font-size: 20px !important;
-                font-family: 'EB Garamond', Georgia, serif !important;
-            }
-            [data-testid="stSidebar"] p,
-            [data-testid="stSidebar"] span,
-            [data-testid="stSidebar"] label { font-size: 20px !important; }
-            [data-testid="stAlert"] p,
-            [data-testid="stAlert"] span { font-size: 20px !important; }
         `;
         var existing = document.getElementById('font-override-inject');
         if (existing) existing.remove();
@@ -182,8 +158,6 @@ small, .stCaption { font-family:'DM Mono',monospace !important; font-size:17px !
 [data-testid="stMetric"] { background:var(--paper); border:1px solid var(--border); border-radius:3px; padding:16px 20px; }
 [data-testid="stMetricValue"] { font-family:'Playfair Display',serif !important; font-size:42px !important; color:var(--ink) !important; }
 [data-testid="stMetricLabel"] { font-family:'DM Mono',monospace !important; font-size:15px !important; letter-spacing:0.06em !important; text-transform:uppercase !important; color:var(--ink-muted) !important; }
-.ep-route-badge { display:inline-block; background:#eff6ff; border:1px solid #93c5fd; color:#1d4ed8; border-radius:20px; font-size:13px; font-weight:600; padding:3px 12px; margin:3px 2px; }
-.ep-chain-box { background:#fffbeb; border:1.5px solid #fcd34d; border-radius:8px; padding:14px 18px; margin:10px 0; font-size:14px; color:#92400e; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -364,7 +338,6 @@ def auto_save_note_to_resolved(ticket_query: str, note: str):
         else:
             db.table("resolved_issues").update({"solution": note.strip()}).eq("query", ticket_query).execute()
             st.toast("🧠 Learned answer updated in Supabase", icon="☁️")
-        # Immediately rebuild the semantic index so the new answer is searchable
         load_learned_answers_semantic.clear()
         return True
     except Exception:
@@ -372,20 +345,12 @@ def auto_save_note_to_resolved(ticket_query: str, note: str):
 
 
 # ════════════════════════════════════════════════════════
-#  SEMANTIC LEARNED ANSWERS  (fixes "cobra means" ≠ "what is cobra")
+#  SEMANTIC LEARNED ANSWERS
 # ════════════════════════════════════════════════════════
-_SEMANTIC_LEARNED_THRESHOLD = 0.45   # cosine ≥ 0.45 → use learned answer
+_SEMANTIC_LEARNED_THRESHOLD = 0.45
 
-@st.cache_resource(
-    show_spinner="🧠 Loading learned answers into semantic index…",
-    ttl=300,   # rebuild every 5 min so new answers appear quickly
-)
+@st.cache_resource(show_spinner="🧠 Loading learned answers into semantic index…", ttl=300)
 def load_learned_answers_semantic(_cache_bust: int = 0):
-    """
-    Pulls all admin-written solutions from resolved_issues + tickets.admin_note
-    and encodes the stored questions with multi-qa-mpnet-base-dot-v1 so that
-    paraphrases like 'cobra means' match 'what is cobra' (cosine ~0.71).
-    """
     try:
         from sentence_transformers import SentenceTransformer
         db = get_db()
@@ -419,7 +384,6 @@ def load_learned_answers_semantic(_cache_bust: int = 0):
 
 
 def check_learned_answers(query: str):
-    """Semantic search first; falls back to keyword scoring if model unavailable."""
     model, embeddings, pairs = load_learned_answers_semantic()
     if model is not None and embeddings is not None and pairs:
         try:
@@ -437,7 +401,6 @@ def check_learned_answers(query: str):
     return _check_learned_answers_keyword(query)
 
 
-# ── Keyword fallback (used when model is unavailable) ────────────────────────
 _STOP_WORDS = {
     "what","is","are","the","a","an","of","in","on","at","to","for","and",
     "or","how","why","when","where","who","does","do","can","could","would",
@@ -575,7 +538,7 @@ def load_model_and_embeddings():
 
 
 # ════════════════════════════════════════════════════════
-#  ANSWER LOOKUP  (PDF → Semantic Learned)
+#  ANSWER LOOKUP
 # ════════════════════════════════════════════════════════
 def answer_question(query: str) -> dict:
     model, q_embeddings, a_embeddings, pairs, util = load_model_and_embeddings()
@@ -797,9 +760,7 @@ def db_review_access_request(req_id, action, reviewed_by, doc_id=None, user_id=N
     st.toast(f"✅ Request #{req_id} {action}", icon="☁️")
 
 
-# ════════════════════════════════════════════════════════
-#  PAGE: EMPLOYEE PORTAL  (unchanged from original)
-# ════════════════════════════════════════════════════════
+# PAGE: EMPLOYEE PORTAL
 def page_employee():
     st.markdown("# Employee Help Portal")
     st.markdown(
@@ -1573,7 +1534,7 @@ def _render_doc_validator():
 
 
 # ════════════════════════════════════════════════════════
-#  PAGE: ADMIN PANEL  — 4 tabs inside (same login gate)
+#  PAGE: ADMIN PANEL
 # ════════════════════════════════════════════════════════
 def page_admin():
     ADMIN_PWD = st.secrets.get("ADMIN_PASSWORD", "admin123")
@@ -1602,7 +1563,6 @@ def page_admin():
             st.session_state["admin_logged_in"] = False
             st.toast("Signed out", icon="🔒"); st.rerun()
 
-    # ── 4 tabs ────────────────────────────────────────────────────────────────
     tab1, tab2, tab3, tab4 = st.tabs([
         "🎫 Ticket Management",
         "📊 Analytics",
@@ -1688,7 +1648,7 @@ def page_setup():
 
 
 # ════════════════════════════════════════════════════════
-#  PAGE: APPROVAL PIPELINE  (same as original — unchanged)
+#  PAGE: APPROVAL PIPELINE
 # ════════════════════════════════════════════════════════
 def page_approval_pipeline():
     if not PIPELINE_AVAILABLE:
@@ -1730,7 +1690,6 @@ def page_approval_pipeline():
     st.markdown("---")
     ap_type = st.session_state.get("ap_page_type")
 
-    # ── INCIDENT flow ─────────────────────────────────────────────────────────
     if ap_type == "incident":
         st.markdown("### 🚨 Incident Ticket")
         c1, c2 = st.columns([4, 1])
@@ -1805,7 +1764,6 @@ def page_approval_pipeline():
                 if st.button("Cancel", use_container_width=True, key="ap_inc_cancel"):
                     st.session_state["ap_page_inc_show_form"] = False; st.rerun()
 
-    # ── DOC APPROVAL flow ─────────────────────────────────────────────────────
     elif ap_type == "doc":
         st.markdown("### 📄 Document Approval Ticket")
         st.markdown("<p style='color:#6b5f55;font-size:20px;'>Fill in your details and the document info. The system will route it through the correct approval chain.</p>", unsafe_allow_html=True)
@@ -1861,7 +1819,6 @@ def page_approval_pipeline():
                         st.success(f"✅ {req['id']} submitted → routed to **{ch[0]}**. Full chain: **{' → '.join(ch)}**. Each approver has **{_escalation_label()}** to respond.")
                 except Exception as ex: st.error(f"Submission failed: {ex}")
 
-        # ── Document Access Request ───────────────────────────────────────────
         st.markdown("---")
         st.markdown("### 📂 Request Access to an Existing Document")
         st.markdown("<p style='color:#6b5f55;font-size:20px;'>Fill in your details, select a document, and click Request Access. Senior roles (Manager and above) get instant access.</p>", unsafe_allow_html=True)
@@ -1922,7 +1879,6 @@ def page_approval_pipeline():
                         except Exception as ex:
                             st.error(f"Failed to submit request: {ex}")
 
-        # ── Inline Document Viewer ─────────────────────────────────────────────
         granted_doc_id  = st.session_state.get("ap_granted_doc_id")
         granted_doc_pwd = st.session_state.get("ap_granted_doc_pwd", "")
         _viewer_role    = st.session_state.get("ap_acc_role", "")
@@ -1947,7 +1903,6 @@ def page_approval_pipeline():
                     if not content and not file_url: inner += "<p style='color:#9c8e82;font-family:EB Garamond,serif;font-size:20px;'>No content preview or file link available. Please contact the document owner.</p>"
                     st.markdown(f"<div style='background:#faf7f2;border:1px solid #d4c9bc;border-left:4px solid #3d5a4a;border-radius:3px;padding:24px 28px;margin-top:8px;'>{inner}</div><small style='color:#9c8e82;font-family:DM Mono,monospace;font-size:14px;'>🔒 View-only. No download permitted. Access auto-expires in 7 days.</small>", unsafe_allow_html=True)
 
-        # ── Approver Review ────────────────────────────────────────────────────
         st.markdown("---")
         st.markdown("### 🔐 Approver Review")
         st.markdown("<p style='color:#6b5f55;font-size:20px;'>Approvers: log in to your role tab below to action pending requests.</p>", unsafe_allow_html=True)
