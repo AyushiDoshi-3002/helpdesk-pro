@@ -5,6 +5,7 @@ import requests
 import csv
 from datetime import datetime, timezone, timedelta
 from collections import Counter
+from styles import apply_global_styles
 
 try:
     from storage_info import show_storage_info_button
