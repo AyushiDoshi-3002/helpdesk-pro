@@ -1327,26 +1327,24 @@ def _admin_doc_visibility():
                             if st.button(f"Request Access →", key=f"req_btn_{doc_id}", use_container_width=False):
                                 if not reason.strip(): st.warning("Please provide a reason for the request.")
                                 else:
-                        for _k in ["ap_granted_doc_id", "ap_granted_doc_pwd", "ap_doc_visible"]:
-                            st.session_state.pop(_k, None)
-                        try:
-                            result = db_submit_access_request(
-                                doc_id=doc_id,
-                                user_id=access_emp_id.strip(),
-                                user_role=access_role,
-                                reason=st.session_state.get("ap_acc_reason", "").strip(),
-                            )
-                            if result is None:
-                                st.info("You already have a pending request for this document.")
-                            else:
-                                st.success(
-                                    f"✅ Access request submitted for **{access_doc}**. "
-                                    "Your request is in the approval pipeline — you will "
-                                    "receive access only after a Manager or above approves it."
-                                )
-                        except Exception as ex:
-                            st.error(f"Failed to submit request: {ex}")
-
+                        else:
+                                    try:
+                                        result = db_submit_access_request(
+                                            doc_id=doc_id,
+                                            user_id=viewer_id.strip(),
+                                            user_role=viewer_role,
+                                            reason=reason.strip(),
+                                        )
+                                        if result is None:
+                                            st.info("You already have a pending request for this document.")
+                                        else:
+                                            st.success(
+                                                f"✅ Access request submitted for **{doc['title']}**. "
+                                                "Your request is in the approval pipeline — you will "
+                                                "receive access only after a Manager or above approves it."
+                                            )
+                                    except Exception as ex:
+                                        st.error(f"Failed to submit request: {ex}")
     with dv_tab2:
         st.markdown("#### My Access Dashboard")
         my_id = st.text_input("Your Employee ID", placeholder="e.g. EMP-1042", key="dv_my_id")
