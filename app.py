@@ -1327,7 +1327,6 @@ def _admin_doc_visibility():
                             if st.button(f"Request Access →", key=f"req_btn_{doc_id}", use_container_width=False):
                                 if not reason.strip(): st.warning("Please provide a reason for the request.")
                                 else:
-                        else:
                                     try:
                                         result = db_submit_access_request(
                                             doc_id=doc_id,
