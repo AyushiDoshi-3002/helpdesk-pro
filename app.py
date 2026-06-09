@@ -1904,11 +1904,25 @@ def page_approval_pipeline():
                             st.session_state["ap_granted_doc_pwd"] = view_pwd
                         st.success(f"✅ Instant access granted to **{access_emp_id.strip()}** ({access_role}) for **{access_doc}**. Scroll down to view the document.")
                     else:
+                        for _k in ["ap_granted_doc_id", "ap_granted_doc_pwd", "ap_doc_visible"]:
+                            st.session_state.pop(_k, None)
                         try:
-                            result = db_submit_access_request(doc_id=doc_id, user_id=access_emp_id.strip(), user_role=access_role, reason=st.session_state.get("ap_acc_reason","").strip())
-                            if result is None: st.info("You already have a pending request for this document.")
-                            else: st.success(f"✅ Access request submitted for **{access_doc}**. View-only access once approved. Auto-revokes after 7 days.")
-                        except Exception as ex: st.error(f"Failed to submit request: {ex}")
+                            result = db_submit_access_request(
+                                doc_id=doc_id,
+                                user_id=access_emp_id.strip(),
+                                user_role=access_role,
+                                reason=st.session_state.get("ap_acc_reason", "").strip(),
+                            )
+                            if result is None:
+                                st.info("You already have a pending request for this document.")
+                            else:
+                                st.success(
+                                    f"✅ Access request submitted for **{access_doc}**. "
+                                    "Your request is in the approval pipeline — you will "
+                                    "receive access only after a Manager or above approves it."
+                                )
+                        except Exception as ex:
+                            st.error(f"Failed to submit request: {ex}")
 
         # ── Inline Document Viewer ─────────────────────────────────────────────
         granted_doc_id  = st.session_state.get("ap_granted_doc_id")
